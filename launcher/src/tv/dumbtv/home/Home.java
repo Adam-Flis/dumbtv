@@ -82,6 +82,7 @@ public final class Home extends Activity {
     private boolean fetching;
     private LinearLayout bar;
     private TextView net;
+    private int netColor = 0xFF34C759;
     private ConnectivityManager cm;
     private WifiManager wifi;
 
@@ -480,22 +481,36 @@ public final class Home extends Activity {
         page.setPadding(0, dp(32), 0, 0);
         root.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
 
-        // Header: greeting, clock + weather on the left; top bar, next hours, sun line on the right.
+        // Header, three lines: greeting | top bar; clock + weather | next hours; date, hint | sun line.
         LinearLayout head = new LinearLayout(this);
-        head.setGravity(Gravity.TOP);
+        head.setOrientation(LinearLayout.VERTICAL);
         head.setClipChildren(false);
         head.setClipToPadding(false);
         head.setPadding(dp(56), 0, dp(56), 0);
-        LinearLayout when = new LinearLayout(this);
-        when.setOrientation(LinearLayout.VERTICAL);
-        greeting = Ui.text(this, 19, Ui.MUTED, Ui.MEDIUM);
-        greeting.setPadding(dp(3), 0, 0, dp(4));
+
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.setClipChildren(false);
+        top.setClipToPadding(false);
+        greeting = Ui.text(this, 20, Ui.MUTED, Ui.MEDIUM);
+        greeting.setPadding(dp(3), 0, 0, 0);
+        top.addView(greeting, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        bar = new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setClipChildren(false);
+        bar.setClipToPadding(false);
+        bar.addView(chip(Icons.INPUT, "Inputs  \u25BE", this::inputsMenu));
+        net = chip(Icons.WIFI, "", v -> openWifi());
+        bar.addView(net);
+        bar.addView(chip(Icons.SLIDERS, "Options", v -> startActivity(new Intent(this, Options.class))));
+        bar.addView(chip(Icons.GEAR, "Settings", v -> openSettings()));
+        top.addView(bar, new LinearLayout.LayoutParams(WRAP, WRAP));
+        head.addView(top, new LinearLayout.LayoutParams(MATCH, WRAP));
+
+        LinearLayout middle = new LinearLayout(this);
+        middle.setGravity(Gravity.BOTTOM);
         clock = Ui.text(this, 64, Ui.TEXT, Ui.LIGHT);
-        date = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
-        date.setPadding(dp(3), dp(8), 0, 0);
-        LinearLayout clockRow = new LinearLayout(this);
-        clockRow.setGravity(Gravity.BOTTOM);
-        clockRow.addView(clock);
+        middle.addView(clock);
         weatherBox = new LinearLayout(this);
         weatherBox.setOrientation(LinearLayout.VERTICAL);
         weatherBox.setPadding(dp(32), 0, 0, dp(4));
@@ -508,47 +523,41 @@ public final class Home extends Activity {
         temp = Ui.text(this, 36, Ui.TEXT, Ui.LIGHT);
         tempRow.addView(temp);
         sky = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        sky.setSingleLine();
         sky.setPadding(dp(2), dp(6), 0, 0);
         feels = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        feels.setSingleLine();
         feels.setPadding(dp(2), dp(3), 0, 0);
         weatherBox.addView(tempRow);
         weatherBox.addView(sky);
         weatherBox.addView(feels);
         weatherBox.setVisibility(View.GONE);
-        clockRow.addView(weatherBox);
+        middle.addView(weatherBox);
+        middle.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        hours = new LinearLayout(this);
+        hours.setVisibility(View.GONE);
+        middle.addView(hours, new LinearLayout.LayoutParams(WRAP, WRAP));
+        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        mlp.topMargin = dp(12);
+        head.addView(middle, mlp);
+
+        LinearLayout bottom = new LinearLayout(this);
+        bottom.setGravity(Gravity.TOP);
+        LinearLayout notes = new LinearLayout(this);
+        notes.setOrientation(LinearLayout.VERTICAL);
+        date = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
+        date.setPadding(dp(3), dp(8), 0, 0);
         hint = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
         hint.setPadding(dp(3), dp(12), 0, 0);
         hint.setVisibility(View.GONE);
-        when.addView(greeting);
-        when.addView(clockRow);
-        when.addView(date);
-        when.addView(hint);
-        head.addView(when, new LinearLayout.LayoutParams(0, WRAP, 1f));
-
-        LinearLayout side = new LinearLayout(this);
-        side.setOrientation(LinearLayout.VERTICAL);
-        side.setGravity(Gravity.END);
-        side.setClipChildren(false);
-        side.setClipToPadding(false);
-        bar = new LinearLayout(this);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setClipChildren(false);
-        bar.setClipToPadding(false);
-        bar.addView(chip("Inputs  \u25BE", this::inputsMenu));
-        net = chip("", v -> openWifi());
-        bar.addView(net);
-        bar.addView(chip("Options", v -> startActivity(new Intent(this, Options.class))));
-        bar.addView(chip("Settings", v -> openSettings()));
-        side.addView(bar, new LinearLayout.LayoutParams(WRAP, WRAP));
-        hours = new LinearLayout(this);
-        hours.setPadding(0, dp(18), 0, 0);
-        hours.setVisibility(View.GONE);
-        side.addView(hours, new LinearLayout.LayoutParams(WRAP, WRAP));
+        notes.addView(date);
+        notes.addView(hint);
+        bottom.addView(notes, new LinearLayout.LayoutParams(0, WRAP, 1f));
         sunLine = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
-        sunLine.setPadding(0, dp(8), dp(8), 0);
+        sunLine.setPadding(0, dp(10), dp(8), 0);
         sunLine.setVisibility(View.GONE);
-        side.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
-        head.addView(side, new LinearLayout.LayoutParams(WRAP, WRAP));
+        bottom.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
+        head.addView(bottom, new LinearLayout.LayoutParams(MATCH, WRAP));
         page.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         focusName = Ui.text(this, 30, Ui.TEXT, Ui.MEDIUM);
@@ -650,28 +659,41 @@ public final class Home extends Activity {
         return best;
     }
 
-    private TextView chip(String label, View.OnClickListener click) {
-        TextView v = Ui.text(this, 14, Ui.TEXT, Ui.MEDIUM);
+    private TextView chip(int icon, String label, View.OnClickListener click) {
+        TextView v = Ui.text(this, 15, Ui.TEXT, Ui.MEDIUM);
         v.setText(label);
+        v.setTag(icon);
         v.setGravity(Gravity.CENTER);
-        v.setPadding(dp(18), dp(9), dp(18), dp(9));
+        v.setPadding(dp(16), dp(10), dp(18), dp(10));
+        v.setCompoundDrawablePadding(dp(8));
         v.setFocusable(true);
         v.setClickable(true);
         v.setOnClickListener(click);
-        v.setOnFocusChangeListener((view, has) ->
-                view.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(110).start());
+        v.setOnFocusChangeListener((view, has) -> {
+            view.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(110).start();
+            chipIcon((TextView) view);
+        });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(WRAP, WRAP);
         lp.leftMargin = dp(10);
-        lp.topMargin = dp(6);
         v.setLayoutParams(lp);
         chips.add(v);
         return v;
     }
 
+    /** Top-bar icon: dark on a light accent when focused; the Wi-Fi icon always shows its status color. */
+    private void chipIcon(TextView v) {
+        if (!(v.getTag() instanceof Integer)) return;
+        int color = v == net ? netColor : v.isFocused() ? Ui.ink(cfg.accent()) : Ui.TEXT;
+        v.setCompoundDrawablesRelative(Icons.of((Integer) v.getTag(), dp(19), color), null, null, null);
+    }
+
     private void apply() {
         applied = cfg.version();
         int accent = cfg.accent();
-        for (TextView c : chips) Ui.focusStyle(c, accent, 0x14FFFFFF, dp(18));
+        for (TextView c : chips) {
+            Ui.chipStyle(c, accent, dp(20), Math.max(1, dp(1)));
+            chipIcon(c);
+        }
         render(favs);
         render(apps);
         render(inputs);
@@ -1055,8 +1077,8 @@ public final class Home extends Activity {
         }
         // a drawable, not a colored character: Fire OS "high contrast text" repaints text black/white
         net.setText(name);
-        net.setCompoundDrawablesRelative(dot(color), null, null, null);
-        net.setCompoundDrawablePadding(dp(8));
+        netColor = color;
+        chipIcon(net);
     }
 
     private android.graphics.drawable.Drawable dot(int color) {

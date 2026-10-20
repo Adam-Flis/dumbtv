@@ -48,6 +48,19 @@ final class Ui {
         return d;
     }
 
+    /** Top-bar buttons: accent fill when focused; otherwise a visible fill with a thin outline. */
+    static void chipStyle(TextView v, int accent, float radius, int stroke) {
+        StateListDrawable bg = new StateListDrawable();
+        bg.addState(new int[] {android.R.attr.state_focused}, round(accent, radius));
+        GradientDrawable idle = round(0x2EFFFFFF, radius);
+        idle.setStroke(stroke, 0x33FFFFFF);
+        bg.addState(new int[0], idle);
+        v.setBackground(bg);
+        v.setTextColor(new ColorStateList(
+                new int[][] {{android.R.attr.state_focused}, {}},
+                new int[] {ink(accent), 0xFFFFFFFF}));
+    }
+
     /** Accent fill when focused, a faint fill otherwise. */
     static void focusStyle(TextView v, int accent, int idle, float radius) {
         StateListDrawable bg = new StateListDrawable();

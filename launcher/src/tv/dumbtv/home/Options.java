@@ -28,6 +28,9 @@ public final class Options extends Activity {
     private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
 
     private final List<Runnable> refreshers = new ArrayList<>();
+    private final List<TextView> headers = new ArrayList<>(), navItems = new ArrayList<>();
+    private LinearLayout nav, list;
+    private ScrollView scroll;
     private Config cfg;
 
     @Override
@@ -36,21 +39,32 @@ public final class Options extends Activity {
         cfg = Config.get(this);
         Ui.scale = cfg.textScale();
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFocusable(false);
-        scroll.setVerticalScrollBarEnabled(false);
-        scroll.setBackgroundColor(0xFF0C0C0E);
-        LinearLayout list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(56), dp(40), dp(56), dp(40));
-        scroll.addView(list);
-
+        // Left: the groups, so the bottom ones are one press away. Right: the settings, scrolling.
+        LinearLayout screen = new LinearLayout(this);
+        screen.setBackgroundColor(0xFF0C0C0E);
+        nav = new LinearLayout(this);
+        nav.setOrientation(LinearLayout.VERTICAL);
+        nav.setPadding(dp(40), dp(40), dp(20), dp(40));
+        nav.setBackgroundColor(0xFF141519);
         TextView title = Ui.text(this, 30, Ui.TEXT, Ui.LIGHT);
         title.setText("Options");
-        title.setPadding(dp(16), 0, 0, dp(20));
-        list.addView(title);
+        title.setPadding(dp(14), 0, 0, dp(28));
+        nav.addView(title);
+        screen.addView(nav, new LinearLayout.LayoutParams(dp(270), ViewGroup.LayoutParams.MATCH_PARENT));
 
-        section(list, "Look", true);
+        scroll = new ScrollView(this);
+        scroll.setFocusable(false);
+        scroll.setVerticalScrollBarEnabled(false);
+        list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(40), dp(40), dp(56), dp(40));
+        scroll.addView(list);
+        screen.addView(scroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        screen.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> {
+            if (now != null && now.getParent() == list) markSection(sectionOf(now));
+        });
+
+        section("Look", Icons.PALETTE);
         list.addView(choice(Config.ACCENT));
         list.addView(choice(Config.BACKGROUND));
         list.addView(choice(Config.DIM));
@@ -60,7 +74,7 @@ public final class Options extends Activity {
             refresh();
         }));
 
-        section(list, "Home screen", false);
+        section("Home screen", Icons.HOUSE);
         list.addView(choice(Config.TILES));
         list.addView(choice(Config.TEXT));
         list.addView(choice(Config.LABELS));
@@ -70,7 +84,7 @@ public final class Options extends Activity {
         list.addView(action("Apps on home screen", () -> pick(Catalog.APPS)));
         list.addView(action("Inputs on home screen", () -> pick(Catalog.INPUTS)));
 
-        section(list, "Weather", false);
+        section("Weather", Icons.PARTLY);
         list.addView(choice(Config.WEATHER));
         list.addView(cityRow());
         list.addView(choice(Config.UNITS));
@@ -79,7 +93,7 @@ public final class Options extends Activity {
         list.addView(choice(Config.W_FEELS));
         list.addView(choice(Config.W_SUN));
 
-        section(list, "Photo frame", false);
+        section("Photo frame", Icons.PHOTO);
         list.addView(choice(Config.FRAME));
         list.addView(choice(Config.FRAME_FOR));
         list.addView(action("Show photo frame now", () -> {
@@ -87,7 +101,7 @@ public final class Options extends Activity {
             finish();
         }));
 
-        section(list, "More", false);
+        section("More", Icons.DOTS);
         list.addView(action("Reset order, names and hidden tiles", this::reset));
         list.addView(action("Open Amazon's home screen", () -> {
             Guard.amazon(this);
@@ -104,8 +118,46 @@ public final class Options extends Activity {
                 + "\nInternet is used only for the weather, and only while it is on. No tracking, no ads.");
         list.addView(about);
 
-        setContentView(scroll);
+        setContentView(screen);
         refresh();
+    }
+
+    /** Back from a setting goes to its group on the left; back from the left closes Options. */
+    @Override
+    public void onBackPressed() {
+        View f = getCurrentFocus();
+        if (f != null && f.getParent() == list) {
+            navItems.get(sectionOf(f)).requestFocus();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    /** Index of the group whose heading is the last one above {@code row}. */
+    private int sectionOf(View row) {
+        int at = list.indexOfChild(row), found = 0;
+        for (int i = 0; i < headers.size(); i++) {
+            if (list.indexOfChild(headers.get(i)) < at) found = i;
+        }
+        return found;
+    }
+
+    private void markSection(int index) {
+        for (int i = 0; i < navItems.size(); i++) navItems.get(i).setSelected(i == index);
+    }
+
+    private void openSection(int index) {
+        View header = headers.get(index);
+        View first = list.getChildAt(list.indexOfChild(header) + 1);
+        if (first != null) first.requestFocus();
+        scroll.smoothScrollTo(0, index == 0 ? 0 : header.getTop());
+    }
+
+    private void navIcon(TextView v) {
+        int kind = (Integer) v.getTag();
+        int color = v.isFocused() ? Ui.ink(cfg.accent()) : v.isSelected() ? Ui.TEXT : Ui.MUTED;
+        // the weather icon keeps its own colors
+        v.setCompoundDrawablesRelative(Icons.of(kind, dp(22), color), null, null, null);
     }
 
     @Override
@@ -169,6 +221,7 @@ public final class Options extends Activity {
         TextView value = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
         row.addView(value);
         row.setOnClickListener(v -> askCity());
+        row.setOnKeyListener(this::leftToNav);
         refreshers.add(() -> {
             value.setText(cfg.get(Weather.PLACE, "Not set") + "  \u203A");
             row.setAlpha("on".equals(cfg.get(Config.WEATHER)) ? 1f : 0.4f);
@@ -243,8 +296,16 @@ public final class Options extends Activity {
         chevron.setText("›");
         row.addView(chevron);
         row.setOnClickListener(v -> run.run());
+        row.setOnKeyListener(this::leftToNav);
         refreshers.add(() -> style(row));
         return row;
+    }
+
+    /** Left on a row without values goes to the group list. */
+    private boolean leftToNav(View row, int code, KeyEvent e) {
+        if (code != KeyEvent.KEYCODE_DPAD_LEFT || e.getAction() != KeyEvent.ACTION_DOWN) return false;
+        navItems.get(sectionOf(row)).requestFocus();
+        return true;
     }
 
     private LinearLayout row() {
@@ -253,7 +314,7 @@ public final class Options extends Activity {
         row.setFocusable(true);
         row.setClickable(true);
         row.setPadding(dp(16), dp(14), dp(16), dp(14));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(600), WRAP);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP);
         lp.bottomMargin = dp(4);
         row.setLayoutParams(lp);
         return row;
@@ -274,12 +335,58 @@ public final class Options extends Activity {
     }
 
     /** A group heading: small, spaced capitals above its rows. */
-    private void section(LinearLayout list, String name, boolean first) {
+    private void section(String name, int icon) {
+        boolean first = headers.isEmpty();
         TextView v = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
         v.setText(name.toUpperCase(java.util.Locale.ROOT));
         v.setLetterSpacing(0.12f);
-        v.setPadding(dp(16), dp(first ? 4 : 30), 0, dp(8));
+        v.setPadding(dp(16), dp(first ? 4 : 34), 0, dp(10));
         list.addView(v);
+        headers.add(v);
+
+        int index = navItems.size();
+        TextView item = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
+        item.setText(name);
+        item.setTag(icon);
+        item.setId(200 + index);
+        item.setFocusable(true);
+        item.setClickable(true);
+        item.setCompoundDrawablePadding(dp(14));
+        item.setPadding(dp(14), dp(13), dp(14), dp(13));
+        int accent = cfg.accent();
+        StateListDrawable bg = new StateListDrawable();
+        bg.addState(new int[] {android.R.attr.state_focused}, Ui.round(accent, dp(12)));
+        bg.addState(new int[] {android.R.attr.state_selected}, Ui.round(0x1FFFFFFF, dp(12)));
+        bg.addState(new int[0], Ui.round(0, dp(12)));
+        item.setBackground(bg);
+        item.setTextColor(new android.content.res.ColorStateList(
+                new int[][] {{android.R.attr.state_focused}, {android.R.attr.state_selected}, {}},
+                new int[] {Ui.ink(accent), Ui.TEXT, Ui.MUTED}));
+        item.setOnFocusChangeListener((x, has) -> {
+            if (has) {
+                markSection(index);
+                scroll.smoothScrollTo(0, index == 0 ? 0 : v.getTop());
+            }
+            navIcon(item);
+        });
+        item.setOnClickListener(x -> openSection(index));
+        item.setOnKeyListener((x, code, e) -> {
+            if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                openSection(index);
+                return true;
+            }
+            // the ends of the group list stay put instead of jumping into the settings
+            if (code == KeyEvent.KEYCODE_DPAD_LEFT) return true;
+            if (code == KeyEvent.KEYCODE_DPAD_UP && index == 0) return true;
+            return code == KeyEvent.KEYCODE_DPAD_DOWN && index == navItems.size() - 1;
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP);
+        lp.bottomMargin = dp(6);
+        nav.addView(item, lp);
+        navItems.add(item);
+        if (first) item.setSelected(true);
+        navIcon(item);
     }
 
     private void pick(String kind) {

@@ -15,7 +15,8 @@ import android.graphics.drawable.Drawable;
  */
 final class Icons extends Drawable {
     static final int SUN = 0, MOON = 1, PARTLY = 2, PARTLY_NIGHT = 3, CLOUD = 4, FOG = 5, RAIN = 6,
-            SNOW = 7, STORM = 8, STAR = 9, GRID = 10, INPUT = 11;
+            SNOW = 7, STORM = 8, STAR = 9, GRID = 10, INPUT = 11, WIFI = 12, GEAR = 13, SLIDERS = 14,
+            HOUSE = 15, PALETTE = 16, PHOTO = 17, DOTS = 18;
     private static final int AMBER = 0xFFFFC53D, CLOUDY = 0xFFE3E6EA, BLUE = 0xFF5AB0FF,
             MOONLIGHT = 0xFFEDE7CF;
 
@@ -117,6 +118,73 @@ final class Icons extends Drawable {
                     r.set(x, y, x + s * 0.38f, y + s * 0.38f);
                     c.drawRoundRect(r, s * 0.09f, s * 0.09f, fill);
                 }
+                break;
+            case WIFI:
+                fill.setColor(tint);
+                c.drawCircle(s * 0.5f, s * 0.8f, s * 0.08f, fill);
+                stroke(tint, s * 0.09f);
+                for (float rad : new float[] {0.24f, 0.42f, 0.6f}) {
+                    r.set(s * (0.5f - rad), s * (0.8f - rad), s * (0.5f + rad), s * (0.8f + rad));
+                    c.drawArc(r, 228, 84, false, line);
+                }
+                break;
+            case GEAR:
+                stroke(tint, s * 0.13f);
+                c.drawCircle(s / 2, s / 2, s * 0.24f, line);
+                line.setStrokeCap(Paint.Cap.BUTT);
+                for (int i = 0; i < 8; i++) {
+                    double a = Math.PI / 4 * i;
+                    float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+                    c.drawLine(s / 2 + cos * s * 0.28f, s / 2 + sin * s * 0.28f,
+                            s / 2 + cos * s * 0.46f, s / 2 + sin * s * 0.46f, line);
+                }
+                line.setStrokeCap(Paint.Cap.ROUND);
+                break;
+            case SLIDERS: {
+                stroke(tint, s * 0.08f);
+                fill.setColor(tint);
+                float[] knobs = {0.66f, 0.34f, 0.7f};
+                for (int i = 0; i < 3; i++) {
+                    float y = s * (0.22f + i * 0.28f);
+                    c.drawLine(s * 0.1f, y, s * 0.9f, y, line);
+                    c.drawCircle(s * knobs[i], y, s * 0.11f, fill);
+                }
+                break;
+            }
+            case HOUSE:
+                stroke(tint, s * 0.09f);
+                path.reset();
+                path.moveTo(s * 0.1f, s * 0.5f);
+                path.lineTo(s * 0.5f, s * 0.12f);
+                path.lineTo(s * 0.9f, s * 0.5f);
+                c.drawPath(path, line);
+                path.reset();
+                path.moveTo(s * 0.22f, s * 0.42f);
+                path.lineTo(s * 0.22f, s * 0.88f);
+                path.lineTo(s * 0.78f, s * 0.88f);
+                path.lineTo(s * 0.78f, s * 0.42f);
+                c.drawPath(path, line);
+                break;
+            case PALETTE:
+                stroke(tint, s * 0.08f);
+                c.drawCircle(s / 2, s / 2, s * 0.4f, line);
+                fill.setColor(tint);
+                c.drawCircle(s * 0.36f, s * 0.36f, s * 0.07f, fill);
+                c.drawCircle(s * 0.6f, s * 0.32f, s * 0.07f, fill);
+                c.drawCircle(s * 0.34f, s * 0.6f, s * 0.07f, fill);
+                c.drawCircle(s * 0.64f, s * 0.6f, s * 0.07f, fill);
+                break;
+            case PHOTO:
+                stroke(tint, s * 0.08f);
+                r.set(s * 0.08f, s * 0.16f, s * 0.92f, s * 0.84f);
+                c.drawRoundRect(r, s * 0.08f, s * 0.08f, line);
+                fill.setColor(tint);
+                poly(c, s, 0.18f, 0.76f, 0.4f, 0.48f, 0.56f, 0.64f, 0.66f, 0.54f, 0.82f, 0.76f);
+                c.drawCircle(s * 0.68f, s * 0.34f, s * 0.07f, fill);
+                break;
+            case DOTS:
+                fill.setColor(tint);
+                for (int i = 0; i < 3; i++) c.drawCircle(s * (0.22f + i * 0.28f), s / 2, s * 0.085f, fill);
                 break;
             default: // INPUT: a little TV
                 stroke(tint, s * 0.09f);
