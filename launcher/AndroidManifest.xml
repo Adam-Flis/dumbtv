@@ -7,6 +7,10 @@
 
     <!-- Fire OS 6 only: the Keeper reads the foreground package through UsageStats.
          maxSdkVersion keeps Fire OS 7/8 on the permission-free accessibility path. -->
+    <!-- Top bar: the Wi-Fi name and whether the internet works. Read-only, no network access. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         android:maxSdkVersion="27" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"

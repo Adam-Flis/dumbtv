@@ -12,6 +12,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.media.tv.TvInputManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -31,6 +36,7 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -61,6 +67,27 @@ public final class Home extends Activity {
     private View shade;
     private TextView greeting, clock, date, focusName;
     private LinearLayout bar;
+    private TextView net;
+    private ConnectivityManager cm;
+    private WifiManager wifi;
+
+    /** Keeps the Wi-Fi chip current; callbacks arrive on a background thread. */
+    private final ConnectivityManager.NetworkCallback netWatch = new ConnectivityManager.NetworkCallback() {
+        @Override
+        public void onAvailable(Network n) {
+            ui.post(Home.this::showNet);
+        }
+
+        @Override
+        public void onLost(Network n) {
+            ui.post(Home.this::showNet);
+        }
+
+        @Override
+        public void onCapabilitiesChanged(Network n, NetworkCapabilities caps) {
+            ui.post(Home.this::showNet);
+        }
+    };
     private Row favs, apps, inputs;
     private Tile moving;
     private String wallKey;
@@ -164,6 +191,11 @@ public final class Home extends Activity {
         registerReceiver(packages, f);
         Keeper.start(this);
         if (tv != null) tv.registerCallback(inputWatch, ui);
+        cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        // the application context: WifiManager leaks the activity on Android 7 otherwise
+        wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (cm != null) cm.registerDefaultNetworkCallback(netWatch);
+        showNet();
         firstApps(catalog);
         loadInputs();
     }
@@ -233,6 +265,7 @@ public final class Home extends Activity {
     protected void onDestroy() {
         unregisterReceiver(packages);
         if (tv != null) tv.unregisterCallback(inputWatch);
+        if (cm != null) cm.unregisterNetworkCallback(netWatch);
         io.shutdownNow();
         super.onDestroy();
     }
@@ -374,6 +407,16 @@ public final class Home extends Activity {
                     if (below == null) below = nearest(apps.strip, focused);
                     if (below != null) return below;
                 }
+                // up from the first row goes to the closest top-bar button
+                if (direction == View.FOCUS_UP && focused instanceof Tile && focused.getParent() == topStrip()) {
+                    View above = nearest(bar, focused);
+                    if (above != null) return above;
+                }
+                // left and right stay inside the top bar instead of dropping into the rows
+                if ((direction == View.FOCUS_LEFT || direction == View.FOCUS_RIGHT) && chips.contains(focused)) {
+                    int i = bar.indexOfChild(focused) + (direction == View.FOCUS_LEFT ? -1 : 1);
+                    return i >= 0 && i < bar.getChildCount() ? bar.getChildAt(i) : focused;
+                }
                 return super.focusSearch(focused, direction);
             }
         };
@@ -410,6 +453,9 @@ public final class Home extends Activity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setClipChildren(false);
         bar.setClipToPadding(false);
+        bar.addView(chip("Inputs  \u25BE", this::inputsMenu));
+        net = chip("", v -> openWifi());
+        bar.addView(net);
         bar.addView(chip("Options", v -> startActivity(new Intent(this, Options.class))));
         bar.addView(chip("Settings", v -> openSettings()));
         head.addView(bar, new LinearLayout.LayoutParams(WRAP, WRAP));
@@ -474,6 +520,14 @@ public final class Home extends Activity {
 
         root.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> showFocusName(now));
         return root;
+    }
+
+    /** The strip of the first visible row: Favorites, else All apps, else Inputs. */
+    private LinearLayout topStrip() {
+        for (Row row : new Row[] {favs, apps, inputs}) {
+            if (row.scroll.getVisibility() == View.VISIBLE) return row.strip;
+        }
+        return null;
     }
 
     /** The focused tile's name, large above the rows (App names = At top). */
@@ -708,6 +762,92 @@ public final class Home extends Activity {
                 .addCategory("android.intent.category.LEANBACK_SETTINGS");
         boolean found = tvSettings.resolveActivity(getPackageManager()) != null;
         launch(found ? tvSettings : new Intent(Settings.ACTION_SETTINGS), null);
+    }
+
+    /** Wi-Fi name (or Ethernet) with a dot: green online, amber no internet, red offline. */
+    private void showNet() {
+        if (net == null) return;
+        Network n = cm == null ? null : cm.getActiveNetwork();
+        NetworkCapabilities caps = n == null ? null : cm.getNetworkCapabilities(n);
+        String name;
+        int color;
+        if (caps == null) {
+            name = "Not connected";
+            color = 0xFFFF5147;
+        } else {
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                WifiInfo w = wifi == null ? null : wifi.getConnectionInfo();
+                String ssid = w == null ? null : w.getSSID();
+                if (ssid != null && ssid.length() > 1 && ssid.startsWith("\"") && ssid.endsWith("\"")) {
+                    ssid = ssid.substring(1, ssid.length() - 1);
+                }
+                name = ssid == null || ssid.isEmpty() || ssid.contains("unknown ssid") ? "Wi-Fi" : ssid;
+            } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                name = "Ethernet";
+            } else {
+                name = "Connected";
+            }
+            boolean online = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+            color = online ? 0xFF34C759 : 0xFFFFB340;
+            if (!online) name += " \u00B7 No internet";
+        }
+        // a drawable, not a colored character: Fire OS "high contrast text" repaints text black/white
+        net.setText(name);
+        net.setCompoundDrawablesRelative(dot(color), null, null, null);
+        net.setCompoundDrawablePadding(dp(8));
+    }
+
+    private android.graphics.drawable.Drawable dot(int color) {
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        d.setColor(color);
+        d.setBounds(0, 0, dp(10), dp(10));
+        return d;
+    }
+
+    private void openWifi() {
+        Intent i = new Intent(Settings.ACTION_WIFI_SETTINGS);
+        if (i.resolveActivity(getPackageManager()) != null) launch(i, null);
+        else openSettings();
+    }
+
+    /** The Inputs dropdown under its top-bar button: every shown input, a dot when something is plugged in. */
+    private void inputsMenu(View anchor) {
+        List<Item> list = Catalog.visible(cfg, Catalog.INPUTS, inputs.all);
+        if (list.isEmpty()) {
+            Toast.makeText(this, "No inputs found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(8), dp(8), dp(8), dp(8));
+        PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
+        pop.setBackgroundDrawable(Ui.round(0xF2202126, dp(16)));
+        pop.setElevation(dp(12));
+        int accent = cfg.accent();
+        TextView first = null;
+        for (Item it : list) {
+            TextView row = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
+            String label = Catalog.label(cfg, it).toString();
+            row.setText(label);
+            if (it.state == TvInputManager.INPUT_STATE_CONNECTED) {
+                row.setCompoundDrawablesRelative(null, null, dot(0xFF34C759), null);
+                row.setCompoundDrawablePadding(dp(12));
+            }
+            row.setMinWidth(dp(220));
+            row.setPadding(dp(16), dp(12), dp(16), dp(12));
+            row.setFocusable(true);
+            row.setClickable(true);
+            Ui.focusStyle(row, accent, 0x00000000, dp(10));
+            row.setOnClickListener(v -> {
+                pop.dismiss();
+                launch(new Intent(it.intent), null);
+            });
+            box.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
+            if (first == null) first = row;
+        }
+        pop.showAsDropDown(anchor, 0, dp(8));
+        first.requestFocus();
     }
 
     private void open(Tile t) {
