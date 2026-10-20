@@ -42,7 +42,6 @@ import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -1143,7 +1142,7 @@ public final class Home extends Activity {
         nightShade.setBackgroundColor(Color.argb(cfg.nightAlpha(), 24, 11, 0));
         updateNightChip();
         String at = DateFormat.getTimeFormat(this).format(new Date(until));
-        Toast.makeText(this, (on ? "Night mode on until " : "Night mode off until ") + at, Toast.LENGTH_SHORT).show();
+        Ui.notice(this, (on ? "Night mode on until " : "Night mode off until ") + at, Icons.NIGHT);
         resetIdle();
     }
 
@@ -1221,8 +1220,7 @@ public final class Home extends Activity {
         }
         Sleep.set(this, minutes);
         updateSleepChip();
-        Toast.makeText(this, minutes == 0 ? "Sleep timer off"
-                : "The TV turns off in " + Sleep.label(minutes), Toast.LENGTH_SHORT).show();
+        Ui.notice(this, minutes == 0 ? "Sleep timer off" : "The TV turns off in " + Sleep.label(minutes), Icons.TIMER);
     }
 
     // ---- "switch input?" card ----
@@ -1639,7 +1637,7 @@ public final class Home extends Activity {
     private void inputsMenu(View anchor) {
         List<Item> list = Catalog.visible(cfg, Catalog.INPUTS, inputs.all);
         if (list.isEmpty()) {
-            Toast.makeText(this, "No inputs found", Toast.LENGTH_SHORT).show();
+            Ui.notice(this, "No inputs found", Icons.INPUT);
             return;
         }
         LinearLayout box = new LinearLayout(this);
@@ -1685,7 +1683,7 @@ public final class Home extends Activity {
         }
         if (Catalog.STORE.equals(t.item.id)) {
             Intent store = Catalog.storeIntent(this);
-            if (store == null) Toast.makeText(this, "The Appstore is not available", Toast.LENGTH_SHORT).show();
+            if (store == null) Ui.notice(this, "The Appstore is not available", Icons.BAG);
             else launch(store, Catalog.APPSTORE);
             return;
         }
@@ -1697,7 +1695,7 @@ public final class Home extends Activity {
         try {
             startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
         } catch (ActivityNotFoundException | SecurityException e) {
-            Toast.makeText(this, "Could not open that", Toast.LENGTH_SHORT).show();
+            Ui.notice(this, "Could not open that", -1);
         }
     }
 
@@ -1745,12 +1743,12 @@ public final class Home extends Activity {
                         case HIDE:
                             Catalog.setShown(cfg, t.kind, t.item, false);
                             render(Catalog.APPS.equals(t.kind) ? apps : inputs);
-                            Toast.makeText(this, "Hidden. Bring it back from Options.", Toast.LENGTH_SHORT).show();
+                            Ui.notice(this, "Hidden. App library brings it back.", Icons.LIBRARY);
                             break;
                         case FAV_ADD:
                             Catalog.setFavorite(cfg, t.item, true);
                             render(favs);
-                            Toast.makeText(this, "Added to Favorites", Toast.LENGTH_SHORT).show();
+                            Ui.notice(this, "Added to Favorites", Icons.STAR);
                             break;
                         case FAV_REMOVE:
                             Catalog.setFavorite(cfg, t.item, false);

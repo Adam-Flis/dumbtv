@@ -145,6 +145,51 @@ final class Ui {
         }
     }
 
+    /**
+     * A short message in a pill at the bottom of the screen, styled like the rest of the UI
+     * (Android's toast is a grey box). Fades in, stays 2.6 s, fades out. {@code icon} may be -1.
+     */
+    static void notice(android.app.Activity a, String text, int icon) {
+        android.view.View content = a.findViewById(android.R.id.content);
+        if (!(content instanceof android.widget.FrameLayout)) return;
+        android.widget.FrameLayout root = (android.widget.FrameLayout) content;
+        android.view.View old = root.findViewWithTag(NOTICE);
+        if (old != null) root.removeView(old);
+
+        android.widget.LinearLayout pill = new android.widget.LinearLayout(a);
+        pill.setTag(NOTICE);
+        pill.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        pill.setPadding(dp(a, icon < 0 ? 26 : 20), dp(a, 14), dp(a, 26), dp(a, 14));
+        GradientDrawable bg = round(0xF51C1D22, dp(a, 30));
+        bg.setStroke(Math.max(1, dp(a, 1)), 0x29FFFFFF);
+        pill.setBackground(bg);
+        pill.setElevation(dp(a, 20));
+        if (icon >= 0) {
+            android.view.View art = new android.view.View(a);
+            art.setBackground(Icons.of(icon, dp(a, 24), Config.get(a).accent()));
+            android.widget.LinearLayout.LayoutParams ilp = new android.widget.LinearLayout.LayoutParams(dp(a, 24), dp(a, 24));
+            ilp.rightMargin = dp(a, 14);
+            pill.addView(art, ilp);
+        }
+        TextView t = text(a, 18, TEXT, MEDIUM);
+        t.setText(text);
+        pill.addView(t);
+
+        android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+        lp.bottomMargin = dp(a, 56);
+        root.addView(pill, lp);
+        float rise = dp(a, 24);
+        Tween.run(260, f -> {
+            pill.setAlpha(f);
+            pill.setTranslationY(rise * (1 - f));
+        }, null);
+        pill.postDelayed(() -> Tween.run(300, f -> pill.setAlpha(1 - f), () -> root.removeView(pill)), 2600);
+    }
+
+    private static final String NOTICE = "dumbtv.notice";
+
     /** Top-bar buttons: accent fill when focused; otherwise a visible fill with a thin outline. */
     static void chipStyle(TextView v, int accent, float radius, int stroke) {
         StateListDrawable bg = new StateListDrawable();

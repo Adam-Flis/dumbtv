@@ -19,7 +19,6 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,7 +81,7 @@ public final class Options extends Activity {
         list.addView(action("App library", () -> pick(Catalog.APPS)));
         list.addView(action("Get more apps", () -> {
             Intent store = Catalog.storeIntent(this);
-            if (store == null) Toast.makeText(this, "The Appstore is not available", Toast.LENGTH_SHORT).show();
+            if (store == null) Ui.notice(this, "The Appstore is not available", Icons.BAG);
             else startActivity(store.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }));
         list.addView(choice(Config.APPS_LAYOUT));
@@ -135,7 +134,7 @@ public final class Options extends Activity {
         list.addView(only(action("Remove sleep timer permission", () -> {
             Sleep.set(this, 0);
             Sleep.release(this);
-            Toast.makeText(this, "Removed. The sleep timer will ask again next time.", Toast.LENGTH_LONG).show();
+            Ui.notice(this, "Sleep timer permission removed", Icons.TIMER);
             refresh();
         }), () -> Sleep.allowed(this)));
 
@@ -437,19 +436,18 @@ public final class Options extends Activity {
 
     private void lookUp(String city) {
         if (city.isEmpty()) return;
-        Toast.makeText(this, "Looking up " + city + "\u2026", Toast.LENGTH_SHORT).show();
+        Ui.notice(this, "Looking up " + city + "\u2026", Icons.PARTLY);
         new Thread(() -> {
             String[] found;
             try {
                 found = Weather.geocode(city);
             } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(this, "No connection to the weather service",
-                        Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Ui.notice(this, "No connection to the weather service", Icons.PARTLY));
                 return;
             }
             runOnUiThread(() -> {
                 if (found == null) {
-                    Toast.makeText(this, "Could not find " + city, Toast.LENGTH_LONG).show();
+                    Ui.notice(this, "Could not find " + city, Icons.PARTLY);
                     return;
                 }
                 cfg.set(Weather.CITY, city);
@@ -457,7 +455,7 @@ public final class Options extends Activity {
                 cfg.set(Weather.LON, found[1]);
                 cfg.set(Weather.PLACE, found[2]);
                 if (!"on".equals(cfg.get(Config.WEATHER))) cfg.set(Config.WEATHER.key, "on");
-                Toast.makeText(this, "Weather for " + found[2], Toast.LENGTH_SHORT).show();
+                Ui.notice(this, "Weather for " + found[2], Icons.PARTLY);
                 refresh();
             });
         }).start();
