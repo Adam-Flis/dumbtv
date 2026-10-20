@@ -60,7 +60,7 @@ final class Config {
             new String[] {"Small", "Medium", "Large"});
     static final Choice LABELS = new Choice("labels", "App names", "focus",
             new String[] {"focus", "always", "never"},
-            new String[] {"On focus", "Always", "Never"});
+            new String[] {"Large, at top", "Under every tile", "Off"});
     static final Choice CLOCK = new Choice("clock", "Clock", "auto",
             new String[] {"auto", "24h", "12h"},
             new String[] {"System", "24-hour", "12-hour"});

@@ -3,6 +3,7 @@ package tv.dumbtv.home;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.DashPathEffect;
+import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
@@ -12,10 +13,11 @@ import android.media.tv.TvInputManager;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.ViewOutlineProvider;
 
 /** A card drawn in one pass: banner, or icon plus name, or an input name; focus ring on top. */
 final class Tile extends View {
-    private static final float FOCUS_SCALE = 1.08f;
+    private static final float FOCUS_SCALE = 1.1f;
 
     final Item item;
     final String kind;
@@ -42,10 +44,11 @@ final class Tile extends View {
         this.cardW = cardW;
         this.cardH = cardH;
         boolean app = !Catalog.INPUTS.equals(kind);
-        labelH = app ? Ui.dp(c, 26) : 0;
+        // "focus" shows the name large above the rows instead, so no room is kept under the tile
+        labelH = app && "always".equals(labels) ? Ui.dp(c, 26) : 0;
         labelAlways = "always".equals(labels);
         labelOnFocus = "focus".equals(labels);
-        radius = Ui.dp(c, 10);
+        radius = Ui.dp(c, 14);
         stroke = Ui.dp(c, 2.5f);
 
         fill.setColor(app ? Ui.SURFACE : 0xFF17181B);
@@ -66,6 +69,16 @@ final class Tile extends View {
         setClickable(true);
         setLongClickable(true);
         setContentDescription(title);
+        setOutlineProvider(new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View v, Outline o) {
+                o.setRoundRect(0, 0, cardW, cardH, radius);
+            }
+        });
+    }
+
+    CharSequence title() {
+        return title;
     }
 
     void setMoving(boolean on) {
@@ -90,8 +103,12 @@ final class Tile extends View {
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previous) {
         super.onFocusChanged(focused, direction, previous);
+        // Lift: grow, rise a little and cast a soft shadow, like Apple TV's focus.
         float s = focused ? FOCUS_SCALE : 1f;
-        animate().scaleX(s).scaleY(s).setDuration(110).start();
+        animate().scaleX(s).scaleY(s)
+                .translationY(focused ? -Ui.dp(getContext(), 4) : 0)
+                .translationZ(focused ? Ui.dp(getContext(), 16) : 0)
+                .setDuration(140).start();
         invalidate();
     }
 

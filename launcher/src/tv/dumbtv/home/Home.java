@@ -59,7 +59,8 @@ public final class Home extends Activity {
     private FrameLayout root;
     private ImageView wall;
     private View shade;
-    private TextView clock, date;
+    private TextView greeting, clock, date, focusName;
+    private LinearLayout bar;
     private Row favs, apps, inputs;
     private Tile moving;
     private String wallKey;
@@ -364,12 +365,62 @@ public final class Home extends Activity {
     }
 
     private View build() {
-        root = new FrameLayout(this);
+        root = new FrameLayout(this) {
+            /** Down from the top bar lands on the tile below it, not wherever Android guesses. */
+            @Override
+            public View focusSearch(View focused, int direction) {
+                if (direction == View.FOCUS_DOWN && chips.contains(focused)) {
+                    View below = nearest(favs.strip, focused);
+                    if (below == null) below = nearest(apps.strip, focused);
+                    if (below != null) return below;
+                }
+                return super.focusSearch(focused, direction);
+            }
+        };
         wall = new ImageView(this);
         wall.setScaleType(ImageView.ScaleType.CENTER_CROP);
         root.addView(wall, new FrameLayout.LayoutParams(MATCH, MATCH));
         shade = new View(this);
         root.addView(shade, new FrameLayout.LayoutParams(MATCH, MATCH));
+
+        // Fixed header (greeting, clock, focused name) over a scrolling list of rows.
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        // clips the scrolling rows at their own top edge, so they slide under the header
+        page.setPadding(0, dp(28), 0, 0);
+        root.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.TOP);
+        head.setClipChildren(false);
+        head.setClipToPadding(false);
+        head.setPadding(dp(56), 0, dp(56), 0);
+        LinearLayout when = new LinearLayout(this);
+        when.setOrientation(LinearLayout.VERTICAL);
+        greeting = Ui.text(this, 18, Ui.MUTED, Ui.MEDIUM);
+        greeting.setPadding(dp(3), 0, 0, dp(2));
+        clock = Ui.text(this, 64, Ui.TEXT, Ui.LIGHT);
+        date = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
+        date.setPadding(dp(3), dp(6), 0, 0);
+        when.addView(greeting);
+        when.addView(clock);
+        when.addView(date);
+        head.addView(when, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        bar = new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setClipChildren(false);
+        bar.setClipToPadding(false);
+        bar.addView(chip("Options", v -> startActivity(new Intent(this, Options.class))));
+        bar.addView(chip("Settings", v -> openSettings()));
+        head.addView(bar, new LinearLayout.LayoutParams(WRAP, WRAP));
+        page.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
+
+        focusName = Ui.text(this, 30, Ui.TEXT, Ui.MEDIUM);
+        focusName.setSingleLine();
+        focusName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        focusName.setPadding(dp(56), dp(14), dp(56), 0);
+        focusName.setText(" ");
+        page.addView(focusName, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         ScrollView scroll = new ScrollView(this) {
             /** Scrolls in whole rows: the focused row shows complete, and a row starts at the top edge. */
@@ -407,44 +458,33 @@ public final class Home extends Activity {
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.setClipChildren(false);
-        root.addView(scroll, new FrameLayout.LayoutParams(MATCH, MATCH));
+        scroll.setClipToPadding(false);
+        page.addView(scroll, new LinearLayout.LayoutParams(MATCH, 0, 1f));
 
-        LinearLayout column = new LinearLayout(this) {
-            @Override
-            public View focusSearch(View focused, int direction) {
-                if (direction == View.FOCUS_DOWN && chips.contains(focused)) {
-                    View below = nearest(favs.strip, focused);
-                    if (below == null) below = nearest(apps.strip, focused);
-                    if (below != null) return below;
-                }
-                return super.focusSearch(focused, direction);
-            }
-        };
+        LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setClipChildren(false);
         column.setClipToPadding(false);
-        column.setPadding(0, dp(40), 0, dp(32));
+        column.setPadding(0, 0, 0, dp(32));
         scroll.addView(column, new FrameLayout.LayoutParams(MATCH, WRAP));
-
-        LinearLayout head = new LinearLayout(this);
-        head.setGravity(Gravity.TOP);
-        head.setPadding(dp(56), 0, dp(56), dp(12));
-        LinearLayout when = new LinearLayout(this);
-        when.setOrientation(LinearLayout.VERTICAL);
-        clock = Ui.text(this, 52, Ui.TEXT, Ui.LIGHT);
-        date = Ui.text(this, 15, Ui.MUTED, Ui.MEDIUM);
-        date.setPadding(dp(2), dp(8), 0, 0);
-        when.addView(clock);
-        when.addView(date);
-        head.addView(when, new LinearLayout.LayoutParams(0, WRAP, 1f));
-        head.addView(chip("Options", v -> startActivity(new Intent(this, Options.class))));
-        head.addView(chip("Settings", v -> openSettings()));
-        column.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         favs = new Row(Catalog.FAVS, "Favorites", column);
         apps = new Row(Catalog.APPS, "All apps", column);
         inputs = new Row(Catalog.INPUTS, "Inputs", column);
+
+        root.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> showFocusName(now));
         return root;
+    }
+
+    /** The focused tile's name, large above the rows (App names = At top). */
+    private void showFocusName(View now) {
+        boolean top = "focus".equals(cfg.get(Config.LABELS));
+        if (now instanceof Tile && top) {
+            focusName.setText(((Tile) now).title());
+            focusName.setVisibility(View.VISIBLE);
+        } else {
+            focusName.setVisibility(top ? View.INVISIBLE : View.GONE);
+        }
     }
 
     /** The child of {@code strip} horizontally closest to {@code from}, or null when empty. */
@@ -491,6 +531,7 @@ public final class Home extends Activity {
         render(favs);
         render(apps);
         render(inputs);
+        showFocusName(getCurrentFocus());
         background();
         tick();
     }
@@ -616,6 +657,8 @@ public final class Home extends Activity {
             clock.setText(DateFormat.format("h:mm", now));
             clock.append(half);
         }
+        int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+        greeting.setText(hour >= 4 && hour < 12 ? "Good morning" : hour >= 4 && hour < 17 ? "Good afternoon" : "Good evening");
         Locale locale = Locale.getDefault();
         date.setText(DateFormat.format(DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), now));
         // hourly and time-of-day rotations change while the screen stays open; a no-op otherwise
