@@ -164,9 +164,10 @@ public final class Home extends Activity {
         Row(String kind, String name, int icon, LinearLayout parent) {
             this.kind = kind;
             int edge = dp(56), bleed = dp(14);
-            title = Ui.text(Home.this, 19, 0xD9FFFFFF, Ui.MEDIUM);
-            title.setText(name);
-            title.setLetterSpacing(0.02f);
+            // spaced capitals, like the group headings in Options
+            title = Ui.text(Home.this, 17, 0xD9FFFFFF, Ui.MEDIUM);
+            title.setText(name.toUpperCase(Locale.ROOT));
+            title.setLetterSpacing(0.12f);
             title.setGravity(Gravity.CENTER_VERTICAL);
             title.setCompoundDrawablesRelative(Icons.of(icon, dp(20), 0xD9FFFFFF), null, null, null);
             title.setCompoundDrawablePadding(dp(12));
