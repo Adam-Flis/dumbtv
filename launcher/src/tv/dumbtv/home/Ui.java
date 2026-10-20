@@ -18,6 +18,9 @@ final class Ui {
     static final Typeface LIGHT = Typeface.create("sans-serif-light", Typeface.NORMAL);
     static final Typeface MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
 
+    /** Options > Text size; set before building a screen. */
+    static float scale = 1f;
+
     private Ui() {}
 
     static int dp(Context c, float v) {
@@ -31,7 +34,7 @@ final class Ui {
 
     static TextView text(Context c, float sp, int color, Typeface face) {
         TextView v = new TextView(c);
-        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp * scale);
         v.setTextColor(color);
         v.setTypeface(face);
         v.setIncludeFontPadding(false);

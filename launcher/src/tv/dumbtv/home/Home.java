@@ -61,7 +61,8 @@ public final class Home extends Activity {
     private Config cfg;
     private TvInputManager tv;
     private int applied = -1, appsGeneration;
-    private boolean resumed, landed;
+    private float builtScale;
+    private boolean resumed, landed, ticking;
     private FrameLayout root;
     private ImageView wall;
     private View shade;
@@ -181,6 +182,7 @@ public final class Home extends Activity {
         Future<List<Item>> catalog = io.submit(() -> Catalog.apps(this));
         cfg = Config.get(this);
         tv = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
+        builtScale = Ui.scale = cfg.textScale();
         setContentView(build());
 
         IntentFilter f = new IntentFilter();
@@ -239,12 +241,18 @@ public final class Home extends Activity {
         Guard.arrived(this);
         cfg.refresh();
         cfg.visited();
+        if (cfg.textScale() != builtScale) {
+            // every text on the screen is sized at build time; rebuilding is simplest
+            recreate();
+            return;
+        }
         if (cfg.version() != applied) apply();
         else background();
         IntentFilter f = new IntentFilter(Intent.ACTION_TIME_TICK);
         f.addAction(Intent.ACTION_TIME_CHANGED);
         f.addAction(Intent.ACTION_TIMEZONE_CHANGED);
         registerReceiver(time, f);
+        ticking = true;
         tick();
     }
 
@@ -257,7 +265,8 @@ public final class Home extends Activity {
     protected void onPause() {
         super.onPause();
         resumed = false;
-        unregisterReceiver(time);
+        if (ticking) unregisterReceiver(time);
+        ticking = false;
         if (moving != null) stopMoving();
     }
 

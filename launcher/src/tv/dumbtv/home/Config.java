@@ -58,6 +58,10 @@ final class Config {
     static final Choice TILES = new Choice("tiles", "Tile size", "medium",
             new String[] {"small", "medium", "large"},
             new String[] {"Small", "Medium", "Large"});
+    static final Choice TEXT = new Choice("text", "Text size", "medium",
+            new String[] {"small", "medium", "large", "xlarge"},
+            new String[] {"Small", "Medium", "Large", "Extra large"});
+    private static final float[] TEXT_SCALES = {0.9f, 1f, 1.15f, 1.3f};
     static final Choice LABELS = new Choice("labels", "App names", "focus",
             new String[] {"focus", "always", "never"},
             new String[] {"Large, at top", "Under every tile", "Off"});
@@ -78,7 +82,7 @@ final class Config {
             new String[] {"off", "visit", "hourly", "daily", "daytime"},
             new String[] {"Off", "Every return home", "Every hour", "Every day", "By time of day"});
 
-    static final Choice[] CHOICES = {ACCENT, TILES, LABELS, CLOCK, INPUTS, BACKGROUND, DIM, ROTATE};
+    static final Choice[] CHOICES = {ACCENT, TILES, TEXT, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";
@@ -207,6 +211,10 @@ final class Config {
             }
         }
         return ACCENTS[Arrays.asList(ACCENT.values).indexOf(get(ACCENT))];
+    }
+
+    float textScale() {
+        return TEXT_SCALES[Arrays.asList(TEXT.values).indexOf(get(TEXT))];
     }
 
     int background() {

@@ -45,7 +45,7 @@ final class Tile extends View {
         this.cardH = cardH;
         boolean app = !Catalog.INPUTS.equals(kind);
         // "focus" shows the name large above the rows instead, so no room is kept under the tile
-        labelH = app && "always".equals(labels) ? Ui.dp(c, 26) : 0;
+        labelH = app && "always".equals(labels) ? Ui.dp(c, 26 * Ui.scale) : 0;
         labelAlways = "always".equals(labels);
         labelOnFocus = "focus".equals(labels);
         radius = Ui.dp(c, 14);
@@ -59,11 +59,11 @@ final class Tile extends View {
         inner.setColor(Ui.TEXT);
         inner.setTypeface(Ui.MEDIUM);
         inner.setTextAlign(Paint.Align.CENTER);
-        inner.setTextSize(Ui.dp(c, app ? 14 : 17));
+        inner.setTextSize(Ui.dp(c, (app ? 14 : 17) * Ui.scale));
         under.setColor(Ui.TEXT);
         under.setTypeface(Ui.MEDIUM);
         under.setTextAlign(Paint.Align.CENTER);
-        under.setTextSize(Ui.dp(c, 13));
+        under.setTextSize(Ui.dp(c, 13 * Ui.scale));
 
         setFocusable(true);
         setClickable(true);

@@ -3,12 +3,10 @@ package tv.dumbtv.home;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.media.tv.TvInputManager;
 import android.os.Bundle;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.ForegroundColorSpan;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -32,6 +30,7 @@ public final class Options extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         cfg = Config.get(this);
+        Ui.scale = cfg.textScale();
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFocusable(false);
@@ -88,6 +87,8 @@ public final class Options extends Activity {
 
     private View choice(Config.Choice c) {
         LinearLayout row = row();
+        // a fixed id, so the focused row survives the rebuild after Text size changes
+        row.setId(1 + Arrays.asList(Config.CHOICES).indexOf(c));
         TextView name = label(c.title);
         TextView value = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
         value.setGravity(Gravity.END);
@@ -103,14 +104,15 @@ public final class Options extends Activity {
         Runnable show = () -> {
             boolean focused = row.isFocused();
             String text = c.name(cfg.get(c));
+            value.setText(focused ? "‹  " + text + "  ›" : text);
             if (c == Config.ACCENT) {
-                SpannableString s = new SpannableString("●  " + text);
-                s.setSpan(new ForegroundColorSpan(cfg.accent()), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                value.setText(focused ? "‹  " : "");
-                value.append(s);
-                if (focused) value.append("  ›");
-            } else {
-                value.setText(focused ? "‹  " + text + "  ›" : text);
+                // a drawable swatch: Fire OS "high contrast text" repaints colored text
+                GradientDrawable dot = new GradientDrawable();
+                dot.setShape(GradientDrawable.OVAL);
+                dot.setColor(cfg.accent());
+                dot.setBounds(0, 0, dp(14), dp(14));
+                value.setCompoundDrawablesRelative(dot, null, null, null);
+                value.setCompoundDrawablePadding(dp(10));
             }
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
             boolean off = (c == Config.DIM || c == Config.ROTATE)
@@ -127,6 +129,10 @@ public final class Options extends Activity {
         int i = Arrays.asList(c.values).indexOf(cfg.get(c));
         int n = c.values.length;
         cfg.set(c.key, c.values[((i + by) % n + n) % n]);
+        if (c == Config.TEXT) {
+            recreate();
+            return true;
+        }
         refresh();
         return true;
     }
