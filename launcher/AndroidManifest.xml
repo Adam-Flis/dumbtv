@@ -63,6 +63,22 @@
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
 
+        <!-- Sleep timer: the alarm that ends it, and the permission to turn the TV off. -->
+        <receiver
+            android:name=".Sleep"
+            android:exported="false" />
+        <receiver
+            android:name=".Admin"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".Keeper"
             android:exported="false" />

@@ -97,6 +97,19 @@ final class Config {
             new String[] {"f", "c"},
             new String[] {"\u00B0F", "\u00B0C"});
 
+    static final Choice APPS_LAYOUT = new Choice("layout", "All apps layout", "grid",
+            new String[] {"grid", "row"},
+            new String[] {"Grid", "One row"});
+    static final Choice RECENT = new Choice("recent", "Recently used row", "on",
+            new String[] {"on", "off"},
+            new String[] {"Shown", "Hidden"});
+    static final Choice SWITCH = new Choice("switch", "Offer to switch inputs", "on",
+            new String[] {"on", "off"},
+            new String[] {"On", "Off"});
+    static final Choice NIGHT = new Choice("night", "Night mode", "off",
+            new String[] {"off", "21", "22", "23"},
+            new String[] {"Off", "9 PM to 6 AM", "10 PM to 6 AM", "11 PM to 6 AM"});
+
     static final Choice W_ICON = toggle("weather.icon", "Condition icon");
     static final Choice W_HOURS = toggle("weather.hours", "Next hours");
     static final Choice W_FEELS = toggle("weather.feels", "Feels like & wind");
@@ -115,7 +128,7 @@ final class Config {
                 "1 hour, then TV may sleep", "2 hours, then TV may sleep"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, W_ICON, W_HOURS, W_FEELS, W_SUN, FRAME, FRAME_FOR};
+        WEATHER, UNITS, W_ICON, W_HOURS, W_FEELS, W_SUN, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";

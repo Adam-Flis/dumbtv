@@ -77,6 +77,8 @@ sha256() {
 }
 
 if [[ $mode == undo ]]; then
+  # The sleep timer's device-admin permission blocks uninstalling; the app drops it itself.
+  sh_ am broadcast -n $PKG/.BootReceiver -a tv.dumbtv.home.RELEASE_ADMIN >/dev/null 2>&1 || true
   # force-stop also keeps the Fire OS 6 Keeper from restarting at the next boot.
   sh_ am force-stop $PKG >/dev/null 2>&1 || true
   sh_ appops set $PKG GET_USAGE_STATS default >/dev/null 2>&1 || true

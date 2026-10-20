@@ -82,6 +82,26 @@ upstream home screen:
   page) and **App library**. Favorites and App library open a full-screen grid of every
   installed app: OK ticks an app in or out (a number shows its place in Favorites, a check
   that it is in All apps), Back closes. Both are also in Options › Home screen.
+- **All apps layout** (Options › Home screen): **Grid** (default; every app at once, lines
+  that wrap, the page scrolls down) or **One row**.
+- **Recently used** row (Options › Home screen, on by default): the last 6 apps opened, from
+  UsageStats (the Fire OS 6 Keeper's permission), newest first.
+- **"Switch input?" card**: when a device on an HDMI input turns on while the home screen is
+  showing, a card offers **Switch** / **Not now** (gone after 15 s). Options › Home screen ›
+  Offer to switch inputs. Test it with `adb shell touch /sdcard/Android/data/tv.dumbtv.home/files/test-input`
+  and return to the home screen.
+- **Night mode** (Options › Home screen): from 9, 10 or 11 PM until 6 AM the screen gets a warm
+  dim and the photo frame stays off, so the TV can fall asleep.
+- **Sleep timer** (top bar, moon icon): 15 min to 2 h, then the TV turns off. The first time,
+  Fire OS asks to activate dumbtv as a device administrator with the single "lock screen" policy
+  (that is what turns a TV off); Options › More › Remove sleep timer permission, or
+  `install.sh --undo`, takes it away (Android needs that before an uninstall).
+- **Key hints**: the app grid, Options and Move mode show which remote keys do what.
+- **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
+  them to the photo frame (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`
+  keeps copies of home.conf in `launcher/tools/backups/` (git-ignored).
+- Fades (photo frame, background glow, the input card) are drawn frame by frame, so they stay
+  smooth with Fire OS animations turned off.
 - **Row title size** (Options › Home screen) scales FAVORITES / ALL APPS / INPUTS and their icons.
 - **Apple TV-style look**: greeting, large clock and date, the focused app's name large above
   the rows (App names › Large, at top), rounded tiles that lift with a shadow on focus.

@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -61,20 +62,20 @@ public final class Picker extends Activity {
         column.setClipChildren(false);
         column.setClipToPadding(false);
         int edge = dp(56);
-        column.setPadding(edge, dp(40), edge, dp(48));
+        column.setPadding(edge, dp(40), edge, dp(110));
         scroll.addView(column);
 
         TextView title = Ui.text(this, 32, Ui.TEXT, Ui.LIGHT);
         title.setText(favs ? "Favorites" : "App library");
         column.addView(title);
-        TextView hint = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
-        hint.setLineSpacing(0, 1.3f);
+        TextView hint = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
+        hint.setLineSpacing(0, 1.35f);
         hint.setPadding(0, dp(10), 0, 0);
         hint.setText(favs
-                ? "Press OK to add or remove an app. The number is its place in the Favorites row;"
-                        + " change the order with Move on the home screen."
-                : "Press OK to show or hide an app in All apps. New apps made for TV show up on"
-                        + " their own; phone apps start hidden.");
+                ? "Pick the apps for your Favorites row. The number on an app is its place in the row.\n"
+                        + "To change the order: on the home screen, hold OK on a favorite and choose Move."
+                : "Ticked apps show in All apps. New TV apps show up there on their own;\n"
+                        + "apps made for phones start hidden, so tick the ones you want.");
         column.addView(hint);
         count = Ui.text(this, 16, Ui.TEXT, Ui.MEDIUM);
         count.setPadding(0, dp(10), 0, dp(18));
@@ -101,6 +102,16 @@ public final class Picker extends Activity {
             row.addView(t, lp);
             tiles.add(t);
         }
+        // the keys for this screen, always visible at the bottom
+        LinearLayout keys = new LinearLayout(this);
+        keys.setGravity(Gravity.CENTER_VERTICAL);
+        keys.setPadding(dp(20), dp(12), 0, dp(12));
+        keys.setBackground(Ui.round(0xF0141519, dp(26)));
+        Ui.hints(keys, "OK", favs ? "Add or remove" : "Show or hide", "\u25B2 \u25BC \u25C0 \u25B6", "Move around",
+                "Back", "Done");
+        FrameLayout.LayoutParams klp = new FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        klp.bottomMargin = dp(28);
+        root.addView(keys, klp);
         setContentView(root);
         refresh();
         if (!tiles.isEmpty()) tiles.get(0).requestFocus();
@@ -114,6 +125,13 @@ public final class Picker extends Activity {
                 ui.post(t::invalidate);
             }
         });
+    }
+
+    /** HOME or an app closes the grid, so HOME lands on the home screen, not back here. */
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (!isChangingConfigurations()) finish();
     }
 
     @Override
@@ -142,8 +160,8 @@ public final class Picker extends Activity {
             dim(t);
         }
         count.setText(favs
-                ? (on == 0 ? "No favorites yet" : on == 1 ? "1 favorite" : on + " favorites") + "   ·   Back when done"
-                : on + " of " + tiles.size() + " apps in All apps   ·   Back when done");
+                ? (on == 0 ? "No favorites yet" : on == 1 ? "1 favorite" : on + " favorites")
+                : on + " of " + tiles.size() + " apps in All apps");
     }
 
     /** Apps that are not picked fade back, unless they are the one in focus. */

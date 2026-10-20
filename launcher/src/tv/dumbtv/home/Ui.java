@@ -110,6 +110,40 @@ final class Ui {
         return d;
     }
 
+    /**
+     * Fills {@code bar} with remote-button hints: a key cap, then what it does.
+     * {@code pairs} is key, text, key, text...
+     */
+    static void hints(android.widget.LinearLayout bar, String... pairs) {
+        Context c = bar.getContext();
+        bar.removeAllViews();
+        for (int i = 0; i + 1 < pairs.length; i += 2) {
+            TextView key = text(c, 13, TEXT, MEDIUM);
+            key.setText(pairs[i]);
+            key.setPadding(dp(c, 10), dp(c, 4), dp(c, 10), dp(c, 5));
+            GradientDrawable cap = round(0x24FFFFFF, dp(c, 8));
+            cap.setStroke(Math.max(1, dp(c, 1)), 0x47FFFFFF);
+            key.setBackground(cap);
+            TextView what = text(c, 15, 0xCCFFFFFF, MEDIUM);
+            what.setText(pairs[i + 1]);
+            what.setPadding(dp(c, 9), 0, dp(c, 22), 0);
+            bar.addView(key);
+            bar.addView(what);
+        }
+    }
+
+    /** Like {@link #hints}, one key per line. */
+    static void hintLines(android.widget.LinearLayout box, String... pairs) {
+        box.removeAllViews();
+        for (int i = 0; i + 1 < pairs.length; i += 2) {
+            android.widget.LinearLayout line = new android.widget.LinearLayout(box.getContext());
+            line.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            line.setPadding(0, dp(box.getContext(), 5), 0, dp(box.getContext(), 5));
+            hints(line, pairs[i], pairs[i + 1]);
+            box.addView(line);
+        }
+    }
+
     /** Top-bar buttons: accent fill when focused; otherwise a visible fill with a thin outline. */
     static void chipStyle(TextView v, int accent, float radius, int stroke) {
         StateListDrawable bg = new StateListDrawable();

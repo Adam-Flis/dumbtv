@@ -19,7 +19,7 @@ import java.util.Map;
 
 /** Where tiles come from, and which of them the user wants on the home screen. */
 final class Catalog {
-    static final String APPS = "apps", INPUTS = "inputs", FAVS = "favs";
+    static final String APPS = "apps", INPUTS = "inputs", FAVS = "favs", RECENT = "recent";
     /** home.conf key: the Favorites dock, package names in dock order. */
     static final String FAVORITES = "favorites";
     /** Id of the "Add favorites" tile shown while the dock is empty. */

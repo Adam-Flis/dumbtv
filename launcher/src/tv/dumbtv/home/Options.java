@@ -59,11 +59,12 @@ public final class Options extends Activity {
         scroll.setVerticalScrollBarEnabled(false);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(40), dp(40), dp(56), dp(40));
+        list.setPadding(dp(40), dp(40), dp(56), dp(110));
         scroll.addView(list);
         screen.addView(scroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         screen.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> {
             if (now != null && now.getParent() == list) markSection(sectionOf(now));
+            showHints(now);
         });
 
         section("Look", Icons.PALETTE);
@@ -83,7 +84,14 @@ public final class Options extends Activity {
         list.addView(choice(Config.LABELS));
         list.addView(choice(Config.CLOCK));
         list.addView(choice(Config.INPUTS));
-        list.addView(action("Favorites", () -> Picker.open(this, Picker.FAVS)));
+        list.addView(choice(Config.APPS_LAYOUT));
+        list.addView(choice(Config.RECENT));
+        list.addView(choice(Config.SWITCH));
+        list.addView(choice(Config.NIGHT));
+        list.addView(action("Favorites", () -> {
+            openingPicker = true;
+            Picker.open(this, Picker.FAVS);
+        }));
         list.addView(action("App library (apps on home screen)", () -> pick(Catalog.APPS)));
         list.addView(action("Get more apps (Appstore)", () -> {
             Intent store = Catalog.storeIntent(this);
@@ -115,6 +123,15 @@ public final class Options extends Activity {
             Guard.amazon(this);
             finish();
         }));
+        list.addView(action("Remove sleep timer permission", () -> {
+            if (!Sleep.allowed(this)) {
+                Toast.makeText(this, "The sleep timer has no permission right now", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Sleep.set(this, 0);
+            Sleep.release(this);
+            Toast.makeText(this, "Removed. The sleep timer will ask again next time.", Toast.LENGTH_LONG).show();
+        }));
 
         TextView about = Ui.text(this, 13, Ui.FAINT, Ui.MEDIUM);
         about.setLineSpacing(0, 1.4f);
@@ -126,8 +143,27 @@ public final class Options extends Activity {
                 + "\nInternet is used only for the weather, and only while it is on. No tracking, no ads.");
         list.addView(about);
 
+        // what the remote does right here, at the bottom of the group list; follows the focus
+        nav.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
+        hintBar = new LinearLayout(this);
+        hintBar.setOrientation(LinearLayout.VERTICAL);
+        hintBar.setPadding(dp(14), 0, 0, 0);
+        nav.addView(hintBar);
         setContentView(screen);
         refresh();
+    }
+
+    private static final String CHOICE = "choice";
+    private LinearLayout hintBar;
+
+    private void showHints(View now) {
+        if (hintBar == null || now == null) return;
+        if (now.getParent() == list) {
+            if (CHOICE.equals(now.getTag())) Ui.hintLines(hintBar, "\u25C0 \u25B6", "Change", "Back", "To the groups");
+            else Ui.hintLines(hintBar, "OK", "Open", "Back", "To the groups");
+        } else {
+            Ui.hintLines(hintBar, "\u25B2 \u25BC", "Choose a group", "\u25B6", "Open it", "Back", "Close");
+        }
     }
 
     /** Back from a setting goes to its group on the left; back from the left closes Options. */
@@ -168,6 +204,19 @@ public final class Options extends Activity {
         v.setCompoundDrawablesRelative(Icons.of(kind, dp(22), color), null, null, null);
     }
 
+    private boolean openingPicker;
+
+    /**
+     * Leaving Options any other way (HOME, an app, Fire OS settings) closes it. Otherwise HOME
+     * brings back this task with Options still on top instead of the home screen.
+     */
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (!openingPicker && !isChangingConfigurations()) finish();
+        openingPicker = false;
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -181,6 +230,7 @@ public final class Options extends Activity {
 
     private View choice(Config.Choice c) {
         LinearLayout row = row();
+        row.setTag(CHOICE);
         // a fixed id, so the focused row survives the rebuild after Text size changes
         row.setId(1 + Arrays.asList(Config.CHOICES).indexOf(c));
         TextView name = label(c.title);
@@ -408,6 +458,7 @@ public final class Options extends Activity {
 
     private void pick(String kind) {
         if (Catalog.APPS.equals(kind)) {
+            openingPicker = true;
             Picker.open(this, Picker.LIBRARY);
             return;
         }

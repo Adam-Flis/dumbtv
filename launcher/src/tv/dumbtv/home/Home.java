@@ -1,6 +1,5 @@
 package tv.dumbtv.home;
 
-import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -86,7 +85,9 @@ public final class Home extends Activity {
     private long weatherAt;
     private boolean fetching;
     private LinearLayout bar;
-    private TextView net;
+    private TextView net, sleepChip;
+    private View nightShade;
+    private LinearLayout moveHint;
     private int netColor = 0xFF34C759;
     private final java.util.Map<TextView, String> chipLabels = new java.util.HashMap<>();
     private ConnectivityManager cm;
@@ -109,11 +110,14 @@ public final class Home extends Activity {
             ui.post(Home.this::showNet);
         }
     };
-    private Row favs, apps, inputs;
+    private Row favs, recent, apps, inputs;
+    /** Every row, top to bottom. */
+    private Row[] rows;
+    private boolean builtGrid;
     private View glow;
     private GradientDrawable glowBg;
     private int glowColor = GLOW_DEFAULT;
-    private ValueAnimator glowAnim;
+    private Tween glowTween;
     private final java.util.Map<String, Integer> tints = new java.util.HashMap<>();
     private Tile moving;
     private String wallKey;
@@ -136,7 +140,13 @@ public final class Home extends Activity {
     private final TvInputManager.TvInputCallback inputWatch = new TvInputManager.TvInputCallback() {
         @Override
         public void onInputStateChanged(String id, int state) {
+            Integer before = inputStates.put(id, state);
             loadInputs();
+            // standby or unplugged -> on: something was just switched on
+            if (state == TvInputManager.INPUT_STATE_CONNECTED && before != null
+                    && before != TvInputManager.INPUT_STATE_CONNECTED) {
+                offerInput(id);
+            }
         }
 
         @Override
@@ -166,11 +176,16 @@ public final class Home extends Activity {
             title.setCompoundDrawablesRelative(Icons.of(icon, dp(20 * s), 0xD9FFFFFF), null, null, null);
             title.setCompoundDrawablePadding(dp(12 * s));
         }
-        final HorizontalScrollView scroll;
-        final LinearLayout strip;
+        /** The row's box: a sideways scroller for one line, a plain frame around a grid. */
+        final FrameLayout scroll;
+        final ViewGroup strip;
         List<Item> all = new ArrayList<>();
 
         Row(String kind, String name, int icon, LinearLayout parent) {
+            this(kind, name, icon, parent, false);
+        }
+
+        Row(String kind, String name, int icon, LinearLayout parent, boolean grid) {
             this.kind = kind;
             int edge = dp(56), bleed = dp(14);
             // spaced capitals, like the group headings in Options
@@ -181,7 +196,20 @@ public final class Home extends Activity {
             this.icon = icon;
             title.setCompoundDrawablePadding(dp(12));
             title.setPadding(edge, dp(26), edge, dp(4));
-            strip = new LinearLayout(Home.this);
+            if (grid) {
+                // every app at once, lines that wrap; the page scrolls down through them
+                strip = new Grid(Home.this, dp(22), dp(22));
+                strip.setPadding(edge, dp(16), edge, dp(10));
+                scroll = new FrameLayout(Home.this);
+                scroll.setClipChildren(false);
+                scroll.setClipToPadding(false);
+                scroll.addView(strip, new FrameLayout.LayoutParams(MATCH, WRAP));
+                parent.addView(title, new LinearLayout.LayoutParams(MATCH, WRAP));
+                parent.addView(scroll, new LinearLayout.LayoutParams(MATCH, WRAP));
+                return;
+            }
+            LinearLayout line = new LinearLayout(Home.this);
+            strip = line;
             strip.setClipChildren(false);
             strip.setClipToPadding(false);
             strip.setPadding(bleed, dp(16), bleed, dp(10));
@@ -295,13 +323,17 @@ public final class Home extends Activity {
         Guard.arrived(this);
         cfg.refresh();
         cfg.visited();
-        if (cfg.textScale() != builtScale) {
-            // every text on the screen is sized at build time; rebuilding is simplest
+        if (cfg.textScale() != builtScale || "grid".equals(cfg.get(Config.APPS_LAYOUT)) != builtGrid) {
+            // text sizes and the All apps layout are set at build time; rebuilding is simplest
             recreate();
             return;
         }
         if (cfg.version() != applied) apply();
-        else background();
+        else {
+            background();
+            // back from an app: the recently used row moves it to the front
+            loadRecent();
+        }
         if (frameNow) {
             frameNow = false;
             ui.postDelayed(idle, 600);
@@ -314,6 +346,18 @@ public final class Home extends Activity {
         registerReceiver(time, f);
         ticking = true;
         tick();
+        // back from Fire OS's "Activate" screen with a timer waiting for the permission
+        if (pendingSleep > 0) {
+            int m = pendingSleep;
+            pendingSleep = 0;
+            if (Sleep.allowed(this)) chooseSleep(m);
+        }
+        // developer aid: `adb shell touch .../files/test-input` shows the input card on next return
+        File test = new File(cfg.dir, "test-input");
+        if (test.isFile() && test.delete() && !inputs.all.isEmpty()) {
+            String first = inputs.all.get(0).id;
+            ui.postDelayed(() -> offerInput(first), 800);
+        }
     }
 
     @Override
@@ -329,6 +373,7 @@ public final class Home extends Activity {
         ticking = false;
         ui.removeCallbacks(idle);
         stopFrame();
+        removeInputCard();
         if (moving != null) stopMoving();
     }
 
@@ -367,6 +412,10 @@ public final class Home extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (inputCard != null) {
+            hideInputCard();
+            return;
+        }
         focusFirst();
     }
 
@@ -429,17 +478,25 @@ public final class Home extends Activity {
         }
         if (at == null) return 0;
         int range = Math.max(0, content.getHeight() - page.getHeight());
-        return Math.max(0, Math.min(range, stopFor(at, rows, page.getHeight())));
+        int height = page.getHeight(), stop = stopFor(at, rows, height);
+        if (at[1] - at[0] > height) {
+            // a block taller than the screen (the All apps grid): follow the focused line,
+            // showing the title while one of the first lines is focused
+            int cur = page.getScrollY();
+            stop = Math.min(Math.max(cur, r.bottom + dp(40) - height), r.top - dp(56));
+            if (r.top - at[0] < height / 2) stop = at[0];
+        }
+        return Math.max(0, Math.min(range, stop));
     }
 
     /** Title top and strip bottom of each visible row, in {@code content}'s coordinates. */
     private List<int[]> rowBlocks(View content) {
-        List<int[]> rows = new ArrayList<>();
-        for (Row row : new Row[] {favs, apps, inputs}) {
+        List<int[]> blocks = new ArrayList<>();
+        for (Row row : rows) {
             if (row.scroll.getVisibility() != View.VISIBLE) continue;
-            rows.add(new int[] {topIn(row.title, content), topIn(row.scroll, content) + row.scroll.getHeight()});
+            blocks.add(new int[] {topIn(row.title, content), topIn(row.scroll, content) + row.scroll.getHeight()});
         }
-        return rows;
+        return blocks;
     }
 
     /** The earliest of the top or a row title that shows the whole of {@code at}. */
@@ -552,6 +609,8 @@ public final class Home extends Activity {
         bar.addView(chip(Icons.INPUT, "Inputs  \u25BE", this::inputsMenu));
         net = chip(Icons.WIFI, "", v -> openWifi());
         bar.addView(net);
+        sleepChip = chip(Icons.SLEEP, "Sleep timer", this::sleepMenu);
+        bar.addView(sleepChip);
         bar.addView(chip(Icons.SLIDERS, "Options", v -> startActivity(new Intent(this, Options.class))));
         bar.addView(chip(Icons.GEAR, "Settings", v -> openSettings()));
         top.addView(bar, new LinearLayout.LayoutParams(WRAP, WRAP));
@@ -627,6 +686,8 @@ public final class Home extends Activity {
         rlp.leftMargin = dp(28);
         rlp.rightMargin = dp(12);
         rlp.topMargin = dp(16);
+        // the forecast ends where the top bar ends, so the header has one right edge
+        middle.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         middle.addView(hoursRule, rlp);
         // next hours, and under them the next sunrise/sunset and tomorrow: one forecast block
         LinearLayout forecast = new LinearLayout(this);
@@ -705,8 +766,29 @@ public final class Home extends Activity {
         scroll.addView(column, new FrameLayout.LayoutParams(MATCH, WRAP));
 
         favs = new Row(Catalog.FAVS, "Favorites", Icons.STAR, column);
-        apps = new Row(Catalog.APPS, "All apps", Icons.GRID, column);
+        recent = new Row(Catalog.RECENT, "Recently used", Icons.CLOCK, column);
+        builtGrid = "grid".equals(cfg.get(Config.APPS_LAYOUT));
+        apps = new Row(Catalog.APPS, "All apps", Icons.GRID, column, builtGrid);
         inputs = new Row(Catalog.INPUTS, "Inputs", Icons.INPUT, column);
+        rows = new Row[] {favs, recent, apps, inputs};
+
+        // Night mode: a warm dim over everything (dialogs and the input card stay above it)
+        nightShade = new View(this);
+        nightShade.setBackgroundColor(Color.argb(120, 24, 11, 0));
+        nightShade.setVisibility(View.GONE);
+        root.addView(nightShade, new FrameLayout.LayoutParams(MATCH, MATCH));
+
+        // shown while a tile is being moved: which keys do what
+        moveHint = new LinearLayout(this);
+        moveHint.setGravity(Gravity.CENTER_VERTICAL);
+        moveHint.setPadding(dp(22), dp(12), dp(4), dp(12));
+        moveHint.setBackground(Ui.round(0xEB16171B, dp(28)));
+        moveHint.setElevation(dp(12));
+        Ui.hints(moveHint, "\u25C0 \u25B6", "Move", "OK", "Done");
+        moveHint.setVisibility(View.GONE);
+        FrameLayout.LayoutParams hlp2 = new FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        hlp2.bottomMargin = dp(36);
+        root.addView(moveHint, hlp2);
 
         root.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> {
             showFocusName(now);
@@ -716,8 +798,8 @@ public final class Home extends Activity {
     }
 
     /** The strip of the first visible row: Favorites, else All apps, else Inputs. */
-    private LinearLayout topStrip() {
-        for (Row row : new Row[] {favs, apps, inputs}) {
+    private ViewGroup topStrip() {
+        for (Row row : rows) {
             if (row.scroll.getVisibility() == View.VISIBLE) return row.strip;
         }
         return null;
@@ -735,7 +817,7 @@ public final class Home extends Activity {
     }
 
     /** The child of {@code strip} horizontally closest to {@code from}, or null when empty. */
-    private static View nearest(LinearLayout strip, View from) {
+    private static View nearest(ViewGroup strip, View from) {
         int[] at = new int[2];
         from.getLocationOnScreen(at);
         int x = at[0] + from.getWidth() / 2;
@@ -789,7 +871,8 @@ public final class Home extends Activity {
         // On the accent fill the icon turns dark/white like the text; the Wi-Fi status then moves to
         // a ringed dot after the name, so green never sits on blue.
         int ink = Ui.ink(cfg.accent());
-        int color = open ? ink : v == net ? netColor : Ui.TEXT;
+        int color = open ? ink : v == net ? netColor
+                : v == sleepChip && Sleep.left(cfg) > 0 ? 0xFFFFC53D : Ui.TEXT;
         android.graphics.drawable.Drawable status = null;
         if (open && v == net) {
             GradientDrawable dot = new GradientDrawable();
@@ -810,8 +893,9 @@ public final class Home extends Activity {
             chipIcon(c);
         }
         float ts = cfg.titleScale();
-        for (Row row : new Row[] {favs, apps, inputs}) row.sizeTitle(ts);
+        for (Row row : rows) row.sizeTitle(ts);
         render(favs);
+        loadRecent();
         render(apps);
         render(inputs);
         showFocusName(getCurrentFocus());
@@ -838,12 +922,16 @@ public final class Home extends Activity {
                 apps.all = list;
                 render(favs);
                 render(apps);
+                loadRecent();
             });
         });
     }
 
     private void loadInputs() {
         inputs.all = Catalog.inputs(this, tv);
+        for (Item it : inputs.all) {
+            if (!inputStates.containsKey(it.id)) inputStates.put(it.id, it.state);
+        }
         render(inputs);
     }
 
@@ -862,6 +950,8 @@ public final class Home extends Activity {
             if (shown.isEmpty() && !apps.all.isEmpty()) shown.add(button(Catalog.ADD, "Add favorites", Icons.STAR));
             // the easy way to change the dock: the same picker, from the end of the row
             else if (!shown.isEmpty()) shown.add(button(Catalog.EDIT, "Edit favorites", Icons.PENCIL));
+        } else if (Catalog.RECENT.equals(row.kind)) {
+            shown = "on".equals(cfg.get(Config.RECENT)) ? new ArrayList<>(recentItems) : new ArrayList<>();
         } else {
             shown = enabled ? Catalog.visible(cfg, row.kind, row.all) : new ArrayList<>();
             // the way to more apps: the Appstore, and every installed app to pick from
@@ -925,13 +1015,59 @@ public final class Home extends Activity {
             tints.put(it.id, target);
         }
         if (target == glowColor) return;
-        if (glowAnim != null) glowAnim.cancel();
+        if (glowTween != null) glowTween.cancel();
         int from = glowColor, to = target;
         glowColor = to;
-        glowAnim = ValueAnimator.ofArgb(from, to);
-        glowAnim.setDuration(450);
-        glowAnim.addUpdateListener(a -> glowBg.setColors(glowColors((Integer) a.getAnimatedValue())));
-        glowAnim.start();
+        glowTween = Tween.run(500, t -> glowBg.setColors(glowColors(Ui.mix(from, to, t))), null);
+    }
+
+    private List<Item> recentItems = new ArrayList<>();
+    private int recentGeneration;
+
+    /**
+     * The last apps opened, newest first, from UsageStats (the permission the Fire OS 6 Keeper
+     * already has). Launchers, settings and this app are left out.
+     */
+    private void loadRecent() {
+        int generation = ++recentGeneration;
+        if (!"on".equals(cfg.get(Config.RECENT))) {
+            recentItems = new ArrayList<>();
+            render(recent);
+            return;
+        }
+        List<Item> all = apps.all;
+        io.execute(() -> {
+            List<Item> found = new ArrayList<>();
+            try {
+                android.app.usage.UsageStatsManager usm = (android.app.usage.UsageStatsManager)
+                        getSystemService(Context.USAGE_STATS_SERVICE);
+                long now = System.currentTimeMillis();
+                List<android.app.usage.UsageStats> stats = usm == null ? null
+                        : usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_BEST,
+                                now - 14L * 86_400_000L, now);
+                java.util.Map<String, Long> last = new java.util.HashMap<>();
+                if (stats != null) {
+                    for (android.app.usage.UsageStats s : stats) {
+                        if (s.getTotalTimeInForeground() < 5_000) continue;
+                        Long seen = last.get(s.getPackageName());
+                        if (seen == null || s.getLastTimeUsed() > seen) last.put(s.getPackageName(), s.getLastTimeUsed());
+                    }
+                }
+                for (Item it : all) {
+                    if (last.containsKey(it.id) && !it.id.equals(Guard.AMAZON) && !it.id.contains("settings")) found.add(it);
+                }
+                java.util.Collections.sort(found, (a, b) -> Long.compare(last.get(b.id), last.get(a.id)));
+                if (found.size() > 6) found = new ArrayList<>(found.subList(0, 6));
+            } catch (RuntimeException e) {
+                android.util.Log.w("dumbtv", "recent apps: " + e);
+            }
+            List<Item> result = found;
+            ui.post(() -> {
+                if (generation != recentGeneration || isDestroyed()) return;
+                recentItems = result;
+                render(recent);
+            });
+        });
     }
 
     private void loadArt(Item it) {
@@ -939,7 +1075,7 @@ public final class Home extends Activity {
         io.execute(() -> {
             Catalog.art(getPackageManager(), it);
             ui.post(() -> {
-                for (Row row : new Row[] {favs, apps}) {
+                for (Row row : rows) {
                     for (int i = 0; i < row.strip.getChildCount(); i++) row.strip.getChildAt(i).invalidate();
                 }
             });
@@ -958,12 +1094,11 @@ public final class Home extends Activity {
     }
 
     private void focusFirst() {
-        favs.scroll.scrollTo(0, 0);
-        apps.scroll.scrollTo(0, 0);
-        inputs.scroll.scrollTo(0, 0);
-        View first = favs.strip.getChildAt(0);
-        if (first == null) first = apps.strip.getChildAt(0);
-        if (first == null) first = inputs.strip.getChildAt(0);
+        View first = null;
+        for (Row row : rows) {
+            row.scroll.scrollTo(0, 0);
+            if (first == null) first = row.strip.getChildAt(0);
+        }
         landed = apps.strip.getChildCount() > 0;
         if (first == null) first = chips.get(0);
         first.requestFocus();
@@ -989,6 +1124,193 @@ public final class Home extends Activity {
         background();
         weather();
         frameInfo();
+        nightShade.setVisibility(isNight() ? View.VISIBLE : View.GONE);
+        updateSleepChip();
+    }
+
+    /** Night mode: from the chosen hour until 6 AM. */
+    private boolean isNight() {
+        String start = cfg.get(Config.NIGHT);
+        if ("off".equals(start)) return false;
+        int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+        return h >= Integer.parseInt(start) || h < 6;
+    }
+
+    // ---- sleep timer ----
+
+    private int pendingSleep;
+
+    private void updateSleepChip() {
+        if (sleepChip == null) return;
+        int left = Sleep.left(cfg);
+        chipLabels.put(sleepChip, left > 0 ? "Sleep in " + left + " min" : "Sleep timer");
+        chipIcon(sleepChip);
+    }
+
+    /** The sleep timer's dropdown: Off and a few lengths; the running one is marked. */
+    private void sleepMenu(View anchor) {
+        int left = Sleep.left(cfg);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(8), dp(8), dp(8), dp(8));
+        PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
+        pop.setBackgroundDrawable(Ui.round(0xF2202126, dp(16)));
+        pop.setElevation(dp(12));
+        TextView head = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        head.setText(left > 0 ? "The TV turns off in " + left + " min" : "Turn the TV off after");
+        head.setPadding(dp(16), dp(8), dp(16), dp(8));
+        box.addView(head);
+        int accent = cfg.accent();
+        TextView focus = null;
+        for (int m : Sleep.MINUTES) {
+            TextView row = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
+            row.setText(m == 0 ? (left > 0 ? "Cancel the timer" : "Off") : Sleep.label(m));
+            row.setMinWidth(dp(240));
+            row.setPadding(dp(16), dp(12), dp(16), dp(12));
+            row.setFocusable(true);
+            row.setClickable(true);
+            Ui.focusStyle(row, accent, 0x00000000, dp(10));
+            row.setOnClickListener(v -> {
+                pop.dismiss();
+                chooseSleep(m);
+            });
+            box.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
+            if (left > 0 ? m == 0 : m == 30) focus = row;
+        }
+        pop.showAsDropDown(anchor, 0, dp(8));
+        if (focus != null) focus.requestFocus();
+    }
+
+    private void chooseSleep(int minutes) {
+        if (minutes > 0 && !Sleep.allowed(this)) {
+            pendingSleep = minutes;
+            new AlertDialog.Builder(this, Ui.DIALOG)
+                    .setTitle("Allow the sleep timer?")
+                    .setMessage("To turn the TV off, dumbtv needs one permission from Fire OS."
+                            + " On the next screen choose Activate. It lets dumbtv turn the screen off,"
+                            + " nothing else, and you can remove it in Options \u203A More.")
+                    .setPositiveButton("Continue", (d, w) -> Sleep.askPermission(this))
+                    .setNegativeButton("Cancel", (d, w) -> pendingSleep = 0)
+                    .show();
+            return;
+        }
+        Sleep.set(this, minutes);
+        updateSleepChip();
+        Toast.makeText(this, minutes == 0 ? "Sleep timer off"
+                : "The TV turns off in " + Sleep.label(minutes), Toast.LENGTH_SHORT).show();
+    }
+
+    // ---- "switch input?" card ----
+
+    private final java.util.Map<String, Integer> inputStates = new java.util.HashMap<>();
+    private LinearLayout inputCard;
+    private View cardReturn;
+    private final Runnable cardTimeout = this::hideInputCard;
+
+    /**
+     * Something plugged into an input just turned on: offer to switch to it, only while the
+     * home screen is showing. Goes away by itself after 15 s.
+     */
+    private void offerInput(String id) {
+        if (!"on".equals(cfg.get(Config.SWITCH)) || !resumed) return;
+        Item it = null;
+        for (Item x : inputs.all) {
+            if (x.id.equals(id)) it = x;
+        }
+        if (it == null || !Catalog.shown(cfg, Catalog.INPUTS, it)) return;
+        if (frame != null) stopFrame();
+        if (inputCard != null) removeInputCard();
+        Item input = it;
+        int accent = cfg.accent(), ink = Ui.ink(accent);
+
+        inputCard = new LinearLayout(this) {
+            /** The buttons keep focus to themselves while the card is up. */
+            @Override
+            public View focusSearch(View focused, int direction) {
+                View next = android.view.FocusFinder.getInstance().findNextFocus(this, focused, direction);
+                return next != null ? next : focused;
+            }
+        };
+        inputCard.setGravity(Gravity.CENTER_VERTICAL);
+        inputCard.setPadding(dp(20), dp(18), dp(20), dp(18));
+        GradientDrawable bg = Ui.round(0xF51C1D22, dp(26));
+        bg.setStroke(Math.max(1, dp(1)), 0x29FFFFFF);
+        inputCard.setBackground(bg);
+        inputCard.setElevation(dp(24));
+
+        View badge = new View(this);
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(accent);
+        android.graphics.drawable.LayerDrawable art = new android.graphics.drawable.LayerDrawable(
+                new Drawable[] {circle, Icons.of(Icons.INPUT, dp(26), ink)});
+        art.setLayerInset(1, dp(14), dp(14), dp(14), dp(14));
+        badge.setBackground(art);
+        inputCard.addView(badge, new LinearLayout.LayoutParams(dp(54), dp(54)));
+
+        LinearLayout words = new LinearLayout(this);
+        words.setOrientation(LinearLayout.VERTICAL);
+        words.setPadding(dp(18), 0, dp(30), 0);
+        TextView title = Ui.text(this, 21, Ui.TEXT, Ui.MEDIUM);
+        title.setText(Catalog.label(cfg, input) + " just turned on");
+        TextView sub = Ui.text(this, 15, Ui.MUTED, Ui.MEDIUM);
+        sub.setPadding(0, dp(4), 0, 0);
+        sub.setText("Switch to it now?");
+        words.addView(title);
+        words.addView(sub);
+        inputCard.addView(words);
+
+        TextView go = cardButton("Switch", accent);
+        go.setOnClickListener(v -> {
+            hideInputCard();
+            launch(new Intent(input.intent), null);
+        });
+        TextView later = cardButton("Not now", accent);
+        later.setOnClickListener(v -> hideInputCard());
+        inputCard.addView(go);
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        llp.leftMargin = dp(10);
+        inputCard.addView(later, llp);
+
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        lp.bottomMargin = dp(44);
+        root.addView(inputCard, lp);
+        cardReturn = getCurrentFocus();
+        go.requestFocus();
+        LinearLayout card = inputCard;
+        Tween.run(320, t -> {
+            card.setAlpha(t);
+            card.setTranslationY(dp(36) * (1 - t));
+        }, null);
+        ui.postDelayed(cardTimeout, 15_000);
+    }
+
+    private TextView cardButton(String label, int accent) {
+        TextView b = Ui.text(this, 16, Ui.TEXT, Ui.MEDIUM);
+        b.setText(label);
+        b.setGravity(Gravity.CENTER);
+        b.setMinWidth(dp(104));
+        b.setPadding(dp(20), dp(11), dp(20), dp(11));
+        b.setFocusable(true);
+        b.setClickable(true);
+        Ui.chipStyle(b, accent, dp(22), Math.max(1, dp(1)));
+        return b;
+    }
+
+    private void hideInputCard() {
+        ui.removeCallbacks(cardTimeout);
+        LinearLayout card = inputCard;
+        if (card == null) return;
+        inputCard = null;
+        if (cardReturn != null && cardReturn.isAttachedToWindow()) cardReturn.requestFocus();
+        else focusFirst();
+        Tween.run(220, t -> card.setAlpha(1 - t), () -> root.removeView(card));
+    }
+
+    private void removeInputCard() {
+        ui.removeCallbacks(cardTimeout);
+        if (inputCard != null) root.removeView(inputCard);
+        inputCard = null;
     }
 
     private void background() {
@@ -1040,7 +1362,8 @@ public final class Home extends Activity {
     private void resetIdle() {
         ui.removeCallbacks(idle);
         String after = cfg.get(Config.FRAME);
-        if (frame != null || "off".equals(after) || !resumed) return;
+        // no photo frame at night: the TV should be allowed to fall asleep
+        if (frame != null || "off".equals(after) || !resumed || isNight()) return;
         ui.postDelayed(idle, Integer.parseInt(after) * 60_000L);
     }
 
@@ -1054,7 +1377,8 @@ public final class Home extends Activity {
         frame = new PhotoFrame(this, io, cfg.dir);
         frame.setAlpha(0f);
         root.addView(frame, new FrameLayout.LayoutParams(MATCH, MATCH));
-        frame.animate().alpha(1f).setDuration(800).start();
+        PhotoFrame showing = frame;
+        Tween.run(900, showing::setAlpha, null);
         frameInfo();
         frame.start();
         // the TV stays on while the frame runs, then sleeps as usual
@@ -1075,10 +1399,12 @@ public final class Home extends Activity {
         PhotoFrame going = frame;
         frame = null;
         going.pause();
-        going.animate().alpha(0f).setDuration(resumed ? 450 : 0).withEndAction(() -> {
+        Runnable gone = () -> {
             going.stop();
             root.removeView(going);
-        }).start();
+        };
+        if (resumed) Tween.run(450, t -> going.setAlpha(1 - t), gone);
+        else gone.run();
         resetIdle();
     }
 
@@ -1343,6 +1669,9 @@ public final class Home extends Activity {
             actions.add(FAV_REMOVE);
             actions.add(RENAME);
             actions.add(INFO);
+        } else if (Catalog.RECENT.equals(t.kind)) {
+            actions.add(Catalog.isFavorite(cfg, t.item) ? FAV_REMOVE : FAV_ADD);
+            actions.add(INFO);
         } else if (Catalog.APPS.equals(t.kind)) {
             actions.add(Catalog.isFavorite(cfg, t.item) ? FAV_REMOVE : FAV_ADD);
             actions.add(MOVE);
@@ -1362,6 +1691,7 @@ public final class Home extends Activity {
                             if (t.getParent() == null) break;
                             moving = t;
                             t.setMoving(true);
+                            moveHint.setVisibility(View.VISIBLE);
                             break;
                         case RENAME:
                             rename(t);
@@ -1416,7 +1746,7 @@ public final class Home extends Activity {
     }
 
     private void shift(int by) {
-        LinearLayout strip = (LinearLayout) moving.getParent();
+        ViewGroup strip = (ViewGroup) moving.getParent();
         int from = strip.indexOfChild(moving), to = from + by;
         if (to < 0 || to >= strip.getChildCount()) return;
         // apps stay in front of the Get more apps / App library buttons
@@ -1431,8 +1761,9 @@ public final class Home extends Activity {
     private void stopMoving() {
         Tile t = moving;
         moving = null;
+        moveHint.setVisibility(View.GONE);
         t.setMoving(false);
-        LinearLayout strip = (LinearLayout) t.getParent();
+        ViewGroup strip = (ViewGroup) t.getParent();
         if (strip == null) return;
         List<String> ids = new ArrayList<>();
         for (int i = 0; i < strip.getChildCount(); i++) {
