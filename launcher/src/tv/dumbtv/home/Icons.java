@@ -61,7 +61,8 @@ final class Icons extends Drawable {
         c.translate(b.left, b.top);
         switch (kind) {
             case SUN: sun(c, s / 2, s / 2, s * 0.44f, s); break;
-            case MOON: moon(c, s / 2, s / 2, s * 0.34f); break;
+            // the bite is on the right, so the crescent sits a little right of center to look centered
+            case MOON: moon(c, s * 0.54f, s / 2, s * 0.36f); break;
             case PARTLY:
                 sun(c, s * 0.36f, s * 0.36f, s * 0.3f, s);
                 cloud(c, s * 0.18f, s * 0.34f, s * 0.8f);

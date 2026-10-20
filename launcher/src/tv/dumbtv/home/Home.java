@@ -1199,6 +1199,8 @@ public final class Home extends Activity {
             rain.setPadding(0, dp(2), 0, 0);
             rain.setText(h.rain >= 20 ? h.rain + "%" : "");
             rain.setVisibility(anyRain ? View.VISIBLE : View.GONE);
+            // a vertical LinearLayout gives children full width by default: center their text too
+            for (TextView line : new TextView[] {at, t, rain}) line.setGravity(Gravity.CENTER_HORIZONTAL);
             cell.addView(at);
             cell.addView(icon, ilp);
             cell.addView(t);
