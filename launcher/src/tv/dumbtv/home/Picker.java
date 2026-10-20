@@ -51,7 +51,7 @@ public final class Picker extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] {
             Ui.mix(accent, Config.APP_BASE, 0.78f), Config.APP_BASE, Config.APP_BASE}));
-        ScrollView scroll = new ScrollView(this);
+        ScrollView scroll = new Ui.SoundScroll(this);
         scroll.setFocusable(false);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setClipChildren(false);

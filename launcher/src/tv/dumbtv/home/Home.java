@@ -31,6 +31,7 @@ import android.text.format.DateFormat;
 import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -192,6 +193,23 @@ public final class Home extends Activity {
                     int range = Math.max(0, getChildAt(0).getWidth() - (getWidth() - getPaddingLeft() - getPaddingRight()));
                     int target = Math.max(0, Math.min(range, r.centerX() - getWidth() / 2));
                     return target - getScrollX();
+                }
+
+                /**
+                 * Left/right inside a row is moved by this view, not by Android's focus search,
+                 * so Android plays no navigation sound for it. Play it here when focus moved.
+                 */
+                @Override
+                public boolean executeKeyEvent(KeyEvent e) {
+                    int code = e.getKeyCode();
+                    boolean side = code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
+                    View before = side ? findFocus() : null;
+                    boolean handled = super.executeKeyEvent(e);
+                    if (side && handled && e.getAction() == KeyEvent.ACTION_DOWN && findFocus() != before) {
+                        playSoundEffect(SoundEffectConstants.getContantForFocusDirection(
+                                code == KeyEvent.KEYCODE_DPAD_LEFT ? View.FOCUS_LEFT : View.FOCUS_RIGHT));
+                    }
+                    return handled;
                 }
             };
             scroll.setFocusable(false);
@@ -524,11 +542,8 @@ public final class Home extends Activity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setClipChildren(false);
         bar.setClipToPadding(false);
-        // the focused button grows to show its name; the others slide aside smoothly
-        android.animation.LayoutTransition grow = new android.animation.LayoutTransition();
-        grow.enableTransitionType(android.animation.LayoutTransition.CHANGING);
-        grow.setDuration(140);
-        bar.setLayoutTransition(grow);
+        // No LayoutTransition here: with system animations off (this TV) it can leave a button at
+        // its old width for a moment when focus moves quickly, so buttons resize at once.
         bar.addView(chip(Icons.INPUT, "Inputs  \u25BE", this::inputsMenu));
         net = chip(Icons.WIFI, "", v -> openWifi());
         bar.addView(net);
@@ -1395,6 +1410,7 @@ public final class Home extends Activity {
         strip.removeViewAt(from);
         strip.addView(moving, to, lp);
         moving.requestFocus();
+        moving.playSoundEffect(by < 0 ? SoundEffectConstants.NAVIGATION_LEFT : SoundEffectConstants.NAVIGATION_RIGHT);
     }
 
     private void stopMoving() {

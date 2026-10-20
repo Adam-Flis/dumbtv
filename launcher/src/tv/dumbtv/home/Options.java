@@ -10,6 +10,7 @@ import android.media.tv.TvInputManager;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -53,7 +54,7 @@ public final class Options extends Activity {
         nav.addView(title);
         screen.addView(nav, new LinearLayout.LayoutParams(dp(270), ViewGroup.LayoutParams.MATCH_PARENT));
 
-        scroll = new ScrollView(this);
+        scroll = new Ui.SoundScroll(this);
         scroll.setFocusable(false);
         scroll.setVerticalScrollBarEnabled(false);
         list = new LinearLayout(this);
@@ -190,8 +191,15 @@ public final class Options extends Activity {
         row.setOnClickListener(v -> step(c, 1));
         row.setOnKeyListener((v, code, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
-            if (code == KeyEvent.KEYCODE_DPAD_LEFT) return step(c, -1);
-            if (code == KeyEvent.KEYCODE_DPAD_RIGHT) return step(c, 1);
+            // changing a value is a key the system does not sound for: give it the same tick
+            if (code == KeyEvent.KEYCODE_DPAD_LEFT) {
+                v.playSoundEffect(SoundEffectConstants.NAVIGATION_LEFT);
+                return step(c, -1);
+            }
+            if (code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                v.playSoundEffect(SoundEffectConstants.NAVIGATION_RIGHT);
+                return step(c, 1);
+            }
             return false;
         });
         Runnable show = () -> {
@@ -311,6 +319,7 @@ public final class Options extends Activity {
     /** Left on a row without values goes to the group list. */
     private boolean leftToNav(View row, int code, KeyEvent e) {
         if (code != KeyEvent.KEYCODE_DPAD_LEFT || e.getAction() != KeyEvent.ACTION_DOWN) return false;
+        row.playSoundEffect(SoundEffectConstants.NAVIGATION_LEFT);
         navItems.get(sectionOf(row)).requestFocus();
         return true;
     }
@@ -380,6 +389,7 @@ public final class Options extends Activity {
         item.setOnKeyListener((x, code, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                x.playSoundEffect(SoundEffectConstants.NAVIGATION_RIGHT);
                 openSection(index);
                 return true;
             }

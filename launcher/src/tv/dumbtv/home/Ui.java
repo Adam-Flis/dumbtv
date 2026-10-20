@@ -23,6 +23,25 @@ final class Ui {
 
     private Ui() {}
 
+    /**
+     * A ScrollView that leaves up/down to Android's focus search, which plays the navigation
+     * sound; ScrollView's own arrow handling moves focus silently. Scrolling still follows focus.
+     */
+    static class SoundScroll extends android.widget.ScrollView {
+        SoundScroll(Context c) {
+            super(c);
+        }
+
+        @Override
+        public boolean executeKeyEvent(android.view.KeyEvent e) {
+            int code = e.getKeyCode();
+            if (code == android.view.KeyEvent.KEYCODE_DPAD_UP || code == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                return false;
+            }
+            return super.executeKeyEvent(e);
+        }
+    }
+
     static int dp(Context c, float v) {
         return Math.round(v * c.getResources().getDisplayMetrics().density);
     }
