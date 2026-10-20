@@ -75,6 +75,7 @@ public final class Home extends Activity {
     private TextView greeting, clock, date, focusName, temp, sky, feels, hint, sunLine;
     private View skyIcon;
     private LinearLayout hours;
+    private View hoursRule;
     private LinearLayout weatherBox;
     private Weather.Report weather;
     private String weatherKey;
@@ -490,7 +491,8 @@ public final class Home extends Activity {
         head.setPadding(dp(56), 0, dp(56), 0);
 
         LinearLayout top = new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
+        // the greeting sits on the bottom edge of the top-bar line, right above the time
+        top.setGravity(Gravity.BOTTOM);
         top.setClipChildren(false);
         top.setClipToPadding(false);
         greeting = Ui.text(this, 20, Ui.MUTED, Ui.MEDIUM);
@@ -513,46 +515,67 @@ public final class Home extends Activity {
         top.addView(bar, new LinearLayout.LayoutParams(WRAP, WRAP));
         head.addView(top, new LinearLayout.LayoutParams(MATCH, WRAP));
 
+        // clock, current weather and the next hours share one line, centered on each other
         LinearLayout middle = new LinearLayout(this);
-        middle.setGravity(Gravity.BOTTOM);
+        middle.setGravity(Gravity.CENTER_VERTICAL);
+        middle.setClipChildren(false);
+        middle.setClipToPadding(false);
         clock = Ui.text(this, 64, Ui.TEXT, Ui.LIGHT);
-        middle.addView(clock);
+        clock.setSingleLine();
+        // A big font keeps empty room above its digits and below the baseline. Negative margins
+        // let the line hug the digits, so the greeting and date sit close to the time.
+        android.graphics.Paint.FontMetricsInt fm = clock.getPaint().getFontMetricsInt();
+        Rect digits = new Rect();
+        clock.getPaint().getTextBounds("0", 0, 1, digits);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        clp.topMargin = -Math.max(0, digits.top - fm.ascent);
+        clp.bottomMargin = -Math.max(0, fm.descent);
+        middle.addView(clock, clp);
+        // icon, temperature, then conditions and feels-like stacked beside them: two short lines
         weatherBox = new LinearLayout(this);
-        weatherBox.setOrientation(LinearLayout.VERTICAL);
-        weatherBox.setPadding(dp(32), 0, 0, dp(4));
-        LinearLayout tempRow = new LinearLayout(this);
-        tempRow.setGravity(Gravity.CENTER_VERTICAL);
+        weatherBox.setGravity(Gravity.CENTER_VERTICAL);
+        weatherBox.setPadding(dp(34), 0, 0, 0);
         skyIcon = new View(this);
-        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(38), dp(38));
+        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(40), dp(40));
         ilp.rightMargin = dp(10);
-        tempRow.addView(skyIcon, ilp);
-        temp = Ui.text(this, 36, Ui.TEXT, Ui.LIGHT);
-        tempRow.addView(temp);
-        sky = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        weatherBox.addView(skyIcon, ilp);
+        temp = Ui.text(this, 40, Ui.TEXT, Ui.LIGHT);
+        weatherBox.addView(temp);
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        details.setPadding(dp(14), 0, 0, 0);
+        sky = Ui.text(this, 15, Ui.TEXT, Ui.MEDIUM);
         sky.setSingleLine();
-        sky.setPadding(dp(2), dp(6), 0, 0);
         feels = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
         feels.setSingleLine();
-        feels.setPadding(dp(2), dp(3), 0, 0);
-        weatherBox.addView(tempRow);
-        weatherBox.addView(sky);
-        weatherBox.addView(feels);
+        feels.setPadding(0, dp(5), 0, 0);
+        details.addView(sky);
+        details.addView(feels);
+        weatherBox.addView(details);
         weatherBox.setVisibility(View.GONE);
         middle.addView(weatherBox);
-        middle.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        // the next hours sit right after the current weather, split by a thin line
+        hoursRule = new View(this);
+        hoursRule.setBackgroundColor(0x2EFFFFFF);
+        hoursRule.setVisibility(View.GONE);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(Math.max(1, dp(1)), dp(56));
+        rlp.leftMargin = dp(28);
+        rlp.rightMargin = dp(12);
+        rlp.topMargin = dp(16);
+        middle.addView(hoursRule, rlp);
         hours = new LinearLayout(this);
         hours.setVisibility(View.GONE);
-        middle.addView(hours, new LinearLayout.LayoutParams(WRAP, WRAP));
-        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(MATCH, WRAP);
-        mlp.topMargin = dp(12);
-        head.addView(middle, mlp);
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(WRAP, WRAP);
+        hlp.topMargin = dp(16); // clear of the top bar when a button opens up
+        middle.addView(hours, hlp);
+        head.addView(middle, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         LinearLayout bottom = new LinearLayout(this);
         bottom.setGravity(Gravity.TOP);
         LinearLayout notes = new LinearLayout(this);
         notes.setOrientation(LinearLayout.VERTICAL);
         date = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
-        date.setPadding(dp(3), dp(8), 0, 0);
+        date.setPadding(dp(3), dp(10), 0, 0);
         hint = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
         hint.setPadding(dp(3), dp(12), 0, 0);
         hint.setVisibility(View.GONE);
@@ -670,7 +693,6 @@ public final class Home extends Activity {
         v.setTag(icon);
         chipLabels.put(v, label);
         v.setGravity(Gravity.CENTER);
-        v.setMinWidth(dp(48));
         v.setMinHeight(dp(44));
         v.setFocusable(true);
         v.setClickable(true);
@@ -697,9 +719,10 @@ public final class Home extends Activity {
         v.setText(open ? label : "");
         v.setContentDescription(label);
         v.setCompoundDrawablePadding(open ? dp(8) : 0);
-        v.setPadding(dp(open ? 16 : 13), dp(10), dp(open ? 18 : 13), dp(10));
+        // closed: 12 + 20 + 12 = 44 dp wide, as tall as it is wide, so the icon sits dead center
+        v.setPadding(dp(open ? 16 : 12), dp(10), dp(open ? 18 : 12), dp(10));
         int color = v == net ? netColor : open ? Ui.ink(cfg.accent()) : Ui.TEXT;
-        v.setCompoundDrawablesRelative(Icons.of((Integer) v.getTag(), dp(19), color), null, null, null);
+        v.setCompoundDrawablesRelative(Icons.of((Integer) v.getTag(), dp(20), color), null, null, null);
     }
 
     private void apply() {
@@ -994,6 +1017,7 @@ public final class Home extends Activity {
             weatherBox.setVisibility(View.GONE);
             hint.setVisibility(View.GONE);
             hours.setVisibility(View.GONE);
+            hoursRule.setVisibility(View.GONE);
             sunLine.setVisibility(View.GONE);
             return;
         }
@@ -1031,8 +1055,12 @@ public final class Home extends Activity {
         hours.removeAllViews();
         if (!on(Config.W_HOURS) || weather.hours.isEmpty()) {
             hours.setVisibility(View.GONE);
+            hoursRule.setVisibility(View.GONE);
             return;
         }
+        // the rain line only takes room when one of the hours has a real chance of rain
+        boolean anyRain = false;
+        for (Weather.Hour h : weather.hours) anyRain |= h.rain >= 20;
         for (Weather.Hour h : weather.hours) {
             LinearLayout cell = new LinearLayout(this);
             cell.setOrientation(LinearLayout.VERTICAL);
@@ -1040,22 +1068,24 @@ public final class Home extends Activity {
             TextView at = Ui.text(this, 13, Ui.MUTED, Ui.MEDIUM);
             at.setText(h.at);
             View icon = new View(this);
-            icon.setBackground(Icons.of(Icons.forCode(h.code, h.day), dp(26), 0));
-            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(26), dp(26));
-            ilp.topMargin = dp(6);
-            ilp.bottomMargin = dp(6);
+            icon.setBackground(Icons.of(Icons.forCode(h.code, h.day), dp(24), 0));
+            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(24), dp(24));
+            ilp.topMargin = dp(4);
+            ilp.bottomMargin = dp(4);
             TextView t = Ui.text(this, 16, Ui.TEXT, Ui.MEDIUM);
             t.setText(h.temp + "\u00B0");
             TextView rain = Ui.text(this, 12, Ui.MUTED, Ui.MEDIUM);
-            rain.setPadding(0, dp(3), 0, 0);
-            rain.setText(h.rain >= 20 ? h.rain + "%" : " ");
+            rain.setPadding(0, dp(2), 0, 0);
+            rain.setText(h.rain >= 20 ? h.rain + "%" : "");
+            rain.setVisibility(anyRain ? View.VISIBLE : View.GONE);
             cell.addView(at);
             cell.addView(icon, ilp);
             cell.addView(t);
             cell.addView(rain);
-            hours.addView(cell, new LinearLayout.LayoutParams(dp(64), WRAP));
+            hours.addView(cell, new LinearLayout.LayoutParams(dp(58), WRAP));
         }
         hours.setVisibility(View.VISIBLE);
+        hoursRule.setVisibility(weatherBox.getVisibility());
     }
 
     private boolean clock24() {
