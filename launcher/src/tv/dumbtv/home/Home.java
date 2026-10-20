@@ -85,7 +85,7 @@ public final class Home extends Activity {
     private long weatherAt;
     private boolean fetching;
     private LinearLayout bar;
-    private TextView net, sleepChip;
+    private TextView net, sleepChip, nightChip;
     private View nightShade;
     private LinearLayout moveHint;
     private int netColor = 0xFF34C759;
@@ -609,7 +609,9 @@ public final class Home extends Activity {
         bar.addView(chip(Icons.INPUT, "Inputs  \u25BE", this::inputsMenu));
         net = chip(Icons.WIFI, "", v -> openWifi());
         bar.addView(net);
-        sleepChip = chip(Icons.SLEEP, "Sleep timer", this::sleepMenu);
+        nightChip = chip(Icons.NIGHT, "Night mode", v -> toggleNight());
+        bar.addView(nightChip);
+        sleepChip = chip(Icons.TIMER, "Sleep timer", this::sleepMenu);
         bar.addView(sleepChip);
         bar.addView(chip(Icons.SLIDERS, "Options", v -> startActivity(new Intent(this, Options.class))));
         bar.addView(chip(Icons.GEAR, "Settings", v -> openSettings()));
@@ -873,7 +875,8 @@ public final class Home extends Activity {
         // On the accent fill the icon turns dark/white like the text; the Wi-Fi status then moves to
         // a ringed dot after the name, so green never sits on blue.
         int ink = Ui.ink(cfg.accent());
-        int color = v.isFocused() ? ink : v == net ? netColor : sleepLeft > 0 ? 0xFFFFC53D : Ui.TEXT;
+        int color = v.isFocused() ? ink : v == net ? netColor
+                : sleepLeft > 0 || v == nightChip && isNight() ? 0xFFFFC53D : Ui.TEXT;
         android.graphics.drawable.Drawable status = null;
         if (open && v == net) {
             GradientDrawable dot = new GradientDrawable();
@@ -1129,6 +1132,25 @@ public final class Home extends Activity {
         nightShade.setVisibility(isNight() ? View.VISIBLE : View.GONE);
         nightShade.setBackgroundColor(Color.argb(cfg.nightAlpha(), 24, 11, 0));
         updateSleepChip();
+        updateNightChip();
+    }
+
+    /** The top bar's night button: on or off now, back to the schedule at its next turn. */
+    private void toggleNight() {
+        long until = cfg.toggleNight();
+        boolean on = isNight();
+        nightShade.setVisibility(on ? View.VISIBLE : View.GONE);
+        nightShade.setBackgroundColor(Color.argb(cfg.nightAlpha(), 24, 11, 0));
+        updateNightChip();
+        String at = DateFormat.getTimeFormat(this).format(new Date(until));
+        Toast.makeText(this, (on ? "Night mode on until " : "Night mode off until ") + at, Toast.LENGTH_SHORT).show();
+        resetIdle();
+    }
+
+    private void updateNightChip() {
+        if (nightChip == null) return;
+        chipLabels.put(nightChip, isNight() ? "Night mode: on" : "Night mode: off");
+        chipIcon(nightChip);
     }
 
     /** Night mode: between the chosen start and end times. */
@@ -1189,11 +1211,9 @@ public final class Home extends Activity {
             // Fire OS answers the normal "allow" screen with a dummy, so the one-time permission
             // has to come from adb. Until then, Fire TV's own timer does the job.
             new AlertDialog.Builder(this, Ui.DIALOG)
-                    .setTitle("The sleep timer needs a one-time setup")
-                    .setMessage("Fire TV only lets dumbtv turn the TV off after its owner allows it once"
-                            + " from a computer:\n\n    adb shell dpm set-active-admin tv.dumbtv.home/.Admin\n\n"
-                            + "It allows turning the screen off and nothing else. Until then you can use"
-                            + " Fire TV's own sleep timer in Settings.")
+                    .setTitle("Sleep timer needs a one-time setup")
+                    .setMessage("Run once from a computer:\n\nadb shell dpm set-active-admin tv.dumbtv.home/.Admin"
+                            + "\n\nOr use Fire TV's own sleep timer in Settings.")
                     .setPositiveButton("Open Fire TV Settings", (d, w) -> openSettings())
                     .setNegativeButton("Cancel", null)
                     .show();
@@ -1475,15 +1495,33 @@ public final class Home extends Activity {
         }
         temp.setText(weather.temp + "\u00B0");
         String words = Weather.describe(weather.code, weather.day);
-        sky.setText((words.isEmpty() ? "" : words + "  \u00B7  ")
-                + "H " + weather.hi + "\u00B0  L " + weather.lo + "\u00B0");
         String detail = cfg.get(Config.W_DETAIL);
-        boolean full = "full".equals(detail), icon = true;
-        skyIcon.setVisibility(icon ? View.VISIBLE : View.GONE);
-        if (icon) skyIcon.setBackground(Icons.of(Icons.forCode(weather.code, weather.day), dp(38), 0));
-        feels.setText("Feels " + weather.feels + "\u00B0  \u00B7  Wind " + weather.wind + " " + weather.windUnit);
-        feels.setVisibility(full ? View.VISIBLE : View.GONE);
-        sky.setVisibility("minimal".equals(detail) ? View.GONE : View.VISIBLE);
+        boolean full = "full".equals(detail);
+        // Everything: compact, room for feels/wind and tomorrow. The shorter choices use the room
+        // for a bigger temperature with the conditions and today's high/low beside it.
+        float big = full ? 1f : 1.4f;
+        temp.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 40 * big * Ui.scale);
+        sky.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, (full ? 15 : 20) * Ui.scale);
+        feels.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, (full ? 14 : 20) * Ui.scale);
+        int iconSize = dp(40 * big);
+        ViewGroup.LayoutParams ip = skyIcon.getLayoutParams();
+        if (ip.width != iconSize) {
+            ip.width = iconSize;
+            ip.height = iconSize;
+            skyIcon.setLayoutParams(ip);
+        }
+        skyIcon.setBackground(Icons.of(Icons.forCode(weather.code, weather.day), iconSize, 0));
+        String highLow = "H " + weather.hi + "\u00B0  L " + weather.lo + "\u00B0";
+        if (full) {
+            sky.setText((words.isEmpty() ? "" : words + "  \u00B7  ") + highLow);
+            feels.setText("Feels " + weather.feels + "\u00B0  \u00B7  Wind " + weather.wind + " " + weather.windUnit);
+        } else {
+            sky.setText(words.isEmpty() ? highLow : words);
+            feels.setText(words.isEmpty() ? "" : highLow);
+        }
+        boolean minimal = "minimal".equals(detail);
+        sky.setVisibility(minimal ? View.GONE : View.VISIBLE);
+        feels.setVisibility(minimal || feels.length() == 0 ? View.GONE : View.VISIBLE);
         weatherBox.setVisibility(View.VISIBLE);
         showHours();
         if (full && weather.sun != null) {
@@ -1507,7 +1545,8 @@ public final class Home extends Activity {
     /** The next five hours under the top bar: time, icon, temperature, chance of rain. */
     private void showHours() {
         hours.removeAllViews();
-        if ("minimal".equals(cfg.get(Config.W_DETAIL)) || weather.hours.isEmpty()) {
+        String detail = cfg.get(Config.W_DETAIL);
+        if ("minimal".equals(detail) || "today".equals(detail) || weather.hours.isEmpty()) {
             hours.setVisibility(View.GONE);
             hoursRule.setVisibility(View.GONE);
             return;

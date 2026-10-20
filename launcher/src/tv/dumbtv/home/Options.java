@@ -91,7 +91,7 @@ public final class Options extends Activity {
         list.addView(action("Inputs to show", () -> pick(Catalog.INPUTS)));
         list.addView(choice(Config.SWITCH));
 
-        section("Look", Icons.PALETTE);
+        section("Appearance", Icons.CONTRAST);
         list.addView(choice(Config.ACCENT));
         list.addView(choice(Config.BACKGROUND));
         list.addView(only(choice(Config.DIM), image));
@@ -120,11 +120,11 @@ public final class Options extends Activity {
             finish();
         }), frameOn));
         list.addView(choice(Config.NIGHT));
-        list.addView(only(timeRow(Config.NIGHT_START, "Night starts at", 22 * 60), nightOn));
-        list.addView(only(timeRow(Config.NIGHT_END, "Night ends at", 6 * 60), nightOn));
-        list.addView(only(choice(Config.NIGHT_DIM), nightOn));
-        list.addView(note("Night mode dims the home screen and keeps the photo frame off, so the TV"
-                + " can fall asleep. The sleep timer is the moon button in the top bar."));
+        list.addView(only(timeRow(Config.NIGHT_START, "Starts at", 22 * 60), nightOn));
+        list.addView(only(timeRow(Config.NIGHT_END, "Ends at", 6 * 60), nightOn));
+        list.addView(slider(Config.NIGHT_DIM, "Night dim", 10, 90, 5));
+        list.addView(note("Dims the screen at night; no photo frame. The moon button in the top bar"
+                + " switches it now."));
 
         section("More", Icons.DOTS);
         list.addView(action("Reset order, names and hidden tiles", this::reset));
@@ -142,11 +142,9 @@ public final class Options extends Activity {
         TextView about = Ui.text(this, 13, Ui.FAINT, Ui.MEDIUM);
         about.setLineSpacing(0, 1.4f);
         about.setPadding(dp(16), dp(28), 0, 0);
-        about.setText("Settings file: " + cfg.dir + "/" + Config.FILE
-                + "\nWallpaper: put wallpaper.jpg in that folder, then pick Background › Image file"
-                + "\nSeveral wallpapers: put them in " + Config.WALLPAPERS + "/ and pick a rotation"
-                + "\nPhotos for the photo frame: put them in " + PhotoFrame.FOLDER + "/"
-                + "\nInternet is used only for the weather, and only while it is on. No tracking, no ads.");
+        about.setText("Settings: " + cfg.dir + "/" + Config.FILE
+                + "\nYour photos: " + PhotoFrame.FOLDER + "/   \u00B7   Wallpapers: " + Config.WALLPAPERS + "/"
+                + "\nInternet only for weather. No tracking, no ads.");
         list.addView(about);
 
         // what the remote does right here, at the bottom of the group list; follows the focus
@@ -159,7 +157,61 @@ public final class Options extends Activity {
         refresh();
     }
 
-    private static final String CHOICE = "choice", TIME = "time";
+    private static final String CHOICE = "choice", TIME = "time", SLIDER = "slider";
+
+    /** A percentage as a bar: left/right moves it by {@code step}. */
+    private View slider(String key, String title, int min, int max, int step) {
+        LinearLayout row = row();
+        row.setTag(SLIDER);
+        row.setId(180 + Math.abs(key.hashCode() % 10));
+        row.addView(label(title), new LinearLayout.LayoutParams(0, WRAP, 1f));
+        int[] value = {cfg.nightDim()};
+        View bar = new View(this) {
+            private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+            @Override
+            protected void onDraw(android.graphics.Canvas c) {
+                float h = dp(6), r = dp(9), y = getHeight() / 2f, left = r, right = getWidth() - r;
+                float x = left + (right - left) * (value[0] - min) / (float) (max - min);
+                p.setColor(0x33FFFFFF);
+                c.drawRoundRect(left, y - h / 2, right, y + h / 2, h / 2, h / 2, p);
+                p.setColor(cfg.accent());
+                c.drawRoundRect(left, y - h / 2, x, y + h / 2, h / 2, h / 2, p);
+                p.setColor(0xFFFFFFFF);
+                c.drawCircle(x, y, row.isFocused() ? r : r * 0.8f, p);
+            }
+        };
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(dp(220), dp(24));
+        blp.rightMargin = dp(16);
+        row.addView(bar, blp);
+        TextView pct = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
+        pct.setGravity(Gravity.END);
+        pct.setMinWidth(dp(48));
+        row.addView(pct);
+        row.setOnKeyListener((v, code, e) -> {
+            if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+            int by = code == KeyEvent.KEYCODE_DPAD_LEFT ? -step : code == KeyEvent.KEYCODE_DPAD_RIGHT ? step : 0;
+            if (by == 0) return false;
+            int next = Math.max(min, Math.min(max, value[0] + by));
+            if (next != value[0]) {
+                v.playSoundEffect(by < 0 ? SoundEffectConstants.NAVIGATION_LEFT : SoundEffectConstants.NAVIGATION_RIGHT);
+                value[0] = next;
+                cfg.set(key, String.valueOf(next));
+                refresh();
+            }
+            return true;
+        });
+        Runnable show = () -> {
+            value[0] = cfg.nightDim();
+            pct.setText(value[0] + "%");
+            pct.setTextColor(row.isFocused() ? Ui.TEXT : Ui.MUTED);
+            bar.invalidate();
+        };
+        row.setOnFocusChangeListener((v, has) -> show.run());
+        refreshers.add(show);
+        refreshers.add(() -> style(row));
+        return only(row, () -> "on".equals(cfg.get(Config.NIGHT)));
+    }
 
     interface Cond {
         boolean ok();
@@ -229,11 +281,11 @@ public final class Options extends Activity {
     private void showHints(View now) {
         if (hintBar == null || now == null) return;
         if (now.getParent() == list) {
-            if (CHOICE.equals(now.getTag())) Ui.hintLines(hintBar, "\u25C0 \u25B6", "Change", "Back", "To the groups");
-            else if (TIME.equals(now.getTag())) Ui.hintLines(hintBar, "\u25C0 \u25B6", "15 minutes", "OK", "Exact time", "Back", "To the groups");
-            else Ui.hintLines(hintBar, "OK", "Open", "Back", "To the groups");
+            if (CHOICE.equals(now.getTag()) || SLIDER.equals(now.getTag())) Ui.hintLines(hintBar, "\u25C0 \u25B6", "Change", "Back", "Groups");
+            else if (TIME.equals(now.getTag())) Ui.hintLines(hintBar, "\u25C0 \u25B6", "\u00B115 min", "OK", "Set time", "Back", "Groups");
+            else Ui.hintLines(hintBar, "OK", "Open", "Back", "Groups");
         } else {
-            Ui.hintLines(hintBar, "\u25B2 \u25BC", "Choose a group", "\u25B6", "Open it", "Back", "Close");
+            Ui.hintLines(hintBar, "\u25B2 \u25BC", "Group", "\u25B6", "Open", "Back", "Close");
         }
     }
 
@@ -263,7 +315,12 @@ public final class Options extends Activity {
 
     private void openSection(int index) {
         View header = headers.get(index);
-        View first = list.getChildAt(list.indexOfChild(header) + 1);
+        // skip the heading's rule: the first setting is the first focusable row after it
+        View first = null;
+        for (int i = list.indexOfChild(header) + 1; i < list.getChildCount() && first == null; i++) {
+            View c = list.getChildAt(i);
+            if (c.isFocusable() && c.getVisibility() == View.VISIBLE) first = c;
+        }
         if (first != null) first.requestFocus();
         scroll.smoothScrollTo(0, index == 0 ? 0 : header.getTop());
     }
@@ -470,9 +527,18 @@ public final class Options extends Activity {
         TextView v = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
         v.setText(name.toUpperCase(java.util.Locale.ROOT));
         v.setLetterSpacing(0.12f);
-        v.setPadding(dp(16), dp(first ? 4 : 34), 0, dp(10));
+        v.setPadding(dp(16), dp(first ? 4 : 38), 0, dp(10));
         list.addView(v);
         headers.add(v);
+        // a thin rule under the heading separates it from its settings
+        View rule = new View(this);
+        rule.setBackgroundColor(0x2EFFFFFF);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                Math.max(1, dp(1)));
+        rlp.leftMargin = dp(16);
+        rlp.rightMargin = dp(16);
+        rlp.bottomMargin = dp(8);
+        list.addView(rule, rlp);
 
         int index = navItems.size();
         TextView item = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);

@@ -106,14 +106,12 @@ final class Config {
     static final Choice SWITCH = new Choice("switch", "Offer to switch inputs", "on",
             new String[] {"on", "off"},
             new String[] {"On", "Off"});
-    static final Choice NIGHT = new Choice("night", "Night mode", "off",
+    static final Choice NIGHT = new Choice("night", "Night mode schedule", "off",
             new String[] {"off", "on"},
             new String[] {"Off", "On"});
-    static final Choice NIGHT_DIM = new Choice("night.dim", "Dim strength", "medium",
-            new String[] {"light", "medium", "strong"},
-            new String[] {"Light", "Medium", "Strong"});
-    static final String NIGHT_START = "night.start", NIGHT_END = "night.end";
-    private static final int[] NIGHT_ALPHA = {80, 125, 170};
+    /** Night dim in percent (a slider in Options); "override" is the top bar's temporary switch. */
+    static final String NIGHT_START = "night.start", NIGHT_END = "night.end", NIGHT_DIM = "night.dim",
+            NIGHT_OVERRIDE = "night.override";
 
     /** Minutes after midnight stored as "HH:MM" under {@code key}. */
     int time(String key, int fallback) {
@@ -139,8 +137,8 @@ final class Config {
         return time(NIGHT_END, 6 * 60);
     }
 
-    /** Night mode is on and the clock is between its start and end (which may cross midnight). */
-    boolean nightNow() {
+    /** The schedule: on, and the clock between start and end (which may cross midnight). */
+    boolean nightScheduled() {
         if (!"on".equals(get(NIGHT))) return false;
         Calendar c = Calendar.getInstance();
         int now = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE), s = nightStart(), e = nightEnd();
@@ -148,26 +146,79 @@ final class Config {
         return s < e ? now >= s && now < e : now >= s || now < e;
     }
 
+    /**
+     * Night mode right now: the top bar's switch while it lasts ("on@until" / "off@until"), else
+     * the schedule.
+     */
+    boolean nightNow() {
+        String o = get(NIGHT_OVERRIDE, "");
+        int at = o.indexOf('@');
+        if (at > 0) {
+            try {
+                if (System.currentTimeMillis() < Long.parseLong(o.substring(at + 1))) return o.startsWith("on");
+            } catch (NumberFormatException ignored) {
+                // a broken value falls back to the schedule
+            }
+        }
+        return nightScheduled();
+    }
+
+    /**
+     * The top bar's switch: flips night mode now. Turned on, it lasts until the next scheduled
+     * end; turned off, until the next scheduled start. Returns when that is.
+     */
+    long toggleNight() {
+        boolean on = !nightNow();
+        long until = next(on ? nightEnd() : nightStart());
+        set(NIGHT_OVERRIDE, (on ? "on@" : "off@") + until);
+        return until;
+    }
+
+    /** The next time the clock reads {@code minutes} after midnight. */
+    static long next(int minutes) {
+        Calendar c = Calendar.getInstance();
+        c.set(Calendar.HOUR_OF_DAY, minutes / 60);
+        c.set(Calendar.MINUTE, minutes % 60);
+        c.set(Calendar.SECOND, 0);
+        c.set(Calendar.MILLISECOND, 0);
+        if (c.getTimeInMillis() <= System.currentTimeMillis()) c.add(Calendar.DAY_OF_MONTH, 1);
+        return c.getTimeInMillis();
+    }
+
+    /** Night dim, 10-90 %. Older builds stored light / medium / strong. */
+    int nightDim() {
+        String v = get(NIGHT_DIM, "50");
+        switch (v) {
+            case "light": return 30;
+            case "medium": return 50;
+            case "strong": return 65;
+            default:
+                try {
+                    return Math.max(10, Math.min(90, Integer.parseInt(v)));
+                } catch (NumberFormatException e) {
+                    return 50;
+                }
+        }
+    }
+
     int nightAlpha() {
-        return NIGHT_ALPHA[Arrays.asList(NIGHT_DIM.values).indexOf(get(NIGHT_DIM))];
+        return nightDim() * 255 / 100;
     }
 
     /** How much weather the header shows; one setting instead of four toggles. */
     static final Choice W_DETAIL = new Choice("weather.detail", "Weather details", "full",
-            new String[] {"full", "simple", "minimal"},
-            new String[] {"Everything", "Now and next hours", "Temperature only"});
+            new String[] {"full", "simple", "today", "minimal"},
+            new String[] {"Everything", "Now and next hours", "Today only", "Temperature only"});
 
     static final Choice FRAME = new Choice("frame", "Photo frame", "off",
             new String[] {"off", "1", "2", "5", "10"},
             new String[] {"Off", "After 1 min", "After 2 min", "After 5 min", "After 10 min"});
-    static final Choice FRAME_FOR = new Choice("frame.for", "Photo frame runs", "30",
+    static final Choice FRAME_FOR = new Choice("frame.for", "Photo frame lasts", "30",
             new String[] {"15", "30", "60", "120"},
-            new String[] {"15 min, then TV may sleep", "30 min, then TV may sleep",
-                "1 hour, then TV may sleep", "2 hours, then TV may sleep"});
+            new String[] {"15 min", "30 min", "1 hour", "2 hours"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT,
-        NIGHT_DIM};
+        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";

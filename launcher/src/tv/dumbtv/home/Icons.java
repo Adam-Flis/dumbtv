@@ -17,7 +17,7 @@ final class Icons extends Drawable {
     static final int SUN = 0, MOON = 1, PARTLY = 2, PARTLY_NIGHT = 3, CLOUD = 4, FOG = 5, RAIN = 6,
             SNOW = 7, STORM = 8, STAR = 9, GRID = 10, INPUT = 11, WIFI = 12, GEAR = 13, SLIDERS = 14,
             HOUSE = 15, PALETTE = 16, PHOTO = 17, DOTS = 18, BAG = 19, LIBRARY = 20,
-            PENCIL = 21, CLOCK = 22, SLEEP = 23;
+            PENCIL = 21, CLOCK = 22, SLEEP = 23, CONTRAST = 24, NIGHT = 25, TIMER = 26;
     private static final int AMBER = 0xFFFFC53D, CLOUDY = 0xFFE3E6EA, BLUE = 0xFF5AB0FF,
             MOONLIGHT = 0xFFEDE7CF;
 
@@ -188,6 +188,36 @@ final class Icons extends Drawable {
                 fill.setColor(tint);
                 for (int i = 0; i < 3; i++) c.drawCircle(s * (0.22f + i * 0.28f), s / 2, s * 0.085f, fill);
                 break;
+            case CONTRAST: {
+                // a circle, half filled: light and dark, i.e. appearance
+                stroke(tint, s * 0.08f);
+                c.drawCircle(s / 2, s / 2, s * 0.4f, line);
+                fill.setColor(tint);
+                r.set(s * 0.1f, s * 0.1f, s * 0.9f, s * 0.9f);
+                c.drawArc(r, 90, 180, true, fill);
+                break;
+            }
+            case NIGHT: {
+                // crescent and two small stars
+                fill.setColor(tint);
+                path.reset();
+                path.addCircle(s * 0.42f, s * 0.56f, s * 0.36f, Path.Direction.CW);
+                Path bite = new Path();
+                bite.addCircle(s * 0.6f, s * 0.42f, s * 0.3f, Path.Direction.CW);
+                path.op(bite, Path.Op.DIFFERENCE);
+                c.drawPath(path, fill);
+                star(c, s * 0.76f, s * 0.2f, s * 0.11f);
+                star(c, s * 0.88f, s * 0.48f, s * 0.07f);
+                break;
+            }
+            case TIMER:
+                // a stopwatch
+                stroke(tint, s * 0.08f);
+                c.drawCircle(s / 2, s * 0.56f, s * 0.34f, line);
+                c.drawLine(s / 2, s * 0.56f, s / 2, s * 0.36f, line);
+                c.drawLine(s * 0.4f, s * 0.1f, s * 0.6f, s * 0.1f, line);
+                c.drawLine(s / 2, s * 0.1f, s / 2, s * 0.22f, line);
+                break;
             case CLOCK:
                 stroke(tint, s * 0.09f);
                 c.drawCircle(s / 2, s / 2, s * 0.4f, line);
@@ -286,6 +316,17 @@ final class Icons extends Drawable {
         c.drawCircle(x + w * 0.76f, y + w * 0.46f, w * 0.16f, fill);
         r.set(x + w * 0.12f, y + w * 0.4f, x + w * 0.92f, y + w * 0.62f);
         c.drawRoundRect(r, w * 0.11f, w * 0.11f, fill);
+    }
+
+    /** A four-point sparkle. */
+    private void star(Canvas c, float cx, float cy, float rad) {
+        path.reset();
+        path.moveTo(cx, cy - rad);
+        path.quadTo(cx, cy, cx + rad, cy);
+        path.quadTo(cx, cy, cx, cy + rad);
+        path.quadTo(cx, cy, cx - rad, cy);
+        path.quadTo(cx, cy, cx, cy - rad);
+        c.drawPath(path, fill);
     }
 
     private void poly(Canvas c, float s, float... xy) {

@@ -90,9 +90,10 @@ upstream home screen:
   showing, a card offers **Switch** / **Not now** (gone after 15 s). Options › Home screen ›
   Offer to switch inputs. Test it with `adb shell touch /sdcard/Android/data/tv.dumbtv.home/files/test-input`
   and return to the home screen.
-- **Night mode** (Options › Home screen): from 9, 10 or 11 PM until 6 AM the screen gets a warm
-  dim and the photo frame stays off, so the TV can fall asleep.
-- **Sleep timer** (top bar, moon icon): 15 min to 2 h, then the TV turns off. While it runs the
+- **Night mode** (Options › Night & photos): a schedule with exact start/end times (time picker)
+  and a dim slider (10-90 %); warm dim, no photo frame. The top bar's moon-and-stars button
+  switches it on or off now; that lasts until the schedule's next change.
+- **Sleep timer** (top bar, stopwatch icon): 15 min to 2 h, then the TV turns off. While it runs the
   button stays open with the minutes left, in amber. It needs dumbtv as a device administrator
   with the single "lock screen" policy (what turns a TV off). Fire OS 6 answers the normal
   "Activate" screen with a dummy, so allow it once from a computer:
@@ -115,7 +116,7 @@ upstream home screen:
   groups listed on the left (Right opens a group, Back or Left returns to the list): accent color,
   tile size, text size, background, clock 12/24 h, app names (large at top, or under the
   selected app only), and the below. Row titles are larger with drawn icons.
-- **Options** groups: Apps, Look, Weather, Photo frame & night, More. Rows that depend on
+- **Options** groups: Apps, Appearance, Weather, Night & photos, More, each heading over a rule. Rows that depend on
   another setting only appear when it is on.
 - **Weather** (off by default): Options › Weather, Temperature, Weather city. Uses
   [Open-Meteo](https://open-meteo.com) (no account, no key; only the city's coordinates are

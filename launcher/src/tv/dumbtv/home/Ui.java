@@ -125,6 +125,7 @@ final class Ui {
             cap.setStroke(Math.max(1, dp(c, 1)), 0x47FFFFFF);
             key.setBackground(cap);
             TextView what = text(c, 15, 0xCCFFFFFF, MEDIUM);
+            what.setSingleLine();
             what.setText(pairs[i + 1]);
             what.setPadding(dp(c, 9), 0, dp(c, 22), 0);
             bar.addView(key);
