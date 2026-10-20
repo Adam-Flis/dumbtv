@@ -83,6 +83,7 @@ public final class Home extends Activity {
     private LinearLayout bar;
     private TextView net;
     private int netColor = 0xFF34C759;
+    private final java.util.Map<TextView, String> chipLabels = new java.util.HashMap<>();
     private ConnectivityManager cm;
     private WifiManager wifi;
 
@@ -499,6 +500,11 @@ public final class Home extends Activity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setClipChildren(false);
         bar.setClipToPadding(false);
+        // the focused button grows to show its name; the others slide aside smoothly
+        android.animation.LayoutTransition grow = new android.animation.LayoutTransition();
+        grow.enableTransitionType(android.animation.LayoutTransition.CHANGING);
+        grow.setDuration(140);
+        bar.setLayoutTransition(grow);
         bar.addView(chip(Icons.INPUT, "Inputs  \u25BE", this::inputsMenu));
         net = chip(Icons.WIFI, "", v -> openWifi());
         bar.addView(net);
@@ -661,11 +667,11 @@ public final class Home extends Activity {
 
     private TextView chip(int icon, String label, View.OnClickListener click) {
         TextView v = Ui.text(this, 15, Ui.TEXT, Ui.MEDIUM);
-        v.setText(label);
         v.setTag(icon);
+        chipLabels.put(v, label);
         v.setGravity(Gravity.CENTER);
-        v.setPadding(dp(16), dp(10), dp(18), dp(10));
-        v.setCompoundDrawablePadding(dp(8));
+        v.setMinWidth(dp(48));
+        v.setMinHeight(dp(44));
         v.setFocusable(true);
         v.setClickable(true);
         v.setOnClickListener(click);
@@ -680,10 +686,19 @@ public final class Home extends Activity {
         return v;
     }
 
-    /** Top-bar icon: dark on a light accent when focused; the Wi-Fi icon always shows its status color. */
+    /**
+     * Top-bar button: icon only, and the name next to it while focused. The icon turns dark on a
+     * light accent; the Wi-Fi icon always shows its status color.
+     */
     private void chipIcon(TextView v) {
         if (!(v.getTag() instanceof Integer)) return;
-        int color = v == net ? netColor : v.isFocused() ? Ui.ink(cfg.accent()) : Ui.TEXT;
+        boolean open = v.isFocused();
+        String label = chipLabels.get(v);
+        v.setText(open ? label : "");
+        v.setContentDescription(label);
+        v.setCompoundDrawablePadding(open ? dp(8) : 0);
+        v.setPadding(dp(open ? 16 : 13), dp(10), dp(open ? 18 : 13), dp(10));
+        int color = v == net ? netColor : open ? Ui.ink(cfg.accent()) : Ui.TEXT;
         v.setCompoundDrawablesRelative(Icons.of((Integer) v.getTag(), dp(19), color), null, null, null);
     }
 
@@ -1076,7 +1091,7 @@ public final class Home extends Activity {
             if (!online) name += " \u00B7 No internet";
         }
         // a drawable, not a colored character: Fire OS "high contrast text" repaints text black/white
-        net.setText(name);
+        chipLabels.put(net, name);
         netColor = color;
         chipIcon(net);
     }

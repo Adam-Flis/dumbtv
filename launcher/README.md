@@ -77,7 +77,7 @@ upstream home screen:
   `favorites=` in `home.conf`.
 - **Apple TV-style look**: greeting, large clock and date, the focused app's name large above
   the rows (App names › Large, at top), rounded tiles that lift with a shadow on focus.
-- **Top bar** with icons: Inputs dropdown (green dot = device plugged in), Wi-Fi name with a
+- **Top bar** of icon buttons; the selected one slides open to show its name: Inputs dropdown (green dot = device plugged in), Wi-Fi name with a
   colored Wi-Fi icon (green online, amber no internet, red offline), Options, Settings.
   Amazon's home screen stays in Options › More on purpose, away from accidental presses.
 - **Options**, grouped into Look, Home screen, Weather, Photo frame and More, with the
