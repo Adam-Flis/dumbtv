@@ -28,9 +28,17 @@ final class Catalog {
     static final String STORE = "+store", LIBRARY = "+library";
     static final String APPSTORE = "com.amazon.venezia";
 
-    /** Amazon's Appstore, or null when it is missing or disabled. */
+    /**
+     * Amazon's Appstore storefront, or null when it is missing or disabled. Its launch intent
+     * opens "Your Apps & Channels" instead, so the store's own entry points come first.
+     */
     static Intent storeIntent(Context c) {
         PackageManager pm = c.getPackageManager();
+        for (String action : new String[] {"com.amazon.venezia.ade.FEATURED_LAUNCH",
+                "com.amazon.venezia.ade.ALL_CATEGORIES_LAUNCH"}) {
+            Intent i = new Intent(action).setPackage(APPSTORE);
+            if (i.resolveActivity(pm) != null) return i;
+        }
         Intent i = pm.getLeanbackLaunchIntentForPackage(APPSTORE);
         return i != null ? i : pm.getLaunchIntentForPackage(APPSTORE);
     }

@@ -34,6 +34,11 @@ final class Tile extends View {
     private final TextPaint inner = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint under = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private boolean moving;
+    /** A corner badge: "✓" draws a check mark, anything else is drawn as text (an order number). */
+    private String badge;
+    private final int accent;
+    private final Paint badgeFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint badgeMark = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     Tile(Context c, Item item, String kind, CharSequence title, int cardW, int cardH,
             String labels, int accent) {
@@ -54,6 +59,15 @@ final class Tile extends View {
         ring.setStyle(Paint.Style.STROKE);
         ring.setStrokeWidth(stroke);
         ring.setColor(accent);
+        this.accent = accent;
+        badgeFill.setColor(accent);
+        badgeMark.setColor(Ui.ink(accent));
+        badgeMark.setTypeface(Ui.MEDIUM);
+        badgeMark.setTextAlign(Paint.Align.CENTER);
+        badgeMark.setTextSize(Ui.dp(c, 15));
+        badgeMark.setStrokeWidth(Ui.dp(c, 2.5f));
+        badgeMark.setStrokeCap(Paint.Cap.ROUND);
+        badgeMark.setStrokeJoin(Paint.Join.ROUND);
         dot.setColor(0xFF34C759);
         inner.setColor(Ui.TEXT);
         inner.setTypeface(Ui.MEDIUM);
@@ -78,6 +92,27 @@ final class Tile extends View {
 
     CharSequence title() {
         return title;
+    }
+
+    void setBadge(String b) {
+        badge = b;
+        invalidate();
+    }
+
+    private void drawBadge(Canvas canvas) {
+        float r = Ui.dp(getContext(), 14), cx = cardW - r - Ui.dp(getContext(), 7), cy = r + Ui.dp(getContext(), 7);
+        canvas.drawCircle(cx, cy, r, badgeFill);
+        if ("\u2713".equals(badge)) {
+            badgeMark.setStyle(Paint.Style.STROKE);
+            arrow.reset();
+            arrow.moveTo(cx - r * 0.42f, cy + r * 0.02f);
+            arrow.lineTo(cx - r * 0.1f, cy + r * 0.34f);
+            arrow.lineTo(cx + r * 0.45f, cy - r * 0.3f);
+            canvas.drawPath(arrow, badgeMark);
+        } else {
+            badgeMark.setStyle(Paint.Style.FILL);
+            canvas.drawText(badge, cx, cy - (badgeMark.ascent() + badgeMark.descent()) / 2, badgeMark);
+        }
     }
 
     void setMoving(boolean on) {
@@ -143,6 +178,7 @@ final class Tile extends View {
             canvas.drawRoundRect(half, half, cardW - half, cardH - half, radius - half, radius - half, ring);
         }
         if (moving) drawArrows(canvas);
+        if (badge != null) drawBadge(canvas);
         // "Under the selected app": the space is kept under every tile, the name shows on focus only
         boolean label = banner != null && labelAlways && isFocused();
         if (labelH > 0 && label) {

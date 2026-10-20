@@ -157,6 +157,14 @@ public final class Home extends Activity {
     private final class Row {
         final String kind;
         final TextView title;
+        int icon;
+
+        /** Options > Row title size: text and icon grow together. */
+        void sizeTitle(float s) {
+            title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 17 * Ui.scale * s);
+            title.setCompoundDrawablesRelative(Icons.of(icon, dp(20 * s), 0xD9FFFFFF), null, null, null);
+            title.setCompoundDrawablePadding(dp(12 * s));
+        }
         final HorizontalScrollView scroll;
         final LinearLayout strip;
         List<Item> all = new ArrayList<>();
@@ -169,7 +177,7 @@ public final class Home extends Activity {
             title.setText(name.toUpperCase(Locale.ROOT));
             title.setLetterSpacing(0.12f);
             title.setGravity(Gravity.CENTER_VERTICAL);
-            title.setCompoundDrawablesRelative(Icons.of(icon, dp(20), 0xD9FFFFFF), null, null, null);
+            this.icon = icon;
             title.setCompoundDrawablePadding(dp(12));
             title.setPadding(edge, dp(26), edge, dp(4));
             strip = new LinearLayout(Home.this);
@@ -738,8 +746,20 @@ public final class Home extends Activity {
         v.setCompoundDrawablePadding(open ? dp(8) : 0);
         // closed: 12 + 20 + 12 = 44 dp wide, as tall as it is wide, so the icon sits dead center
         v.setPadding(dp(open ? 16 : 12), dp(10), dp(open ? 18 : 12), dp(10));
-        int color = v == net ? netColor : open ? Ui.ink(cfg.accent()) : Ui.TEXT;
-        v.setCompoundDrawablesRelative(Icons.of((Integer) v.getTag(), dp(20), color), null, null, null);
+        // On the accent fill the icon turns dark/white like the text; the Wi-Fi status then moves to
+        // a ringed dot after the name, so green never sits on blue.
+        int ink = Ui.ink(cfg.accent());
+        int color = open ? ink : v == net ? netColor : Ui.TEXT;
+        android.graphics.drawable.Drawable status = null;
+        if (open && v == net) {
+            GradientDrawable dot = new GradientDrawable();
+            dot.setShape(GradientDrawable.OVAL);
+            dot.setColor(netColor);
+            dot.setStroke(dp(2), ink);
+            dot.setBounds(0, 0, dp(14), dp(14));
+            status = dot;
+        }
+        v.setCompoundDrawablesRelative(Icons.of((Integer) v.getTag(), dp(20), color), null, status, null);
     }
 
     private void apply() {
@@ -749,6 +769,8 @@ public final class Home extends Activity {
             Ui.chipStyle(c, accent, dp(20), Math.max(1, dp(1)));
             chipIcon(c);
         }
+        float ts = cfg.titleScale();
+        for (Row row : new Row[] {favs, apps, inputs}) row.sizeTitle(ts);
         render(favs);
         render(apps);
         render(inputs);
@@ -1238,11 +1260,11 @@ public final class Home extends Activity {
 
     private void open(Tile t) {
         if (Catalog.ADD.equals(t.item.id)) {
-            Options.pickFavorites(this, apps.all, this::apply);
+            Picker.open(this, Picker.FAVS);
             return;
         }
         if (Catalog.LIBRARY.equals(t.item.id)) {
-            Options.pickApps(this, apps.all, this::apply);
+            Picker.open(this, Picker.LIBRARY);
             return;
         }
         if (Catalog.STORE.equals(t.item.id)) {

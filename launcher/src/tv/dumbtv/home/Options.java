@@ -78,10 +78,11 @@ public final class Options extends Activity {
         section("Home screen", Icons.HOUSE);
         list.addView(choice(Config.TILES));
         list.addView(choice(Config.TEXT));
+        list.addView(choice(Config.TITLES));
         list.addView(choice(Config.LABELS));
         list.addView(choice(Config.CLOCK));
         list.addView(choice(Config.INPUTS));
-        list.addView(action("Favorites", () -> pickFavorites(this, Catalog.apps(this), null)));
+        list.addView(action("Favorites", () -> Picker.open(this, Picker.FAVS)));
         list.addView(action("App library (apps on home screen)", () -> pick(Catalog.APPS)));
         list.addView(action("Get more apps (Appstore)", () -> {
             Intent store = Catalog.storeIntent(this);
@@ -395,31 +396,9 @@ public final class Options extends Activity {
         navIcon(item);
     }
 
-    /**
-     * The app library: every installed app, ticked when it shows in All apps. Apps without a TV
-     * banner (Appstore, Downloads, phone apps) start unticked.
-     */
-    static void pickApps(Activity a, List<Item> items, Runnable done) {
-        Config cfg = Config.get(a);
-        CharSequence[] names = new CharSequence[items.size()];
-        boolean[] on = new boolean[items.size()];
-        for (int i = 0; i < items.size(); i++) {
-            names[i] = Catalog.label(cfg, items.get(i));
-            on[i] = Catalog.shown(cfg, Catalog.APPS, items.get(i));
-        }
-        AlertDialog d = new AlertDialog.Builder(a, Ui.DIALOG)
-                .setTitle("App library \u00B7 tick to show in All apps")
-                .setMultiChoiceItems(names, on, (dialog, which, checked) ->
-                        Catalog.setShown(cfg, Catalog.APPS, items.get(which), checked))
-                .setPositiveButton("Done", null)
-                .create();
-        if (done != null) d.setOnDismissListener(x -> done.run());
-        d.show();
-    }
-
     private void pick(String kind) {
         if (Catalog.APPS.equals(kind)) {
-            pickApps(this, Catalog.apps(this), null);
+            Picker.open(this, Picker.LIBRARY);
             return;
         }
         List<Item> items = Catalog.inputs(this, (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE));
@@ -435,32 +414,6 @@ public final class Options extends Activity {
                         Catalog.setShown(cfg, kind, items.get(which), checked))
                 .setPositiveButton("Done", null)
                 .show();
-    }
-
-    /**
-     * Ticks apps in and out of the Favorites dock. A new tick goes to the end of the dock;
-     * the order is changed with Move on the home screen.
-     */
-    static void pickFavorites(Activity a, List<Item> all, Runnable done) {
-        Config cfg = Config.get(a);
-        List<Item> items = new ArrayList<>(Catalog.favorites(cfg, all));
-        for (Item it : all) {
-            if (!items.contains(it)) items.add(it);
-        }
-        CharSequence[] names = new CharSequence[items.size()];
-        boolean[] on = new boolean[items.size()];
-        for (int i = 0; i < items.size(); i++) {
-            names[i] = Catalog.label(cfg, items.get(i));
-            on[i] = Catalog.isFavorite(cfg, items.get(i));
-        }
-        AlertDialog d = new AlertDialog.Builder(a, Ui.DIALOG)
-                .setTitle("Favorites")
-                .setMultiChoiceItems(names, on, (dialog, which, checked) ->
-                        Catalog.setFavorite(cfg, items.get(which), checked))
-                .setPositiveButton("Done", null)
-                .create();
-        if (done != null) d.setOnDismissListener(x -> done.run());
-        d.show();
     }
 
     private void reset() {

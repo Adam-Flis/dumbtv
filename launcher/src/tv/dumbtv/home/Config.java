@@ -62,6 +62,14 @@ final class Config {
             new String[] {"small", "medium", "large", "xlarge"},
             new String[] {"Small", "Medium", "Large", "Extra large"});
     private static final float[] TEXT_SCALES = {0.9f, 1f, 1.15f, 1.3f};
+    static final Choice TITLES = new Choice("titles", "Row title size", "medium",
+            new String[] {"small", "medium", "large", "xlarge"},
+            new String[] {"Small", "Medium", "Large", "Extra large"});
+    private static final float[] TITLE_SCALES = {0.85f, 1f, 1.3f, 1.6f};
+
+    float titleScale() {
+        return TITLE_SCALES[Arrays.asList(TITLES.values).indexOf(get(TITLES))];
+    }
     static final Choice LABELS = new Choice("labels", "App names", "focus",
             new String[] {"focus", "always", "never"},
             new String[] {"Large, at top", "Under the selected app", "Off"});
@@ -106,7 +114,7 @@ final class Config {
             new String[] {"15 min, then TV may sleep", "30 min, then TV may sleep",
                 "1 hour, then TV may sleep", "2 hours, then TV may sleep"});
 
-    static final Choice[] CHOICES = {ACCENT, TILES, TEXT, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
+    static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
         WEATHER, UNITS, W_ICON, W_HOURS, W_FEELS, W_SUN, FRAME, FRAME_FOR};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */

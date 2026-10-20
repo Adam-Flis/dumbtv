@@ -71,7 +71,8 @@ final class Ui {
 
     /** Black on light accents, white on dark ones. */
     static int ink(int color) {
-        return Color.luminance(color) > 0.5f ? 0xFF000000 : 0xFFFFFFFF;
+        // 0.36 rather than 0.5: cyan, green and amber read far better with black than white
+        return Color.luminance(color) > 0.36f ? 0xFF000000 : 0xFFFFFFFF;
     }
 
     static TextView text(Context c, float sp, int color, Typeface face) {

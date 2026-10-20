@@ -77,9 +77,11 @@ upstream home screen:
   `favorites=` in `home.conf`.
 - **Background › Selected app's color** (default): the screen glows in the color of the app
   you are on (YouTube red, Spotify green), taken from its banner and faded in.
-- **Getting more apps**: All apps ends with **Get more apps** (opens Amazon's Appstore) and
-  **App library** (every installed app; tick one to show it in All apps). Both are also in
-  Options › Home screen.
+- **Getting more apps**: All apps ends with **Get more apps** (opens the Appstore's Featured
+  page) and **App library**. Favorites and App library open a full-screen grid of every
+  installed app: OK ticks an app in or out (a number shows its place in Favorites, a check
+  that it is in All apps), Back closes. Both are also in Options › Home screen.
+- **Row title size** (Options › Home screen) scales FAVORITES / ALL APPS / INPUTS and their icons.
 - **Apple TV-style look**: greeting, large clock and date, the focused app's name large above
   the rows (App names › Large, at top), rounded tiles that lift with a shadow on focus.
 - **Top bar** of icon buttons; the selected one slides open to show its name: Inputs dropdown (green dot = device plugged in), Wi-Fi name with a
