@@ -23,7 +23,7 @@ final class Tile extends View {
     final String kind;
     private final CharSequence title;
     private final int cardW, cardH, labelH;
-    private final boolean labelAlways, labelOnFocus;
+    private final boolean labelAlways;
     private final float radius, stroke;
     private final RectF card = new RectF();
     private final Path clip = new Path();
@@ -47,7 +47,6 @@ final class Tile extends View {
         // "focus" shows the name large above the rows instead, so no room is kept under the tile
         labelH = app && "always".equals(labels) ? Ui.dp(c, 26 * Ui.scale) : 0;
         labelAlways = "always".equals(labels);
-        labelOnFocus = "focus".equals(labels);
         radius = Ui.dp(c, 14);
         stroke = Ui.dp(c, 2.5f);
 
@@ -144,7 +143,8 @@ final class Tile extends View {
             canvas.drawRoundRect(half, half, cardW - half, cardH - half, radius - half, radius - half, ring);
         }
         if (moving) drawArrows(canvas);
-        boolean label = banner != null && (labelAlways || labelOnFocus && isFocused());
+        // "Under the selected app": the space is kept under every tile, the name shows on focus only
+        boolean label = banner != null && labelAlways && isFocused();
         if (labelH > 0 && label) {
             drawLine(canvas, under, cardW / 2f, cardH + labelH - Ui.dp(getContext(), 6));
         }

@@ -50,24 +50,44 @@ public final class Options extends Activity {
         title.setPadding(dp(16), 0, 0, dp(20));
         list.addView(title);
 
-        for (Config.Choice c : Config.CHOICES) {
-            list.addView(choice(c));
-            if (c == Config.UNITS) list.addView(cityRow());
-            if (c == Config.FRAME_FOR) {
-                list.addView(action("Show photo frame now", () -> {
-                    Home.frameNow = true;
-                    finish();
-                }));
-            }
-        }
+        section(list, "Look", true);
+        list.addView(choice(Config.ACCENT));
+        list.addView(choice(Config.BACKGROUND));
+        list.addView(choice(Config.DIM));
+        list.addView(choice(Config.ROTATE));
         list.addView(action("Next wallpaper", () -> {
             cfg.nextWallpaper();
             refresh();
         }));
-        list.addView(gap());
+
+        section(list, "Home screen", false);
+        list.addView(choice(Config.TILES));
+        list.addView(choice(Config.TEXT));
+        list.addView(choice(Config.LABELS));
+        list.addView(choice(Config.CLOCK));
+        list.addView(choice(Config.INPUTS));
         list.addView(action("Favorites", () -> pickFavorites(this, Catalog.apps(this), null)));
         list.addView(action("Apps on home screen", () -> pick(Catalog.APPS)));
         list.addView(action("Inputs on home screen", () -> pick(Catalog.INPUTS)));
+
+        section(list, "Weather", false);
+        list.addView(choice(Config.WEATHER));
+        list.addView(cityRow());
+        list.addView(choice(Config.UNITS));
+        list.addView(choice(Config.W_ICON));
+        list.addView(choice(Config.W_HOURS));
+        list.addView(choice(Config.W_FEELS));
+        list.addView(choice(Config.W_SUN));
+
+        section(list, "Photo frame", false);
+        list.addView(choice(Config.FRAME));
+        list.addView(choice(Config.FRAME_FOR));
+        list.addView(action("Show photo frame now", () -> {
+            Home.frameNow = true;
+            finish();
+        }));
+
+        section(list, "More", false);
         list.addView(action("Reset order, names and hidden tiles", this::reset));
         list.addView(action("Open Amazon's home screen", () -> {
             Guard.amazon(this);
@@ -80,7 +100,8 @@ public final class Options extends Activity {
         about.setText("Settings file: " + cfg.dir + "/" + Config.FILE
                 + "\nWallpaper: put wallpaper.jpg in that folder, then pick Background › Image file"
                 + "\nSeveral wallpapers: put them in " + Config.WALLPAPERS + "/ and pick a rotation"
-                + "\nNo internet permission. No tracking, no ads, no accounts.");
+                + "\nPhotos for the photo frame: put them in " + PhotoFrame.FOLDER + "/"
+                + "\nInternet is used only for the weather, and only while it is on. No tracking, no ads.");
         list.addView(about);
 
         setContentView(scroll);
@@ -130,7 +151,8 @@ public final class Options extends Activity {
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
             boolean off = (c == Config.DIM || c == Config.ROTATE)
                     && !"image".equals(cfg.get(Config.BACKGROUND))
-                    || c == Config.UNITS && !"on".equals(cfg.get(Config.WEATHER))
+                    || (c == Config.UNITS || c == Config.W_ICON || c == Config.W_HOURS || c == Config.W_FEELS
+                        || c == Config.W_SUN) && !"on".equals(cfg.get(Config.WEATHER))
                     || c == Config.FRAME_FOR && "off".equals(cfg.get(Config.FRAME));
             row.setAlpha(off ? 0.4f : 1f);
         };
@@ -251,10 +273,13 @@ public final class Options extends Activity {
         return v;
     }
 
-    private View gap() {
-        View v = new View(this);
-        v.setLayoutParams(new LinearLayout.LayoutParams(1, dp(18)));
-        return v;
+    /** A group heading: small, spaced capitals above its rows. */
+    private void section(LinearLayout list, String name, boolean first) {
+        TextView v = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        v.setText(name.toUpperCase(java.util.Locale.ROOT));
+        v.setLetterSpacing(0.12f);
+        v.setPadding(dp(16), dp(first ? 4 : 30), 0, dp(8));
+        list.addView(v);
     }
 
     private void pick(String kind) {

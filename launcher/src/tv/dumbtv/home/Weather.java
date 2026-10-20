@@ -24,10 +24,22 @@ final class Weather {
 
     /** One forecast, already turned into what the screen shows. */
     static final class Report {
-        int temp, hi, lo, code;
+        int temp, hi, lo, code, feels, wind;
         boolean day;
+        String windUnit;
+        /** The next hours, nearest first. */
+        final java.util.List<Hour> hours = new java.util.ArrayList<>();
+        /** "Sunset 6:31 PM" or "Sunrise 7:40 AM", whichever comes next. */
+        String sun;
+        int tomorrowHi, tomorrowLo, tomorrowCode, tomorrowRain;
         /** The heads-up line ("Rain around 5 PM, take a jacket"), or null when nothing is worth saying. */
         String hint;
+    }
+
+    static final class Hour {
+        String at;
+        int temp, code, rain;
+        boolean day;
     }
 
     private Weather() {}
@@ -47,10 +59,11 @@ final class Weather {
 
     static Report fetch(String lat, String lon, boolean fahrenheit, boolean h24) throws IOException, JSONException {
         String url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon
-                + "&current=temperature_2m,weather_code,is_day"
-                + "&hourly=precipitation_probability,weather_code&forecast_hours=9"
-                + "&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto"
-                + (fahrenheit ? "&temperature_unit=fahrenheit" : "");
+                + "&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,is_day"
+                + "&hourly=temperature_2m,precipitation_probability,weather_code,is_day&forecast_hours=9"
+                + "&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,"
+                + "sunrise,sunset&forecast_days=2&timezone=auto"
+                + (fahrenheit ? "&temperature_unit=fahrenheit&wind_speed_unit=mph" : "");
         JSONObject json = new JSONObject(get(url));
         JSONObject now = json.getJSONObject("current");
         JSONObject daily = json.getJSONObject("daily");
@@ -60,7 +73,31 @@ final class Weather {
         r.day = now.optInt("is_day", 1) == 1;
         r.hi = (int) Math.round(daily.getJSONArray("temperature_2m_max").getDouble(0));
         r.lo = (int) Math.round(daily.getJSONArray("temperature_2m_min").getDouble(0));
-        r.hint = hint(r, json.getJSONObject("hourly"), fahrenheit, h24);
+        r.feels = (int) Math.round(now.optDouble("apparent_temperature", r.temp));
+        r.wind = (int) Math.round(now.optDouble("wind_speed_10m", 0));
+        r.windUnit = fahrenheit ? "mph" : "km/h";
+        JSONObject hourly = json.getJSONObject("hourly");
+        JSONArray times = hourly.getJSONArray("time");
+        for (int i = 1; i < times.length() && r.hours.size() < 5; i++) {
+            Hour h = new Hour();
+            h.at = clock(times.getString(i), h24);
+            h.temp = (int) Math.round(hourly.getJSONArray("temperature_2m").optDouble(i));
+            h.code = hourly.getJSONArray("weather_code").optInt(i);
+            h.rain = hourly.getJSONArray("precipitation_probability").optInt(i);
+            h.day = hourly.getJSONArray("is_day").optInt(i, 1) == 1;
+            r.hours.add(h);
+        }
+        // the next of sunrise / sunset; ISO local times compare as strings
+        String time = now.getString("time");
+        JSONArray rise = daily.getJSONArray("sunrise"), set = daily.getJSONArray("sunset");
+        if (time.compareTo(rise.getString(0)) < 0) r.sun = "Sunrise " + minutes(rise.getString(0), h24);
+        else if (time.compareTo(set.getString(0)) < 0) r.sun = "Sunset " + minutes(set.getString(0), h24);
+        else r.sun = "Sunrise " + minutes(rise.optString(1, rise.getString(0)), h24);
+        r.tomorrowHi = (int) Math.round(daily.getJSONArray("temperature_2m_max").optDouble(1));
+        r.tomorrowLo = (int) Math.round(daily.getJSONArray("temperature_2m_min").optDouble(1));
+        r.tomorrowCode = daily.getJSONArray("weather_code").optInt(1);
+        r.tomorrowRain = daily.getJSONArray("precipitation_probability_max").optInt(1);
+        r.hint = hint(r, hourly, fahrenheit, h24);
         return r;
     }
 
@@ -94,6 +131,14 @@ final class Weather {
         int h = Integer.parseInt(iso.substring(11, 13));
         if (h24) return String.format(Locale.ROOT, "%02d:00", h);
         return (h % 12 == 0 ? 12 : h % 12) + (h < 12 ? " AM" : " PM");
+    }
+
+    /** "2026-10-20T18:31" as "6:31 PM" or "18:31". */
+    private static String minutes(String iso, boolean h24) {
+        int h = Integer.parseInt(iso.substring(11, 13));
+        String m = iso.substring(14, 16);
+        if (h24) return String.format(Locale.ROOT, "%02d:%s", h, m);
+        return (h % 12 == 0 ? 12 : h % 12) + ":" + m + (h < 12 ? " AM" : " PM");
     }
 
     private static boolean isRain(int c) {

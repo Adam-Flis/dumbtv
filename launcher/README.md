@@ -79,11 +79,15 @@ upstream home screen:
   the rows (App names › Large, at top), rounded tiles that lift with a shadow on focus.
 - **Top bar**: Inputs dropdown (green dot = device plugged in), Wi-Fi name with a dot
   (green online, amber no internet, red offline), Options, Settings.
-- **Options**: accent color, tile size, text size, background, clock 12/24 h, and the below.
+- **Options**, grouped into Look, Home screen, Weather, Photo frame and More: accent color,
+  tile size, text size, background, clock 12/24 h, app names (large at top, or under the
+  selected app only), and the below. Row titles are larger with drawn icons.
 - **Weather** (off by default): Options › Weather, Temperature, Weather city. Uses
   [Open-Meteo](https://open-meteo.com) (no account, no key; only the city's coordinates are
   sent). Shows temperature, conditions and high/low by the clock, plus one heads-up line
-  ("Rain likely around 5 PM, take a jacket").
+  ("Rain likely around 5 PM, take a jacket"). Each extra can be shown or hidden: condition
+  icon, next 5 hours (icon, temperature, chance of rain), feels like & wind, next
+  sunrise/sunset & tomorrow.
 - **Photo frame** (off by default): after 1–10 idle minutes on the home screen, photos
   cross-fade with the clock and weather; any key returns. Runs 15 min–2 h, then the TV may
   sleep. Put your own pictures in `photos/` next to `home.conf`; until then 12 bundled

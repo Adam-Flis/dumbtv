@@ -64,7 +64,7 @@ final class Config {
     private static final float[] TEXT_SCALES = {0.9f, 1f, 1.15f, 1.3f};
     static final Choice LABELS = new Choice("labels", "App names", "focus",
             new String[] {"focus", "always", "never"},
-            new String[] {"Large, at top", "Under every tile", "Off"});
+            new String[] {"Large, at top", "Under the selected app", "Off"});
     static final Choice CLOCK = new Choice("clock", "Clock", "auto",
             new String[] {"auto", "24h", "12h"},
             new String[] {"System", "24-hour", "12-hour"});
@@ -89,6 +89,15 @@ final class Config {
             new String[] {"f", "c"},
             new String[] {"\u00B0F", "\u00B0C"});
 
+    static final Choice W_ICON = toggle("weather.icon", "Condition icon");
+    static final Choice W_HOURS = toggle("weather.hours", "Next hours");
+    static final Choice W_FEELS = toggle("weather.feels", "Feels like & wind");
+    static final Choice W_SUN = toggle("weather.sun", "Sunset & tomorrow");
+
+    private static Choice toggle(String key, String title) {
+        return new Choice(key, title, "on", new String[] {"on", "off"}, new String[] {"Shown", "Hidden"});
+    }
+
     static final Choice FRAME = new Choice("frame", "Photo frame", "off",
             new String[] {"off", "1", "2", "5", "10"},
             new String[] {"Off", "After 1 min", "After 2 min", "After 5 min", "After 10 min"});
@@ -98,7 +107,7 @@ final class Config {
                 "1 hour, then TV may sleep", "2 hours, then TV may sleep"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, FRAME, FRAME_FOR};
+        WEATHER, UNITS, W_ICON, W_HOURS, W_FEELS, W_SUN, FRAME, FRAME_FOR};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";
