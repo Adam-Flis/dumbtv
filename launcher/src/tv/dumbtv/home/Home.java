@@ -517,7 +517,7 @@ public final class Home extends Activity {
         top.setGravity(Gravity.BOTTOM);
         top.setClipChildren(false);
         top.setClipToPadding(false);
-        greeting = Ui.text(this, 20, Ui.MUTED, Ui.MEDIUM);
+        greeting = Ui.text(this, 30, 0xE6FFFFFF, Ui.MEDIUM);
         greeting.setPadding(dp(3), 0, 0, 0);
         top.addView(greeting, new LinearLayout.LayoutParams(0, WRAP, 1f));
         bar = new LinearLayout(this);
@@ -540,6 +540,8 @@ public final class Home extends Activity {
         // clock, current weather and the next hours share one line, centered on each other
         LinearLayout middle = new LinearLayout(this);
         middle.setGravity(Gravity.CENTER_VERTICAL);
+        // baseline alignment would push the columns around and cut the forecast's last line
+        middle.setBaselineAligned(false);
         middle.setClipChildren(false);
         middle.setClipToPadding(false);
         clock = Ui.text(this, 64, Ui.TEXT, Ui.LIGHT);
@@ -552,7 +554,17 @@ public final class Home extends Activity {
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(WRAP, WRAP);
         clp.topMargin = -Math.max(0, digits.top - fm.ascent);
         clp.bottomMargin = -Math.max(0, fm.descent);
-        middle.addView(clock, clp);
+        // the date rides under the clock in its own column, so it stays close however tall the
+        // forecast next to it gets
+        LinearLayout timeCol = new LinearLayout(this);
+        timeCol.setOrientation(LinearLayout.VERTICAL);
+        timeCol.setClipChildren(false);
+        timeCol.setClipToPadding(false);
+        timeCol.addView(clock, clp);
+        date = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
+        date.setPadding(dp(3), dp(10), 0, 0);
+        timeCol.addView(date);
+        middle.addView(timeCol);
         // icon, temperature, then conditions and feels-like stacked beside them: two short lines
         weatherBox = new LinearLayout(this);
         weatherBox.setGravity(Gravity.CENTER_VERTICAL);
@@ -585,29 +597,31 @@ public final class Home extends Activity {
         rlp.rightMargin = dp(12);
         rlp.topMargin = dp(16);
         middle.addView(hoursRule, rlp);
+        // next hours, and under them the next sunrise/sunset and tomorrow: one forecast block
+        LinearLayout forecast = new LinearLayout(this);
+        forecast.setOrientation(LinearLayout.VERTICAL);
         hours = new LinearLayout(this);
         hours.setVisibility(View.GONE);
-        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(WRAP, WRAP);
-        hlp.topMargin = dp(16); // clear of the top bar when a button opens up
-        middle.addView(hours, hlp);
+        forecast.addView(hours, new LinearLayout.LayoutParams(WRAP, WRAP));
+        sunLine = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        sunLine.setSingleLine();
+        sunLine.setPadding(dp(8), dp(8), 0, 0);
+        sunLine.setVisibility(View.GONE);
+        forecast.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
+        // padding, not a margin: a centered child's margin shifts it and cut off the last line
+        forecast.setPadding(0, dp(16), 0, 0); // clear of the top bar when a button opens up
+        middle.addView(forecast, new LinearLayout.LayoutParams(WRAP, WRAP));
         head.addView(middle, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         LinearLayout bottom = new LinearLayout(this);
         bottom.setGravity(Gravity.TOP);
         LinearLayout notes = new LinearLayout(this);
         notes.setOrientation(LinearLayout.VERTICAL);
-        date = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
-        date.setPadding(dp(3), dp(10), 0, 0);
         hint = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
         hint.setPadding(dp(3), dp(12), 0, 0);
         hint.setVisibility(View.GONE);
-        notes.addView(date);
         notes.addView(hint);
         bottom.addView(notes, new LinearLayout.LayoutParams(0, WRAP, 1f));
-        sunLine = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
-        sunLine.setPadding(0, dp(10), dp(8), 0);
-        sunLine.setVisibility(View.GONE);
-        bottom.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
         head.addView(bottom, new LinearLayout.LayoutParams(MATCH, WRAP));
         page.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
 
@@ -1113,7 +1127,7 @@ public final class Home extends Activity {
         showHours();
         if (on(Config.W_SUN) && weather.sun != null) {
             String t = Weather.describe(weather.tomorrowCode, true);
-            sunLine.setText(weather.sun + "   \u00B7   Tomorrow " + weather.tomorrowHi + "\u00B0 / "
+            sunLine.setText(weather.sun + "  \u00B7  Tomorrow " + weather.tomorrowHi + "\u00B0 / "
                     + weather.tomorrowLo + "\u00B0" + (t.isEmpty() ? "" : "  " + t)
                     + (weather.tomorrowRain >= 30 ? "  " + weather.tomorrowRain + "%" : ""));
             sunLine.setVisibility(View.VISIBLE);
