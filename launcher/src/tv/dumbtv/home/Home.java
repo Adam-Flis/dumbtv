@@ -1058,7 +1058,8 @@ public final class Home extends Activity {
                     if (last.containsKey(it.id) && !it.id.equals(Guard.AMAZON) && !it.id.contains("settings")) found.add(it);
                 }
                 java.util.Collections.sort(found, (a, b) -> Long.compare(last.get(b.id), last.get(a.id)));
-                if (found.size() > 6) found = new ArrayList<>(found.subList(0, 6));
+                // five, one line of the All apps grid
+                if (found.size() > 5) found = new ArrayList<>(found.subList(0, 5));
             } catch (RuntimeException e) {
                 android.util.Log.w("dumbtv", "recent apps: " + e);
             }

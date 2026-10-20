@@ -84,7 +84,7 @@ upstream home screen:
   that it is in All apps), Back closes. Both are also in Options › Home screen.
 - **All apps layout** (Options › Home screen): **Grid** (default; every app at once, lines
   that wrap, the page scrolls down) or **One row**.
-- **Recently used** row (Options › Home screen, on by default): the last 6 apps opened, from
+- **Recently used** row (Options › Home screen, on by default): the last 5 apps opened, from
   UsageStats (the Fire OS 6 Keeper's permission), newest first.
 - **"Switch input?" card**: when a device on an HDMI input turns on while the home screen is
   showing, a card offers **Switch** / **Not now** (gone after 15 s). Options › Home screen ›
