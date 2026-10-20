@@ -89,8 +89,16 @@ final class Config {
             new String[] {"f", "c"},
             new String[] {"\u00B0F", "\u00B0C"});
 
+    static final Choice FRAME = new Choice("frame", "Photo frame", "off",
+            new String[] {"off", "1", "2", "5", "10"},
+            new String[] {"Off", "After 1 min", "After 2 min", "After 5 min", "After 10 min"});
+    static final Choice FRAME_FOR = new Choice("frame.for", "Photo frame runs", "30",
+            new String[] {"15", "30", "60", "120"},
+            new String[] {"15 min, then TV may sleep", "30 min, then TV may sleep",
+                "1 hour, then TV may sleep", "2 hours, then TV may sleep"});
+
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS};
+        WEATHER, UNITS, FRAME, FRAME_FOR};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";

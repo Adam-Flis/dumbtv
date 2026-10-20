@@ -62,6 +62,12 @@ public final class Home extends Activity {
     private TvInputManager tv;
     private int applied = -1, appsGeneration;
     private float builtScale;
+    /** Set by Options > Show photo frame now. */
+    static boolean frameNow;
+    private PhotoFrame frame;
+    private boolean swallowUp;
+    private final Runnable idle = this::startFrame;
+    private final Runnable frameDone = this::endFrame;
     private boolean resumed, landed, ticking;
     private FrameLayout root;
     private ImageView wall;
@@ -253,6 +259,12 @@ public final class Home extends Activity {
         }
         if (cfg.version() != applied) apply();
         else background();
+        if (frameNow) {
+            frameNow = false;
+            ui.postDelayed(idle, 600);
+        } else {
+            resetIdle();
+        }
         IntentFilter f = new IntentFilter(Intent.ACTION_TIME_TICK);
         f.addAction(Intent.ACTION_TIME_CHANGED);
         f.addAction(Intent.ACTION_TIMEZONE_CHANGED);
@@ -272,6 +284,8 @@ public final class Home extends Activity {
         resumed = false;
         if (ticking) unregisterReceiver(time);
         ticking = false;
+        ui.removeCallbacks(idle);
+        stopFrame();
         if (moving != null) stopMoving();
     }
 
@@ -315,6 +329,20 @@ public final class Home extends Activity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
+        resetIdle();
+        // any key wakes the photo frame and does nothing else
+        if (frame != null) {
+            if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                stopFrame();
+                swallowUp = true;
+            }
+            return true;
+        }
+        if (swallowUp && e.getAction() == KeyEvent.ACTION_UP) {
+            swallowUp = false;
+            return true;
+        }
+        swallowUp = false;
         if (moving == null) return super.dispatchKeyEvent(e);
         if (e.getAction() == KeyEvent.ACTION_DOWN) {
             switch (e.getKeyCode()) {
@@ -749,6 +777,7 @@ public final class Home extends Activity {
         // hourly and time-of-day rotations change while the screen stays open; a no-op otherwise
         background();
         weather();
+        frameInfo();
     }
 
     private void background() {
@@ -794,6 +823,61 @@ public final class Home extends Activity {
                 .addCategory("android.intent.category.LEANBACK_SETTINGS");
         boolean found = tvSettings.resolveActivity(getPackageManager()) != null;
         launch(found ? tvSettings : new Intent(Settings.ACTION_SETTINGS), null);
+    }
+
+    private void resetIdle() {
+        ui.removeCallbacks(idle);
+        String after = cfg.get(Config.FRAME);
+        if (frame != null || "off".equals(after) || !resumed) return;
+        ui.postDelayed(idle, Integer.parseInt(after) * 60_000L);
+    }
+
+    private void startFrame() {
+        if (frame != null || !resumed) return;
+        // a dialog or the Inputs dropdown is open: wait for the next quiet period
+        if (!hasWindowFocus()) {
+            resetIdle();
+            return;
+        }
+        frame = new PhotoFrame(this, io, cfg.dir);
+        frame.setAlpha(0f);
+        root.addView(frame, new FrameLayout.LayoutParams(MATCH, MATCH));
+        frame.animate().alpha(1f).setDuration(800).start();
+        frameInfo();
+        frame.start();
+        // the TV stays on while the frame runs, then sleeps as usual
+        root.setKeepScreenOn(true);
+        ui.postDelayed(frameDone, Integer.parseInt(cfg.get(Config.FRAME_FOR)) * 60_000L);
+    }
+
+    private void endFrame() {
+        root.setKeepScreenOn(false);
+        if (frame != null) frame.pause();
+    }
+
+    private void stopFrame() {
+        ui.removeCallbacks(frameDone);
+        root.setKeepScreenOn(false);
+        if (frame == null) return;
+        // fade back to the home screen; keys work again at once
+        PhotoFrame going = frame;
+        frame = null;
+        going.pause();
+        going.animate().alpha(0f).setDuration(resumed ? 450 : 0).withEndAction(() -> {
+            going.stop();
+            root.removeView(going);
+        }).start();
+        resetIdle();
+    }
+
+    private void frameInfo() {
+        if (frame == null) return;
+        CharSequence line = null;
+        if (weather != null && weatherBox.getVisibility() == View.VISIBLE) {
+            line = temp.getText() + "  " + sky.getText();
+        }
+        frame.setInfo(clock.getText(), date.getText(), line,
+                hint.getVisibility() == View.VISIBLE ? hint.getText() : null);
     }
 
     /** Refreshes the forecast every 30 min while weather is on; shows or hides the weather views. */
@@ -850,6 +934,7 @@ public final class Home extends Activity {
         weatherBox.setVisibility(View.VISIBLE);
         hint.setText(weather.hint);
         hint.setVisibility(weather.hint == null ? View.GONE : View.VISIBLE);
+        frameInfo();
     }
 
     private boolean clock24() {

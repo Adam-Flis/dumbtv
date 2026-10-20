@@ -1,0 +1,14 @@
+Default photo-frame pictures. All public domain or CC0, from Wikimedia Commons.
+
+00-denali.jpg  Denali, Denali National Park and Preserve.jpg | NPS Photo / Emily Mesner | Public domain | https://commons.wikimedia.org/wiki/File:Denali,_Denali_National_Park_and_Preserve.jpg
+01-lake-mcdonald.jpg  Lake McDonald Sunrise 4 12 16 (26171445740).jpg | GlacierNPS | Public domain | https://commons.wikimedia.org/wiki/File:Lake_McDonald_Sunrise_4_12_16_(26171445740).jpg
+02-snowy-peak.jpg  Sunrise on Lake McDonald (5431843828).jpg | GlacierNPS | Public domain | https://commons.wikimedia.org/wiki/File:Sunrise_on_Lake_McDonald_(5431843828).jpg
+03-yellowstone-lake.jpg  Sunrise on Yellowstone Lake (Flat Mountain Arm) (32985162453).jpg | Yellowstone National Park | Public domain | https://commons.wikimedia.org/wiki/File:Sunrise_on_Yellowstone_Lake_(Flat_Mountain_Arm)_(32985162453).jpg
+04-beach-sunset.jpg  Leigh-on-Sea beach sunset (Unsplash).jpg | Joshua Fuller joshuafuller | CC0 | https://commons.wikimedia.org/wiki/File:Leigh-on-Sea_beach_sunset_(Unsplash).jpg
+05-ocean-sunset.jpg  Sunset over the beach (Unsplash).jpg | Bagus Ghufron bagusghufron | CC0 | https://commons.wikimedia.org/wiki/File:Sunset_over_the_beach_(Unsplash).jpg
+06-ruby-beach.jpg  Sunset ruby beach rocks coast scenic r mckenna march 04 2015 (16691114474).jpg | Olympic National P | Public domain | https://commons.wikimedia.org/wiki/File:Sunset_ruby_beach_rocks_coast_scenic_r_mckenna_march_04_2015_(16691114474).jpg
+07-winter-overlook.jpg  Winter at Hazel Mountain Overlook (50953066016).jpg | ShenandoahNPS | Public domain | https://commons.wikimedia.org/wiki/File:Winter_at_Hazel_Mountain_Overlook_(50953066016).jpg
+08-autumn-ridge.jpg  Autumn on Heintooga Ridge Road.jpg | Unknown author | Public domain | https://commons.wikimedia.org/wiki/File:Autumn_on_Heintooga_Ridge_Road.jpg
+09-autumn-river.jpg  Autumn river, October 2017--Jessie Snow (25353344697).jpg | Great Smoky Mountains National | Public domain | https://commons.wikimedia.org/wiki/File:Autumn_river,_October_2017--Jessie_Snow_(25353344697).jpg
+10-autumn-road.jpg  Autumn road into the mountains (Unsplash).jpg | Jordan Whitt jwwhitt | CC0 | https://commons.wikimedia.org/wiki/File:Autumn_road_into_the_mountains_(Unsplash).jpg
+11-meigs-falls.jpg  Meigs Falls, October 2013--Warren Bielenberg (40084812972).jpg | Great Smoky Mountains National | Public domain | https://commons.wikimedia.org/wiki/File:Meigs_Falls,_October_2013--Warren_Bielenberg_(40084812972).jpg

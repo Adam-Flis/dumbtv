@@ -50,8 +50,16 @@ public final class Options extends Activity {
         title.setPadding(dp(16), 0, 0, dp(20));
         list.addView(title);
 
-        for (Config.Choice c : Config.CHOICES) list.addView(choice(c));
-        list.addView(cityRow());
+        for (Config.Choice c : Config.CHOICES) {
+            list.addView(choice(c));
+            if (c == Config.UNITS) list.addView(cityRow());
+            if (c == Config.FRAME_FOR) {
+                list.addView(action("Show photo frame now", () -> {
+                    Home.frameNow = true;
+                    finish();
+                }));
+            }
+        }
         list.addView(action("Next wallpaper", () -> {
             cfg.nextWallpaper();
             refresh();
@@ -122,7 +130,8 @@ public final class Options extends Activity {
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
             boolean off = (c == Config.DIM || c == Config.ROTATE)
                     && !"image".equals(cfg.get(Config.BACKGROUND))
-                    || c == Config.UNITS && !"on".equals(cfg.get(Config.WEATHER));
+                    || c == Config.UNITS && !"on".equals(cfg.get(Config.WEATHER))
+                    || c == Config.FRAME_FOR && "off".equals(cfg.get(Config.FRAME));
             row.setAlpha(off ? 0.4f : 1f);
         };
         row.setOnFocusChangeListener((v, has) -> show.run());

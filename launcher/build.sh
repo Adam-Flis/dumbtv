@@ -41,13 +41,16 @@ if [[ ! -f $KEYSTORE ]]; then
   echo "created signing key $KEYSTORE (keep it: updates must be signed with the same key)"
 fi
 
+# assets/ (the photo frame's default pictures) is packed as-is when present
+ASSETS=
+[[ -d assets ]] && ASSETS=assets
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/dumbtv-home.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/gen" "$WORK/classes" build
 
 "$BT/aapt2" compile --dir res -o "$WORK/res.zip"
 "$BT/aapt2" link -I "$JAR" --manifest AndroidManifest.xml "$WORK/res.zip" \
-  --min-sdk-version "$MIN_SDK" --target-sdk-version 28 \
+  ${ASSETS:+-A "$ASSETS"} --min-sdk-version "$MIN_SDK" --target-sdk-version 28 \
   --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
   --java "$WORK/gen" -o "$WORK/app.apk"
 
