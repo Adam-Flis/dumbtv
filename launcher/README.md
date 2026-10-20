@@ -67,6 +67,36 @@ is signed with your key, the release with the project's, and Android will not
 update one with the other: `install.sh` says so and tells you to
 `adb uninstall tv.dumbtv.home` first (back up `home.conf` before, see below).
 
+## This fork (`my-launcher`)
+
+Built for a Fire OS 6.7 TV (`MIN_SDK=25`, `./launcher/install.sh --build`). On top of the
+upstream home screen:
+
+- **Favorites dock**: a row above All apps with any number of apps. Hold OK or ☰ on a tile:
+  Add to / Remove from Favorites, Move. Options › Favorites is a checklist. Saved as
+  `favorites=` in `home.conf`.
+- **Apple TV-style look**: greeting, large clock and date, the focused app's name large above
+  the rows (App names › Large, at top), rounded tiles that lift with a shadow on focus.
+- **Top bar**: Inputs dropdown (green dot = device plugged in), Wi-Fi name with a dot
+  (green online, amber no internet, red offline), Options, Settings.
+- **Options**: accent color, tile size, text size, background, clock 12/24 h, and the below.
+- **Weather** (off by default): Options › Weather, Temperature, Weather city. Uses
+  [Open-Meteo](https://open-meteo.com) (no account, no key; only the city's coordinates are
+  sent). Shows temperature, conditions and high/low by the clock, plus one heads-up line
+  ("Rain likely around 5 PM, take a jacket").
+- **Photo frame** (off by default): after 1–10 idle minutes on the home screen, photos
+  cross-fade with the clock and weather; any key returns. Runs 15 min–2 h, then the TV may
+  sleep. Put your own pictures in `photos/` next to `home.conf`; until then 12 bundled
+  public-domain landscapes are used (`assets/photos/CREDITS.txt`).
+
+```sh
+adb shell mkdir -p /sdcard/Android/data/tv.dumbtv.home/files/photos
+adb push my-photos/*.jpg /sdcard/Android/data/tv.dumbtv.home/files/photos/
+```
+
+Permissions added: `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE` (top bar), `INTERNET`
+(weather only; nothing connects while weather is off).
+
 ## Using it
 
 | Remote | Does |
