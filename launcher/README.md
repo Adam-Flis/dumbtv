@@ -92,10 +92,13 @@ upstream home screen:
   and return to the home screen.
 - **Night mode** (Options › Home screen): from 9, 10 or 11 PM until 6 AM the screen gets a warm
   dim and the photo frame stays off, so the TV can fall asleep.
-- **Sleep timer** (top bar, moon icon): 15 min to 2 h, then the TV turns off. The first time,
-  Fire OS asks to activate dumbtv as a device administrator with the single "lock screen" policy
-  (that is what turns a TV off); Options › More › Remove sleep timer permission, or
-  `install.sh --undo`, takes it away (Android needs that before an uninstall).
+- **Sleep timer** (top bar, moon icon): 15 min to 2 h, then the TV turns off. While it runs the
+  button stays open with the minutes left, in amber. It needs dumbtv as a device administrator
+  with the single "lock screen" policy (what turns a TV off). Fire OS 6 answers the normal
+  "Activate" screen with a dummy, so allow it once from a computer:
+  `adb shell dpm set-active-admin tv.dumbtv.home/.Admin`. Without it the button offers Fire TV's
+  own sleep timer. Options › More › Remove sleep timer permission, or `install.sh --undo`, takes
+  it away (Android needs that before an uninstall).
 - **Key hints**: the app grid, Options and Move mode show which remote keys do what.
 - **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
   them to the photo frame (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`
@@ -112,6 +115,8 @@ upstream home screen:
   groups listed on the left (Right opens a group, Back or Left returns to the list): accent color,
   tile size, text size, background, clock 12/24 h, app names (large at top, or under the
   selected app only), and the below. Row titles are larger with drawn icons.
+- **Options** groups: Apps, Look, Weather, Photo frame & night, More. Rows that depend on
+  another setting only appear when it is on.
 - **Weather** (off by default): Options › Weather, Temperature, Weather city. Uses
   [Open-Meteo](https://open-meteo.com) (no account, no key; only the city's coordinates are
   sent). Shows temperature, conditions and high/low by the clock, plus one heads-up line

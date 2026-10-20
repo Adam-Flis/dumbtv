@@ -346,11 +346,11 @@ public final class Home extends Activity {
         registerReceiver(time, f);
         ticking = true;
         tick();
-        // back from Fire OS's "Activate" screen with a timer waiting for the permission
-        if (pendingSleep > 0) {
-            int m = pendingSleep;
-            pendingSleep = 0;
-            if (Sleep.allowed(this)) chooseSleep(m);
+        // developer aid: `adb shell touch .../files/test-sleep` starts a 1-minute sleep timer
+        File sleepTest = new File(cfg.dir, "test-sleep");
+        if (sleepTest.isFile() && sleepTest.delete() && Sleep.allowed(this)) {
+            Sleep.set(this, 1);
+            updateSleepChip();
         }
         // developer aid: `adb shell touch .../files/test-input` shows the input card on next return
         File test = new File(cfg.dir, "test-input");
@@ -861,8 +861,10 @@ public final class Home extends Activity {
      */
     private void chipIcon(TextView v) {
         if (!(v.getTag() instanceof Integer)) return;
-        boolean open = v.isFocused();
-        String label = chipLabels.get(v);
+        // a running sleep timer keeps its button open with the minutes left, so it is always visible
+        int sleepLeft = v == sleepChip ? Sleep.left(cfg) : 0;
+        boolean open = v.isFocused() || sleepLeft > 0;
+        String label = sleepLeft > 0 && !v.isFocused() ? sleepLeft + " min" : chipLabels.get(v);
         v.setText(open ? label : "");
         v.setContentDescription(label);
         v.setCompoundDrawablePadding(open ? dp(8) : 0);
@@ -871,8 +873,7 @@ public final class Home extends Activity {
         // On the accent fill the icon turns dark/white like the text; the Wi-Fi status then moves to
         // a ringed dot after the name, so green never sits on blue.
         int ink = Ui.ink(cfg.accent());
-        int color = open ? ink : v == net ? netColor
-                : v == sleepChip && Sleep.left(cfg) > 0 ? 0xFFFFC53D : Ui.TEXT;
+        int color = v.isFocused() ? ink : v == net ? netColor : sleepLeft > 0 ? 0xFFFFC53D : Ui.TEXT;
         android.graphics.drawable.Drawable status = null;
         if (open && v == net) {
             GradientDrawable dot = new GradientDrawable();
@@ -1136,13 +1137,16 @@ public final class Home extends Activity {
 
     // ---- sleep timer ----
 
-    private int pendingSleep;
+    private final Runnable sleepTick = this::updateSleepChip;
 
     private void updateSleepChip() {
         if (sleepChip == null) return;
         int left = Sleep.left(cfg);
         chipLabels.put(sleepChip, left > 0 ? "Sleep in " + left + " min" : "Sleep timer");
         chipIcon(sleepChip);
+        // the last minutes count down more often than the once-a-minute clock tick
+        ui.removeCallbacks(sleepTick);
+        if (left > 0 && resumed) ui.postDelayed(sleepTick, left <= 2 ? 10_000 : 30_000);
     }
 
     /** The sleep timer's dropdown: Off and a few lengths; the running one is marked. */
@@ -1181,14 +1185,16 @@ public final class Home extends Activity {
 
     private void chooseSleep(int minutes) {
         if (minutes > 0 && !Sleep.allowed(this)) {
-            pendingSleep = minutes;
+            // Fire OS answers the normal "allow" screen with a dummy, so the one-time permission
+            // has to come from adb. Until then, Fire TV's own timer does the job.
             new AlertDialog.Builder(this, Ui.DIALOG)
-                    .setTitle("Allow the sleep timer?")
-                    .setMessage("To turn the TV off, dumbtv needs one permission from Fire OS."
-                            + " On the next screen choose Activate. It lets dumbtv turn the screen off,"
-                            + " nothing else, and you can remove it in Options \u203A More.")
-                    .setPositiveButton("Continue", (d, w) -> Sleep.askPermission(this))
-                    .setNegativeButton("Cancel", (d, w) -> pendingSleep = 0)
+                    .setTitle("The sleep timer needs a one-time setup")
+                    .setMessage("Fire TV only lets dumbtv turn the TV off after its owner allows it once"
+                            + " from a computer:\n\n    adb shell dpm set-active-admin tv.dumbtv.home/.Admin\n\n"
+                            + "It allows turning the screen off and nothing else. Until then you can use"
+                            + " Fire TV's own sleep timer in Settings.")
+                    .setPositiveButton("Open Fire TV Settings", (d, w) -> openSettings())
+                    .setNegativeButton("Cancel", null)
                     .show();
             return;
         }
@@ -1470,14 +1476,16 @@ public final class Home extends Activity {
         String words = Weather.describe(weather.code, weather.day);
         sky.setText((words.isEmpty() ? "" : words + "  \u00B7  ")
                 + "H " + weather.hi + "\u00B0  L " + weather.lo + "\u00B0");
-        boolean icon = on(Config.W_ICON);
+        String detail = cfg.get(Config.W_DETAIL);
+        boolean full = "full".equals(detail), icon = true;
         skyIcon.setVisibility(icon ? View.VISIBLE : View.GONE);
         if (icon) skyIcon.setBackground(Icons.of(Icons.forCode(weather.code, weather.day), dp(38), 0));
         feels.setText("Feels " + weather.feels + "\u00B0  \u00B7  Wind " + weather.wind + " " + weather.windUnit);
-        feels.setVisibility(on(Config.W_FEELS) ? View.VISIBLE : View.GONE);
+        feels.setVisibility(full ? View.VISIBLE : View.GONE);
+        sky.setVisibility("minimal".equals(detail) ? View.GONE : View.VISIBLE);
         weatherBox.setVisibility(View.VISIBLE);
         showHours();
-        if (on(Config.W_SUN) && weather.sun != null) {
+        if (full && weather.sun != null) {
             String t = Weather.describe(weather.tomorrowCode, true);
             sunLine.setText(weather.sun + "  \u00B7  Tomorrow " + weather.tomorrowHi + "\u00B0 / "
                     + weather.tomorrowLo + "\u00B0" + (t.isEmpty() ? "" : "  " + t)
@@ -1498,7 +1506,7 @@ public final class Home extends Activity {
     /** The next five hours under the top bar: time, icon, temperature, chance of rain. */
     private void showHours() {
         hours.removeAllViews();
-        if (!on(Config.W_HOURS) || weather.hours.isEmpty()) {
+        if ("minimal".equals(cfg.get(Config.W_DETAIL)) || weather.hours.isEmpty()) {
             hours.setVisibility(View.GONE);
             hoursRule.setVisibility(View.GONE);
             return;

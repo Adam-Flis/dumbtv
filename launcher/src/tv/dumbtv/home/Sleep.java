@@ -1,10 +1,8 @@
 package tv.dumbtv.home;
 
-import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.admin.DevicePolicyManager;
-import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -22,19 +20,6 @@ public final class Sleep extends BroadcastReceiver {
     static boolean allowed(Context c) {
         DevicePolicyManager dpm = (DevicePolicyManager) c.getSystemService(Context.DEVICE_POLICY_SERVICE);
         return dpm != null && dpm.isAdminActive(admin(c));
-    }
-
-    /** Fire OS's own screen that asks whether dumbtv may turn the TV off. */
-    static void askPermission(Activity a) {
-        Intent i = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-                .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin(a))
-                .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                        "Lets the dumbtv sleep timer turn the TV off. It can do nothing else.");
-        try {
-            a.startActivity(i);
-        } catch (ActivityNotFoundException | SecurityException e) {
-            android.widget.Toast.makeText(a, "This TV does not allow a sleep timer", android.widget.Toast.LENGTH_LONG).show();
-        }
     }
 
     static void release(Context c) {

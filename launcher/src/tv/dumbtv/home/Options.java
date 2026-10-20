@@ -67,62 +67,64 @@ public final class Options extends Activity {
             showHints(now);
         });
 
+        // Five short groups. Rows that only matter for another setting appear when it is on
+        // (the image rows with an image background, the night times with night mode, ...).
+        Cond image = () -> "image".equals(cfg.get(Config.BACKGROUND));
+        Cond weatherOn = () -> "on".equals(cfg.get(Config.WEATHER));
+        Cond frameOn = () -> !"off".equals(cfg.get(Config.FRAME));
+        Cond nightOn = () -> "on".equals(cfg.get(Config.NIGHT));
+
+        section("Apps", Icons.GRID);
+        list.addView(action("Favorites", () -> {
+            openingPicker = true;
+            Picker.open(this, Picker.FAVS);
+        }));
+        list.addView(action("App library", () -> pick(Catalog.APPS)));
+        list.addView(action("Get more apps", () -> {
+            Intent store = Catalog.storeIntent(this);
+            if (store == null) Toast.makeText(this, "The Appstore is not available", Toast.LENGTH_SHORT).show();
+            else startActivity(store.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        }));
+        list.addView(choice(Config.APPS_LAYOUT));
+        list.addView(choice(Config.RECENT));
+        list.addView(choice(Config.INPUTS));
+        list.addView(action("Inputs to show", () -> pick(Catalog.INPUTS)));
+        list.addView(choice(Config.SWITCH));
+
         section("Look", Icons.PALETTE);
         list.addView(choice(Config.ACCENT));
         list.addView(choice(Config.BACKGROUND));
-        list.addView(choice(Config.DIM));
-        list.addView(choice(Config.ROTATE));
-        list.addView(action("Next wallpaper", () -> {
+        list.addView(only(choice(Config.DIM), image));
+        list.addView(only(choice(Config.ROTATE), image));
+        list.addView(only(action("Next wallpaper", () -> {
             cfg.nextWallpaper();
             refresh();
-        }));
-
-        section("Home screen", Icons.HOUSE);
+        }), image));
         list.addView(choice(Config.TILES));
         list.addView(choice(Config.TEXT));
         list.addView(choice(Config.TITLES));
         list.addView(choice(Config.LABELS));
         list.addView(choice(Config.CLOCK));
-        list.addView(choice(Config.INPUTS));
-        list.addView(choice(Config.APPS_LAYOUT));
-        list.addView(choice(Config.RECENT));
-        list.addView(choice(Config.SWITCH));
-        list.addView(action("Favorites", () -> {
-            openingPicker = true;
-            Picker.open(this, Picker.FAVS);
-        }));
-        list.addView(action("App library (apps on home screen)", () -> pick(Catalog.APPS)));
-        list.addView(action("Get more apps (Appstore)", () -> {
-            Intent store = Catalog.storeIntent(this);
-            if (store == null) Toast.makeText(this, "The Appstore is not available", Toast.LENGTH_SHORT).show();
-            else startActivity(store.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        }));
-        list.addView(action("Inputs on home screen", () -> pick(Catalog.INPUTS)));
 
         section("Weather", Icons.PARTLY);
         list.addView(choice(Config.WEATHER));
-        list.addView(cityRow());
-        list.addView(choice(Config.UNITS));
-        list.addView(choice(Config.W_ICON));
-        list.addView(choice(Config.W_HOURS));
-        list.addView(choice(Config.W_FEELS));
-        list.addView(choice(Config.W_SUN));
+        list.addView(only(cityRow(), weatherOn));
+        list.addView(only(choice(Config.UNITS), weatherOn));
+        list.addView(only(choice(Config.W_DETAIL), weatherOn));
 
-        section("Photo frame", Icons.PHOTO);
+        section("Night & photos", Icons.SLEEP);
         list.addView(choice(Config.FRAME));
-        list.addView(choice(Config.FRAME_FOR));
-        list.addView(action("Show photo frame now", () -> {
+        list.addView(only(choice(Config.FRAME_FOR), frameOn));
+        list.addView(only(action("Show photo frame now", () -> {
             Home.frameNow = true;
             finish();
-        }));
-
-        section("Night", Icons.SLEEP);
+        }), frameOn));
         list.addView(choice(Config.NIGHT));
-        list.addView(timeRow(Config.NIGHT_START, "Starts at", 22 * 60));
-        list.addView(timeRow(Config.NIGHT_END, "Ends at", 6 * 60));
-        list.addView(choice(Config.NIGHT_DIM));
-        list.addView(note("A warm dim over the home screen, and no photo frame, so the TV can fall"
-                + " asleep. The sleep timer is the moon button in the top bar."));
+        list.addView(only(timeRow(Config.NIGHT_START, "Night starts at", 22 * 60), nightOn));
+        list.addView(only(timeRow(Config.NIGHT_END, "Night ends at", 6 * 60), nightOn));
+        list.addView(only(choice(Config.NIGHT_DIM), nightOn));
+        list.addView(note("Night mode dims the home screen and keeps the photo frame off, so the TV"
+                + " can fall asleep. The sleep timer is the moon button in the top bar."));
 
         section("More", Icons.DOTS);
         list.addView(action("Reset order, names and hidden tiles", this::reset));
@@ -130,15 +132,12 @@ public final class Options extends Activity {
             Guard.amazon(this);
             finish();
         }));
-        list.addView(action("Remove sleep timer permission", () -> {
-            if (!Sleep.allowed(this)) {
-                Toast.makeText(this, "The sleep timer has no permission right now", Toast.LENGTH_SHORT).show();
-                return;
-            }
+        list.addView(only(action("Remove sleep timer permission", () -> {
             Sleep.set(this, 0);
             Sleep.release(this);
             Toast.makeText(this, "Removed. The sleep timer will ask again next time.", Toast.LENGTH_LONG).show();
-        }));
+            refresh();
+        }), () -> Sleep.allowed(this)));
 
         TextView about = Ui.text(this, 13, Ui.FAINT, Ui.MEDIUM);
         about.setLineSpacing(0, 1.4f);
@@ -161,6 +160,16 @@ public final class Options extends Activity {
     }
 
     private static final String CHOICE = "choice", TIME = "time";
+
+    interface Cond {
+        boolean ok();
+    }
+
+    /** Shows {@code row} only while {@code when} holds; checked on every change. */
+    private View only(View row, Cond when) {
+        refreshers.add(() -> row.setVisibility(when.ok() ? View.VISIBLE : View.GONE));
+        return row;
+    }
 
     /** A time setting: left/right moves it 15 minutes, OK opens the exact-time picker. */
     private View timeRow(String key, String title, int fallback) {
@@ -189,7 +198,6 @@ public final class Options extends Activity {
             boolean focused = row.isFocused();
             value.setText(focused ? "\u2039  " + text + "  \u203A" : text);
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
-            row.setAlpha("on".equals(cfg.get(Config.NIGHT)) ? 1f : 0.4f);
         };
         row.setOnFocusChangeListener((v, has) -> show.run());
         refreshers.add(show);
@@ -329,13 +337,6 @@ public final class Options extends Activity {
                 value.setCompoundDrawablePadding(dp(10));
             }
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
-            boolean off = c == Config.NIGHT_DIM && !"on".equals(cfg.get(Config.NIGHT))
-                    || (c == Config.DIM || c == Config.ROTATE)
-                    && !"image".equals(cfg.get(Config.BACKGROUND))
-                    || (c == Config.UNITS || c == Config.W_ICON || c == Config.W_HOURS || c == Config.W_FEELS
-                        || c == Config.W_SUN) && !"on".equals(cfg.get(Config.WEATHER))
-                    || c == Config.FRAME_FOR && "off".equals(cfg.get(Config.FRAME));
-            row.setAlpha(off ? 0.4f : 1f);
         };
         row.setOnFocusChangeListener((v, has) -> show.run());
         refreshers.add(show);
@@ -353,7 +354,6 @@ public final class Options extends Activity {
         row.setOnKeyListener(this::leftToNav);
         refreshers.add(() -> {
             value.setText(cfg.get(Weather.PLACE, "Not set") + "  \u203A");
-            row.setAlpha("on".equals(cfg.get(Config.WEATHER)) ? 1f : 0.4f);
             style(row);
         });
         return row;

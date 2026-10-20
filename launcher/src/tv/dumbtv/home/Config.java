@@ -152,14 +152,10 @@ final class Config {
         return NIGHT_ALPHA[Arrays.asList(NIGHT_DIM.values).indexOf(get(NIGHT_DIM))];
     }
 
-    static final Choice W_ICON = toggle("weather.icon", "Condition icon");
-    static final Choice W_HOURS = toggle("weather.hours", "Next hours");
-    static final Choice W_FEELS = toggle("weather.feels", "Feels like & wind");
-    static final Choice W_SUN = toggle("weather.sun", "Sunset & tomorrow");
-
-    private static Choice toggle(String key, String title) {
-        return new Choice(key, title, "on", new String[] {"on", "off"}, new String[] {"Shown", "Hidden"});
-    }
+    /** How much weather the header shows; one setting instead of four toggles. */
+    static final Choice W_DETAIL = new Choice("weather.detail", "Weather details", "full",
+            new String[] {"full", "simple", "minimal"},
+            new String[] {"Everything", "Now and next hours", "Temperature only"});
 
     static final Choice FRAME = new Choice("frame", "Photo frame", "off",
             new String[] {"off", "1", "2", "5", "10"},
@@ -170,7 +166,7 @@ final class Config {
                 "1 hour, then TV may sleep", "2 hours, then TV may sleep"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, W_ICON, W_HOURS, W_FEELS, W_SUN, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT,
+        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT,
         NIGHT_DIM};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
