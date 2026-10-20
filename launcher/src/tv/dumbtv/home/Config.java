@@ -82,7 +82,15 @@ final class Config {
             new String[] {"off", "visit", "hourly", "daily", "daytime"},
             new String[] {"Off", "Every return home", "Every hour", "Every day", "By time of day"});
 
-    static final Choice[] CHOICES = {ACCENT, TILES, TEXT, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE};
+    static final Choice WEATHER = new Choice("weather", "Weather", "off",
+            new String[] {"off", "on"},
+            new String[] {"Off", "On"});
+    static final Choice UNITS = new Choice("units", "Temperature", "f",
+            new String[] {"f", "c"},
+            new String[] {"\u00B0F", "\u00B0C"});
+
+    static final Choice[] CHOICES = {ACCENT, TILES, TEXT, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
+        WEATHER, UNITS};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";

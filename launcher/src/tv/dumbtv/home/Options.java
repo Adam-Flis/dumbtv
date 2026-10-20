@@ -11,9 +11,13 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,6 +51,7 @@ public final class Options extends Activity {
         list.addView(title);
 
         for (Config.Choice c : Config.CHOICES) list.addView(choice(c));
+        list.addView(cityRow());
         list.addView(action("Next wallpaper", () -> {
             cfg.nextWallpaper();
             refresh();
@@ -116,13 +121,76 @@ public final class Options extends Activity {
             }
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
             boolean off = (c == Config.DIM || c == Config.ROTATE)
-                    && !"image".equals(cfg.get(Config.BACKGROUND));
+                    && !"image".equals(cfg.get(Config.BACKGROUND))
+                    || c == Config.UNITS && !"on".equals(cfg.get(Config.WEATHER));
             row.setAlpha(off ? 0.4f : 1f);
         };
         row.setOnFocusChangeListener((v, has) -> show.run());
         refreshers.add(show);
         refreshers.add(() -> style(row));
         return row;
+    }
+
+    /** "Weather city": typed once, looked up on Open-Meteo, saved with its coordinates. */
+    private View cityRow() {
+        LinearLayout row = row();
+        row.addView(label("Weather city"), new LinearLayout.LayoutParams(0, WRAP, 1f));
+        TextView value = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
+        row.addView(value);
+        row.setOnClickListener(v -> askCity());
+        refreshers.add(() -> {
+            value.setText(cfg.get(Weather.PLACE, "Not set") + "  \u203A");
+            row.setAlpha("on".equals(cfg.get(Config.WEATHER)) ? 1f : 0.4f);
+            style(row);
+        });
+        return row;
+    }
+
+    private void askCity() {
+        EditText field = new EditText(this);
+        field.setSingleLine();
+        field.setHint("City, e.g. Cleveland");
+        field.setText(cfg.get(Weather.CITY, ""));
+        field.setSelectAllOnFocus(true);
+        FrameLayout box = new FrameLayout(this);
+        box.setPadding(dp(24), dp(8), dp(24), 0);
+        box.addView(field);
+        AlertDialog d = new AlertDialog.Builder(this, Ui.DIALOG)
+                .setTitle("Weather city")
+                .setView(box)
+                .setPositiveButton("Save", (dialog, w) -> lookUp(field.getText().toString().trim()))
+                .setNegativeButton("Cancel", null)
+                .create();
+        d.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+        d.show();
+    }
+
+    private void lookUp(String city) {
+        if (city.isEmpty()) return;
+        Toast.makeText(this, "Looking up " + city + "\u2026", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            String[] found;
+            try {
+                found = Weather.geocode(city);
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "No connection to the weather service",
+                        Toast.LENGTH_LONG).show());
+                return;
+            }
+            runOnUiThread(() -> {
+                if (found == null) {
+                    Toast.makeText(this, "Could not find " + city, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                cfg.set(Weather.CITY, city);
+                cfg.set(Weather.LAT, found[0]);
+                cfg.set(Weather.LON, found[1]);
+                cfg.set(Weather.PLACE, found[2]);
+                if (!"on".equals(cfg.get(Config.WEATHER))) cfg.set(Config.WEATHER.key, "on");
+                Toast.makeText(this, "Weather for " + found[2], Toast.LENGTH_SHORT).show();
+                refresh();
+            });
+        }).start();
     }
 
     private boolean step(Config.Choice c, int by) {

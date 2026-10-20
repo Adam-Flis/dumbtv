@@ -66,7 +66,12 @@ public final class Home extends Activity {
     private FrameLayout root;
     private ImageView wall;
     private View shade;
-    private TextView greeting, clock, date, focusName;
+    private TextView greeting, clock, date, focusName, temp, sky, hint;
+    private LinearLayout weatherBox;
+    private Weather.Report weather;
+    private String weatherKey;
+    private long weatherAt;
+    private boolean fetching;
     private LinearLayout bar;
     private TextView net;
     private ConnectivityManager cm;
@@ -454,9 +459,26 @@ public final class Home extends Activity {
         clock = Ui.text(this, 64, Ui.TEXT, Ui.LIGHT);
         date = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
         date.setPadding(dp(3), dp(6), 0, 0);
+        LinearLayout clockRow = new LinearLayout(this);
+        clockRow.setGravity(Gravity.BOTTOM);
+        clockRow.addView(clock);
+        weatherBox = new LinearLayout(this);
+        weatherBox.setOrientation(LinearLayout.VERTICAL);
+        weatherBox.setPadding(dp(28), 0, 0, dp(6));
+        temp = Ui.text(this, 34, Ui.TEXT, Ui.LIGHT);
+        sky = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        sky.setPadding(dp(2), dp(4), 0, 0);
+        weatherBox.addView(temp);
+        weatherBox.addView(sky);
+        weatherBox.setVisibility(View.GONE);
+        clockRow.addView(weatherBox);
+        hint = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
+        hint.setPadding(dp(3), dp(10), 0, 0);
+        hint.setVisibility(View.GONE);
         when.addView(greeting);
-        when.addView(clock);
+        when.addView(clockRow);
         when.addView(date);
+        when.addView(hint);
         head.addView(when, new LinearLayout.LayoutParams(0, WRAP, 1f));
         bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
@@ -726,6 +748,7 @@ public final class Home extends Activity {
         date.setText(DateFormat.format(DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), now));
         // hourly and time-of-day rotations change while the screen stays open; a no-op otherwise
         background();
+        weather();
     }
 
     private void background() {
@@ -771,6 +794,67 @@ public final class Home extends Activity {
                 .addCategory("android.intent.category.LEANBACK_SETTINGS");
         boolean found = tvSettings.resolveActivity(getPackageManager()) != null;
         launch(found ? tvSettings : new Intent(Settings.ACTION_SETTINGS), null);
+    }
+
+    /** Refreshes the forecast every 30 min while weather is on; shows or hides the weather views. */
+    private void weather() {
+        String lat = cfg.get(Weather.LAT, ""), lon = cfg.get(Weather.LON, "");
+        boolean on = "on".equals(cfg.get(Config.WEATHER)) && !lat.isEmpty() && !lon.isEmpty();
+        if (!on) {
+            weather = null;
+            weatherKey = null;
+            showWeather();
+            return;
+        }
+        boolean f = "f".equals(cfg.get(Config.UNITS));
+        boolean h24 = clock24();
+        String key = lat + "," + lon + "," + f + "," + h24;
+        long now = System.currentTimeMillis();
+        if (!key.equals(weatherKey)) {
+            weatherKey = key;
+            weather = null;
+            weatherAt = 0;
+        }
+        showWeather();
+        if (fetching || now - weatherAt < 30 * 60_000L) return;
+        fetching = true;
+        io.execute(() -> {
+            Weather.Report r = null;
+            try {
+                r = Weather.fetch(lat, lon, f, h24);
+            } catch (Exception e) {
+                android.util.Log.w("dumbtv", "weather: " + e);
+            }
+            Weather.Report got = r;
+            ui.post(() -> {
+                fetching = false;
+                if (!key.equals(weatherKey)) return;
+                // a failure keeps the last forecast and tries again in 5 minutes
+                weatherAt = got != null ? System.currentTimeMillis() : System.currentTimeMillis() - 25 * 60_000L;
+                if (got != null) weather = got;
+                showWeather();
+            });
+        });
+    }
+
+    private void showWeather() {
+        if (weather == null) {
+            weatherBox.setVisibility(View.GONE);
+            hint.setVisibility(View.GONE);
+            return;
+        }
+        temp.setText(weather.temp + "\u00B0");
+        String words = Weather.describe(weather.code, weather.day);
+        sky.setText((words.isEmpty() ? "" : words + "  \u00B7  ")
+                + "H " + weather.hi + "\u00B0  L " + weather.lo + "\u00B0");
+        weatherBox.setVisibility(View.VISIBLE);
+        hint.setText(weather.hint);
+        hint.setVisibility(weather.hint == null ? View.GONE : View.VISIBLE);
+    }
+
+    private boolean clock24() {
+        String mode = cfg.get(Config.CLOCK);
+        return "24h".equals(mode) || "auto".equals(mode) && DateFormat.is24HourFormat(this);
     }
 
     /** Wi-Fi name (or Ethernet) with a dot: green online, amber no internet, red offline. */
