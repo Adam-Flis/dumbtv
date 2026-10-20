@@ -16,7 +16,8 @@ import android.graphics.drawable.Drawable;
 final class Icons extends Drawable {
     static final int SUN = 0, MOON = 1, PARTLY = 2, PARTLY_NIGHT = 3, CLOUD = 4, FOG = 5, RAIN = 6,
             SNOW = 7, STORM = 8, STAR = 9, GRID = 10, INPUT = 11, WIFI = 12, GEAR = 13, SLIDERS = 14,
-            HOUSE = 15, PALETTE = 16, PHOTO = 17, DOTS = 18, BAG = 19, LIBRARY = 20;
+            HOUSE = 15, PALETTE = 16, PHOTO = 17, DOTS = 18, BAG = 19, LIBRARY = 20,
+            PENCIL = 21;
     private static final int AMBER = 0xFFFFC53D, CLOUDY = 0xFFE3E6EA, BLUE = 0xFF5AB0FF,
             MOONLIGHT = 0xFFEDE7CF;
 
@@ -185,6 +186,14 @@ final class Icons extends Drawable {
             case DOTS:
                 fill.setColor(tint);
                 for (int i = 0; i < 3; i++) c.drawCircle(s * (0.22f + i * 0.28f), s / 2, s * 0.085f, fill);
+                break;
+            case PENCIL:
+                stroke(tint, s * 0.17f);
+                line.setStrokeCap(Paint.Cap.BUTT);
+                c.drawLine(s * 0.32f, s * 0.68f, s * 0.78f, s * 0.22f, line);
+                line.setStrokeCap(Paint.Cap.ROUND);
+                fill.setColor(tint);
+                poly(c, s, 0.14f, 0.86f, 0.2f, 0.62f, 0.38f, 0.8f);
                 break;
             case BAG:
                 stroke(tint, s * 0.08f);

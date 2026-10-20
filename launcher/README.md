@@ -72,7 +72,8 @@ update one with the other: `install.sh` says so and tells you to
 Built for a Fire OS 6.7 TV (`MIN_SDK=25`, `./launcher/install.sh --build`). On top of the
 upstream home screen:
 
-- **Favorites dock**: a row above All apps with any number of apps. Hold OK or ☰ on a tile:
+- **Favorites dock**: a row above All apps with any number of apps. The row ends with an
+  **Edit favorites** tile that opens the app grid. Hold OK or ☰ on a tile:
   Add to / Remove from Favorites, Move. Options › Favorites is a checklist. Saved as
   `favorites=` in `home.conf`.
 - **Background › Selected app's color** (default): the screen glows in the color of the app

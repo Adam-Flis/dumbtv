@@ -24,6 +24,8 @@ final class Catalog {
     static final String FAVORITES = "favorites";
     /** Id of the "Add favorites" tile shown while the dock is empty. */
     static final String ADD = "+add";
+    /** Id of the "Edit favorites" tile at the end of a non-empty dock. */
+    static final String EDIT = "+edit";
     /** Ids of the two tiles at the end of All apps: the Appstore, and every installed app. */
     static final String STORE = "+store", LIBRARY = "+library";
     static final String APPSTORE = "com.amazon.venezia";

@@ -497,6 +497,11 @@ public final class Home extends Activity {
                     View above = nearest(bar, focused);
                     if (above != null) return above;
                 }
+                // left and right at the end of a row stay put instead of jumping to another row
+                if ((direction == View.FOCUS_LEFT || direction == View.FOCUS_RIGHT) && focused instanceof Tile) {
+                    View next = super.focusSearch(focused, direction);
+                    return next != null && next.getParent() == focused.getParent() ? next : focused;
+                }
                 // left and right stay inside the top bar instead of dropping into the rows
                 if ((direction == View.FOCUS_LEFT || direction == View.FOCUS_RIGHT) && chips.contains(focused)) {
                     int i = bar.indexOfChild(focused) + (direction == View.FOCUS_LEFT ? -1 : 1);
@@ -573,6 +578,7 @@ public final class Home extends Activity {
         // forecast next to it gets
         LinearLayout timeCol = new LinearLayout(this);
         timeCol.setOrientation(LinearLayout.VERTICAL);
+        timeCol.setPadding(0, dp(8), 0, 0);
         timeCol.setClipChildren(false);
         timeCol.setClipToPadding(false);
         timeCol.addView(clock, clp);
@@ -583,7 +589,7 @@ public final class Home extends Activity {
         // icon, temperature, then conditions and feels-like stacked beside them: two short lines
         weatherBox = new LinearLayout(this);
         weatherBox.setGravity(Gravity.CENTER_VERTICAL);
-        weatherBox.setPadding(dp(34), 0, 0, 0);
+        weatherBox.setPadding(0, 0, 0, 0);
         skyIcon = new View(this);
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(40), dp(40));
         ilp.rightMargin = dp(10);
@@ -602,7 +608,17 @@ public final class Home extends Activity {
         details.addView(feels);
         weatherBox.addView(details);
         weatherBox.setVisibility(View.GONE);
-        middle.addView(weatherBox);
+        // current weather, and under it the next sunrise/sunset and tomorrow
+        LinearLayout weatherCol = new LinearLayout(this);
+        weatherCol.setOrientation(LinearLayout.VERTICAL);
+        weatherCol.setPadding(dp(34), 0, 0, 0);
+        weatherCol.addView(weatherBox);
+        sunLine = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        sunLine.setSingleLine();
+        sunLine.setPadding(dp(2), dp(10), 0, 0);
+        sunLine.setVisibility(View.GONE);
+        weatherCol.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
+        middle.addView(weatherCol);
         // the next hours sit right after the current weather, split by a thin line
         hoursRule = new View(this);
         hoursRule.setBackgroundColor(0x2EFFFFFF);
@@ -618,11 +634,6 @@ public final class Home extends Activity {
         hours = new LinearLayout(this);
         hours.setVisibility(View.GONE);
         forecast.addView(hours, new LinearLayout.LayoutParams(WRAP, WRAP));
-        sunLine = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
-        sunLine.setSingleLine();
-        sunLine.setPadding(dp(8), dp(8), 0, 0);
-        sunLine.setVisibility(View.GONE);
-        forecast.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
         // padding, not a margin: a centered child's margin shifts it and cut off the last line
         forecast.setPadding(0, dp(16), 0, 0); // clear of the top bar when a button opens up
         middle.addView(forecast, new LinearLayout.LayoutParams(WRAP, WRAP));
@@ -849,6 +860,8 @@ public final class Home extends Activity {
             shown = Catalog.favorites(cfg, apps.all);
             // an empty dock shows one tile that opens the picker, so it is never a dead end
             if (shown.isEmpty() && !apps.all.isEmpty()) shown.add(button(Catalog.ADD, "Add favorites", Icons.STAR));
+            // the easy way to change the dock: the same picker, from the end of the row
+            else if (!shown.isEmpty()) shown.add(button(Catalog.EDIT, "Edit favorites", Icons.PENCIL));
         } else {
             shown = enabled ? Catalog.visible(cfg, row.kind, row.all) : new ArrayList<>();
             // the way to more apps: the Appstore, and every installed app to pick from
@@ -1288,7 +1301,7 @@ public final class Home extends Activity {
     }
 
     private void open(Tile t) {
-        if (Catalog.ADD.equals(t.item.id)) {
+        if (Catalog.ADD.equals(t.item.id) || Catalog.EDIT.equals(t.item.id)) {
             Picker.open(this, Picker.FAVS);
             return;
         }
