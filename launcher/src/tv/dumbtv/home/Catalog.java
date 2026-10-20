@@ -19,7 +19,11 @@ import java.util.Map;
 
 /** Where tiles come from, and which of them the user wants on the home screen. */
 final class Catalog {
-    static final String APPS = "apps", INPUTS = "inputs";
+    static final String APPS = "apps", INPUTS = "inputs", FAVS = "favs";
+    /** home.conf key: the Favorites dock, package names in dock order. */
+    static final String FAVORITES = "favorites";
+    /** Id of the "Add favorites" tile shown while the dock is empty. */
+    static final String ADD = "+add";
 
     private Catalog() {}
 
@@ -117,8 +121,39 @@ final class Catalog {
         return i < 0 ? Integer.MAX_VALUE : i;
     }
 
+    /** The Favorites dock in dock order; packages no longer installed are skipped. */
+    static List<Item> favorites(Config cfg, List<Item> all) {
+        List<Item> out = new ArrayList<>();
+        for (String id : cfg.list(FAVORITES)) {
+            for (Item it : all) {
+                if (it.id.equals(id)) {
+                    out.add(it);
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
+    static boolean isFavorite(Config cfg, Item it) {
+        return cfg.list(FAVORITES).contains(it.id);
+    }
+
+    /** Adds {@code it} to the end of the dock, or takes it out. */
+    static void setFavorite(Config cfg, Item it, boolean on) {
+        List<String> favs = cfg.list(FAVORITES);
+        favs.remove(it.id);
+        if (on) favs.add(it.id);
+        cfg.setList(FAVORITES, favs);
+    }
+
     /** Saves {@code ids} as the new order, keeping the old positions of hidden items after them. */
     static void saveOrder(Config cfg, String kind, List<String> ids) {
+        if (FAVS.equals(kind)) {
+            // the dock is exactly what is on screen; uninstalled entries drop out here
+            cfg.setList(FAVORITES, ids);
+            return;
+        }
         List<String> order = new ArrayList<>(ids);
         for (String id : cfg.list(kind + ".order")) {
             if (!order.contains(id)) order.add(id);

@@ -53,6 +53,7 @@ public final class Options extends Activity {
             refresh();
         }));
         list.addView(gap());
+        list.addView(action("Favorites", () -> pickFavorites(this, Catalog.apps(this), null)));
         list.addView(action("Apps on home screen", () -> pick(Catalog.APPS)));
         list.addView(action("Inputs on home screen", () -> pick(Catalog.INPUTS)));
         list.addView(action("Reset order, names and hidden tiles", this::reset));
@@ -189,6 +190,32 @@ public final class Options extends Activity {
                         Catalog.setShown(cfg, kind, items.get(which), checked))
                 .setPositiveButton("Done", null)
                 .show();
+    }
+
+    /**
+     * Ticks apps in and out of the Favorites dock. A new tick goes to the end of the dock;
+     * the order is changed with Move on the home screen.
+     */
+    static void pickFavorites(Activity a, List<Item> all, Runnable done) {
+        Config cfg = Config.get(a);
+        List<Item> items = new ArrayList<>(Catalog.favorites(cfg, all));
+        for (Item it : all) {
+            if (!items.contains(it)) items.add(it);
+        }
+        CharSequence[] names = new CharSequence[items.size()];
+        boolean[] on = new boolean[items.size()];
+        for (int i = 0; i < items.size(); i++) {
+            names[i] = Catalog.label(cfg, items.get(i));
+            on[i] = Catalog.isFavorite(cfg, items.get(i));
+        }
+        AlertDialog d = new AlertDialog.Builder(a, Ui.DIALOG)
+                .setTitle("Favorites")
+                .setMultiChoiceItems(names, on, (dialog, which, checked) ->
+                        Catalog.setFavorite(cfg, items.get(which), checked))
+                .setPositiveButton("Done", null)
+                .create();
+        if (done != null) d.setOnDismissListener(x -> done.run());
+        d.show();
     }
 
     private void reset() {

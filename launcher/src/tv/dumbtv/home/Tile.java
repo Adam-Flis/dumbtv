@@ -41,7 +41,7 @@ final class Tile extends View {
         this.title = title;
         this.cardW = cardW;
         this.cardH = cardH;
-        boolean app = Catalog.APPS.equals(kind);
+        boolean app = !Catalog.INPUTS.equals(kind);
         labelH = app ? Ui.dp(c, 26) : 0;
         labelAlways = "always".equals(labels);
         labelOnFocus = "focus".equals(labels);
@@ -110,7 +110,8 @@ final class Tile extends View {
             icon.setBounds(left, top, left + size, top + size);
             icon.draw(canvas);
             drawLine(canvas, inner, cardW / 2f, cardH - cardH * 13 / 100f);
-        } else if (!Catalog.APPS.equals(kind)) {
+        } else {
+            // inputs, the "Add favorites" tile, and apps whose art is still loading
             drawLine(canvas, inner, cardW / 2f, cardH / 2f - (inner.ascent() + inner.descent()) / 2);
         }
         if (moving) canvas.drawColor(0x99000000);

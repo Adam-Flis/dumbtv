@@ -60,7 +60,7 @@ public final class Home extends Activity {
     private ImageView wall;
     private View shade;
     private TextView clock, date;
-    private Row apps, inputs;
+    private Row favs, apps, inputs;
     private Tile moving;
     private String wallKey;
 
@@ -185,10 +185,17 @@ public final class Home extends Activity {
             return;
         }
         int fit = getResources().getDisplayMetrics().widthPixels / (cardSize()[0] + dp(18)) + 1;
-        for (Item it : Catalog.visible(cfg, Catalog.APPS, apps.all)) {
-            if (fit-- <= 0) break;
-            Catalog.art(getPackageManager(), it);
-            it.artRequested = true;
+        List<List<Item>> rows = new ArrayList<>();
+        rows.add(Catalog.favorites(cfg, apps.all));
+        rows.add(Catalog.visible(cfg, Catalog.APPS, apps.all));
+        for (List<Item> row : rows) {
+            int left = fit;
+            for (Item it : row) {
+                if (left-- <= 0) break;
+                if (it.artRequested) continue;
+                Catalog.art(getPackageManager(), it);
+                it.artRequested = true;
+            }
         }
     }
 
@@ -309,7 +316,7 @@ public final class Home extends Activity {
     /** Title top and strip bottom of each visible row, in {@code content}'s coordinates. */
     private List<int[]> rowBlocks(View content) {
         List<int[]> rows = new ArrayList<>();
-        for (Row row : new Row[] {apps, inputs}) {
+        for (Row row : new Row[] {favs, apps, inputs}) {
             if (row.scroll.getVisibility() != View.VISIBLE) continue;
             rows.add(new int[] {topIn(row.title, content), topIn(row.scroll, content) + row.scroll.getHeight()});
         }
@@ -406,7 +413,8 @@ public final class Home extends Activity {
             @Override
             public View focusSearch(View focused, int direction) {
                 if (direction == View.FOCUS_DOWN && chips.contains(focused)) {
-                    View below = nearest(apps.strip, focused);
+                    View below = nearest(favs.strip, focused);
+                    if (below == null) below = nearest(apps.strip, focused);
                     if (below != null) return below;
                 }
                 return super.focusSearch(focused, direction);
@@ -433,7 +441,8 @@ public final class Home extends Activity {
         head.addView(chip("Settings", v -> openSettings()));
         column.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
 
-        apps = new Row(Catalog.APPS, "Apps", column);
+        favs = new Row(Catalog.FAVS, "Favorites", column);
+        apps = new Row(Catalog.APPS, "All apps", column);
         inputs = new Row(Catalog.INPUTS, "Inputs", column);
         return root;
     }
@@ -479,6 +488,7 @@ public final class Home extends Activity {
         applied = cfg.version();
         int accent = cfg.accent();
         for (TextView c : chips) Ui.focusStyle(c, accent, 0x14FFFFFF, dp(18));
+        render(favs);
         render(apps);
         render(inputs);
         background();
@@ -502,6 +512,7 @@ public final class Home extends Activity {
                     }
                 }
                 apps.all = list;
+                render(favs);
                 render(apps);
             });
         });
@@ -520,9 +531,17 @@ public final class Home extends Activity {
         row.strip.removeAllViews();
 
         boolean enabled = !Catalog.INPUTS.equals(row.kind) || "on".equals(cfg.get(Config.INPUTS));
-        List<Item> shown = enabled ? Catalog.visible(cfg, row.kind, row.all) : new ArrayList<>();
+        List<Item> shown;
+        if (Catalog.FAVS.equals(row.kind)) {
+            shown = Catalog.favorites(cfg, apps.all);
+            // an empty dock shows one tile that opens the picker, so it is never a dead end
+            if (shown.isEmpty() && !apps.all.isEmpty()) shown.add(new Item(Catalog.ADD, "+  Add favorites", null));
+        } else {
+            shown = enabled ? Catalog.visible(cfg, row.kind, row.all) : new ArrayList<>();
+        }
+        boolean appRow = !Catalog.INPUTS.equals(row.kind);
         int[] size = cardSize();
-        int w = size[0], h = Catalog.APPS.equals(row.kind) ? size[1] : Math.round(size[1] * 0.56f);
+        int w = size[0], h = appRow ? size[1] : Math.round(size[1] * 0.56f);
         String labels = cfg.get(Config.LABELS);
         int accent = cfg.accent();
         int index = 0, restore = -1;
@@ -538,7 +557,7 @@ public final class Home extends Activity {
             row.strip.addView(t, lp);
             if (it.id.equals(keep)) restore = index;
             index++;
-            if (Catalog.APPS.equals(row.kind) && !it.artRequested) loadArt(it);
+            if (appRow && !it.artRequested && it.intent != null) loadArt(it);
         }
         row.setVisible(!shown.isEmpty());
         if (restore >= 0) {
@@ -555,7 +574,9 @@ public final class Home extends Activity {
         io.execute(() -> {
             Catalog.art(getPackageManager(), it);
             ui.post(() -> {
-                for (int i = 0; i < apps.strip.getChildCount(); i++) apps.strip.getChildAt(i).invalidate();
+                for (Row row : new Row[] {favs, apps}) {
+                    for (int i = 0; i < row.strip.getChildCount(); i++) row.strip.getChildAt(i).invalidate();
+                }
             });
         });
     }
@@ -572,9 +593,11 @@ public final class Home extends Activity {
     }
 
     private void focusFirst() {
+        favs.scroll.scrollTo(0, 0);
         apps.scroll.scrollTo(0, 0);
         inputs.scroll.scrollTo(0, 0);
-        View first = apps.strip.getChildAt(0);
+        View first = favs.strip.getChildAt(0);
+        if (first == null) first = apps.strip.getChildAt(0);
         if (first == null) first = inputs.strip.getChildAt(0);
         landed = apps.strip.getChildCount() > 0;
         if (first == null) first = chips.get(0);
@@ -645,7 +668,11 @@ public final class Home extends Activity {
     }
 
     private void open(Tile t) {
-        launch(new Intent(t.item.intent), Catalog.APPS.equals(t.kind) ? t.item.id : null);
+        if (Catalog.ADD.equals(t.item.id)) {
+            Options.pickFavorites(this, apps.all, this::apply);
+            return;
+        }
+        launch(new Intent(t.item.intent), Catalog.INPUTS.equals(t.kind) ? null : t.item.id);
     }
 
     private void launch(Intent i, String pkg) {
@@ -657,27 +684,56 @@ public final class Home extends Activity {
         }
     }
 
+    private static final String MOVE = "Move", RENAME = "Rename", HIDE = "Hide", INFO = "App info",
+            FAV_ADD = "Add to Favorites", FAV_REMOVE = "Remove from Favorites";
+
     private void menu(Tile t) {
-        boolean app = Catalog.APPS.equals(t.kind);
-        String[] actions = app
-                ? new String[] {"Move", "Rename", "Hide", "App info"}
-                : new String[] {"Move", "Rename", "Hide"};
+        if (Catalog.ADD.equals(t.item.id)) {
+            open(t);
+            return;
+        }
+        List<String> actions = new ArrayList<>();
+        if (Catalog.FAVS.equals(t.kind)) {
+            actions.add(MOVE);
+            actions.add(FAV_REMOVE);
+            actions.add(RENAME);
+            actions.add(INFO);
+        } else if (Catalog.APPS.equals(t.kind)) {
+            actions.add(Catalog.isFavorite(cfg, t.item) ? FAV_REMOVE : FAV_ADD);
+            actions.add(MOVE);
+            actions.add(RENAME);
+            actions.add(HIDE);
+            actions.add(INFO);
+        } else {
+            actions.add(MOVE);
+            actions.add(RENAME);
+            actions.add(HIDE);
+        }
         new AlertDialog.Builder(this, Ui.DIALOG)
                 .setTitle(Catalog.label(cfg, t.item))
-                .setItems(actions, (d, which) -> {
-                    switch (which) {
-                        case 0:
+                .setItems(actions.toArray(new String[0]), (d, which) -> {
+                    switch (actions.get(which)) {
+                        case MOVE:
                             if (t.getParent() == null) break;
                             moving = t;
                             t.setMoving(true);
                             break;
-                        case 1:
+                        case RENAME:
                             rename(t);
                             break;
-                        case 2:
+                        case HIDE:
                             Catalog.setShown(cfg, t.kind, t.item, false);
-                            render(app ? apps : inputs);
+                            render(Catalog.APPS.equals(t.kind) ? apps : inputs);
                             Toast.makeText(this, "Hidden. Bring it back from Options.", Toast.LENGTH_SHORT).show();
+                            break;
+                        case FAV_ADD:
+                            Catalog.setFavorite(cfg, t.item, true);
+                            render(favs);
+                            Toast.makeText(this, "Added to Favorites", Toast.LENGTH_SHORT).show();
+                            break;
+                        case FAV_REMOVE:
+                            Catalog.setFavorite(cfg, t.item, false);
+                            render(favs);
                             break;
                         default:
                             launch(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
