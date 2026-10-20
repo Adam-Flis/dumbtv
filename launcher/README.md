@@ -75,6 +75,11 @@ upstream home screen:
 - **Favorites dock**: a row above All apps with any number of apps. Hold OK or ☰ on a tile:
   Add to / Remove from Favorites, Move. Options › Favorites is a checklist. Saved as
   `favorites=` in `home.conf`.
+- **Background › Selected app's color** (default): the screen glows in the color of the app
+  you are on (YouTube red, Spotify green), taken from its banner and faded in.
+- **Getting more apps**: All apps ends with **Get more apps** (opens Amazon's Appstore) and
+  **App library** (every installed app; tick one to show it in All apps). Both are also in
+  Options › Home screen.
 - **Apple TV-style look**: greeting, large clock and date, the focused app's name large above
   the rows (App names › Large, at top), rounded tiles that lift with a shadow on focus.
 - **Top bar** of icon buttons; the selected one slides open to show its name: Inputs dropdown (green dot = device plugged in), Wi-Fi name with a

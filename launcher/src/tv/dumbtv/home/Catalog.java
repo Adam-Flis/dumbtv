@@ -24,6 +24,21 @@ final class Catalog {
     static final String FAVORITES = "favorites";
     /** Id of the "Add favorites" tile shown while the dock is empty. */
     static final String ADD = "+add";
+    /** Ids of the two tiles at the end of All apps: the Appstore, and every installed app. */
+    static final String STORE = "+store", LIBRARY = "+library";
+    static final String APPSTORE = "com.amazon.venezia";
+
+    /** Amazon's Appstore, or null when it is missing or disabled. */
+    static Intent storeIntent(Context c) {
+        PackageManager pm = c.getPackageManager();
+        Intent i = pm.getLeanbackLaunchIntentForPackage(APPSTORE);
+        return i != null ? i : pm.getLaunchIntentForPackage(APPSTORE);
+    }
+
+    /** Tiles that are buttons, not apps: no art to load, no moving, no menu. */
+    static boolean special(Item it) {
+        return it.id.startsWith("+");
+    }
 
     private Catalog() {}
 

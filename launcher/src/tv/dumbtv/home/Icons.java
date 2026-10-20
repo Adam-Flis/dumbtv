@@ -16,7 +16,7 @@ import android.graphics.drawable.Drawable;
 final class Icons extends Drawable {
     static final int SUN = 0, MOON = 1, PARTLY = 2, PARTLY_NIGHT = 3, CLOUD = 4, FOG = 5, RAIN = 6,
             SNOW = 7, STORM = 8, STAR = 9, GRID = 10, INPUT = 11, WIFI = 12, GEAR = 13, SLIDERS = 14,
-            HOUSE = 15, PALETTE = 16, PHOTO = 17, DOTS = 18;
+            HOUSE = 15, PALETTE = 16, PHOTO = 17, DOTS = 18, BAG = 19, LIBRARY = 20;
     private static final int AMBER = 0xFFFFC53D, CLOUDY = 0xFFE3E6EA, BLUE = 0xFF5AB0FF,
             MOONLIGHT = 0xFFEDE7CF;
 
@@ -185,6 +185,29 @@ final class Icons extends Drawable {
             case DOTS:
                 fill.setColor(tint);
                 for (int i = 0; i < 3; i++) c.drawCircle(s * (0.22f + i * 0.28f), s / 2, s * 0.085f, fill);
+                break;
+            case BAG:
+                stroke(tint, s * 0.08f);
+                r.set(s * 0.16f, s * 0.32f, s * 0.84f, s * 0.9f);
+                c.drawRoundRect(r, s * 0.08f, s * 0.08f, line);
+                r.set(s * 0.34f, s * 0.1f, s * 0.66f, s * 0.46f);
+                c.drawArc(r, 180, 180, false, line);
+                fill.setColor(tint);
+                c.drawCircle(s * 0.5f, s * 0.61f, s * 0.035f, fill);
+                c.drawLine(s * 0.5f, s * 0.52f, s * 0.5f, s * 0.7f, line);
+                c.drawLine(s * 0.41f, s * 0.61f, s * 0.59f, s * 0.61f, line);
+                break;
+            case LIBRARY:
+                fill.setColor(tint);
+                float[][] books = {{0.1f, 0.22f}, {0.3f, 0.12f}, {0.5f, 0.3f}};
+                for (float[] book : books) {
+                    r.set(s * book[0], s * book[1], s * (book[0] + 0.15f), s * 0.88f);
+                    c.drawRoundRect(r, s * 0.03f, s * 0.03f, fill);
+                }
+                stroke(tint, s * 0.15f);
+                line.setStrokeCap(Paint.Cap.BUTT);
+                c.drawLine(s * 0.7f, s * 0.24f, s * 0.86f, s * 0.86f, line);
+                line.setStrokeCap(Paint.Cap.ROUND);
                 break;
             default: // INPUT: a little TV
                 stroke(tint, s * 0.09f);

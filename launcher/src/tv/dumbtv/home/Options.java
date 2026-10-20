@@ -3,6 +3,7 @@ package tv.dumbtv.home;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.media.tv.TvInputManager;
@@ -81,7 +82,12 @@ public final class Options extends Activity {
         list.addView(choice(Config.CLOCK));
         list.addView(choice(Config.INPUTS));
         list.addView(action("Favorites", () -> pickFavorites(this, Catalog.apps(this), null)));
-        list.addView(action("Apps on home screen", () -> pick(Catalog.APPS)));
+        list.addView(action("App library (apps on home screen)", () -> pick(Catalog.APPS)));
+        list.addView(action("Get more apps (Appstore)", () -> {
+            Intent store = Catalog.storeIntent(this);
+            if (store == null) Toast.makeText(this, "The Appstore is not available", Toast.LENGTH_SHORT).show();
+            else startActivity(store.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        }));
         list.addView(action("Inputs on home screen", () -> pick(Catalog.INPUTS)));
 
         section("Weather", Icons.PARTLY);
@@ -389,10 +395,34 @@ public final class Options extends Activity {
         navIcon(item);
     }
 
+    /**
+     * The app library: every installed app, ticked when it shows in All apps. Apps without a TV
+     * banner (Appstore, Downloads, phone apps) start unticked.
+     */
+    static void pickApps(Activity a, List<Item> items, Runnable done) {
+        Config cfg = Config.get(a);
+        CharSequence[] names = new CharSequence[items.size()];
+        boolean[] on = new boolean[items.size()];
+        for (int i = 0; i < items.size(); i++) {
+            names[i] = Catalog.label(cfg, items.get(i));
+            on[i] = Catalog.shown(cfg, Catalog.APPS, items.get(i));
+        }
+        AlertDialog d = new AlertDialog.Builder(a, Ui.DIALOG)
+                .setTitle("App library \u00B7 tick to show in All apps")
+                .setMultiChoiceItems(names, on, (dialog, which, checked) ->
+                        Catalog.setShown(cfg, Catalog.APPS, items.get(which), checked))
+                .setPositiveButton("Done", null)
+                .create();
+        if (done != null) d.setOnDismissListener(x -> done.run());
+        d.show();
+    }
+
     private void pick(String kind) {
-        List<Item> items = Catalog.APPS.equals(kind)
-                ? Catalog.apps(this)
-                : Catalog.inputs(this, (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE));
+        if (Catalog.APPS.equals(kind)) {
+            pickApps(this, Catalog.apps(this), null);
+            return;
+        }
+        List<Item> items = Catalog.inputs(this, (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE));
         CharSequence[] names = new CharSequence[items.size()];
         boolean[] on = new boolean[items.size()];
         for (int i = 0; i < items.size(); i++) {

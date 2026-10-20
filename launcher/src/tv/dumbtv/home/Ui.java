@@ -27,6 +27,48 @@ final class Ui {
         return Math.round(v * c.getResources().getDisplayMetrics().density);
     }
 
+    /** {@code a} blended toward {@code b} by {@code t} (0 = a, 1 = b). */
+    static int mix(int a, int b, float t) {
+        int r = Math.round(Color.red(a) + (Color.red(b) - Color.red(a)) * t);
+        int g = Math.round(Color.green(a) + (Color.green(b) - Color.green(a)) * t);
+        int bl = Math.round(Color.blue(a) + (Color.blue(b) - Color.blue(a)) * t);
+        return Color.rgb(r, g, bl);
+    }
+
+    /**
+     * The color an app's banner is known by: its colorful pixels averaged by hue (white and black
+     * backgrounds count for little), then set to a rich but dark tone white text reads well on.
+     */
+    static int vibrant(android.graphics.drawable.Drawable art) {
+        int w = 32, h = 18;
+        android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Rect keep = art.copyBounds();
+        art.setBounds(0, 0, w, h);
+        art.draw(new android.graphics.Canvas(b));
+        art.setBounds(keep);
+        float[] hsv = new float[3];
+        double x = 0, y = 0, sat = 0, weight = 0;
+        for (int i = 0; i < w; i++) {
+            for (int j = 0; j < h; j++) {
+                int p = b.getPixel(i, j);
+                if (Color.alpha(p) < 128) continue;
+                Color.colorToHSV(p, hsv);
+                double k = hsv[1] * hsv[1] * Math.min(1f, hsv[2] * 1.6f);
+                double a = Math.toRadians(hsv[0]);
+                x += Math.cos(a) * k;
+                y += Math.sin(a) * k;
+                sat += hsv[1] * k;
+                weight += k;
+            }
+        }
+        b.recycle();
+        // logos in black, white or grey get a calm slate blue
+        if (weight < w * h * 0.03) return 0xFF2B3A67;
+        float hue = (float) ((Math.toDegrees(Math.atan2(y, x)) + 360) % 360);
+        float s = (float) Math.max(0.5, Math.min(0.85, sat / weight));
+        return Color.HSVToColor(new float[] {hue, s, 0.46f});
+    }
+
     /** Black on light accents, white on dark ones. */
     static int ink(int color) {
         return Color.luminance(color) > 0.5f ? 0xFF000000 : 0xFFFFFFFF;

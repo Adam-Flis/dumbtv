@@ -1,5 +1,6 @@
 package tv.dumbtv.home;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -11,6 +12,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.media.tv.TvInputManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -106,6 +109,11 @@ public final class Home extends Activity {
         }
     };
     private Row favs, apps, inputs;
+    private View glow;
+    private GradientDrawable glowBg;
+    private int glowColor = GLOW_DEFAULT;
+    private ValueAnimator glowAnim;
+    private final java.util.Map<String, Integer> tints = new java.util.HashMap<>();
     private Tile moving;
     private String wallKey;
 
@@ -473,6 +481,11 @@ public final class Home extends Activity {
         wall = new ImageView(this);
         wall.setScaleType(ImageView.ScaleType.CENTER_CROP);
         root.addView(wall, new FrameLayout.LayoutParams(MATCH, MATCH));
+        // Background > Selected app's color: a soft glow in the focused app's color
+        glow = new View(this);
+        glowBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, glowColors(glowColor));
+        glow.setBackground(glowBg);
+        root.addView(glow, new FrameLayout.LayoutParams(MATCH, MATCH));
         shade = new View(this);
         root.addView(shade, new FrameLayout.LayoutParams(MATCH, MATCH));
 
@@ -646,7 +659,10 @@ public final class Home extends Activity {
         apps = new Row(Catalog.APPS, "All apps", Icons.GRID, column);
         inputs = new Row(Catalog.INPUTS, "Inputs", Icons.INPUT, column);
 
-        root.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> showFocusName(now));
+        root.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> {
+            showFocusName(now);
+            if (now instanceof Tile) tintFor(((Tile) now).item);
+        });
         return root;
     }
 
@@ -780,9 +796,14 @@ public final class Home extends Activity {
         if (Catalog.FAVS.equals(row.kind)) {
             shown = Catalog.favorites(cfg, apps.all);
             // an empty dock shows one tile that opens the picker, so it is never a dead end
-            if (shown.isEmpty() && !apps.all.isEmpty()) shown.add(new Item(Catalog.ADD, "+  Add favorites", null));
+            if (shown.isEmpty() && !apps.all.isEmpty()) shown.add(button(Catalog.ADD, "Add favorites", Icons.STAR));
         } else {
             shown = enabled ? Catalog.visible(cfg, row.kind, row.all) : new ArrayList<>();
+            // the way to more apps: the Appstore, and every installed app to pick from
+            if (Catalog.APPS.equals(row.kind) && !apps.all.isEmpty()) {
+                shown.add(button(Catalog.STORE, "Get more apps", Icons.BAG));
+                shown.add(button(Catalog.LIBRARY, "App library", Icons.LIBRARY));
+            }
         }
         boolean appRow = !Catalog.INPUTS.equals(row.kind);
         int[] size = cardSize();
@@ -812,6 +833,40 @@ public final class Home extends Activity {
         } else if (getCurrentFocus() == null || !landed) {
             focusFirst();
         }
+    }
+
+    /** A tile that is a button: a drawn icon over its name. */
+    private Item button(String id, String label, int icon) {
+        Item it = new Item(id, label, null);
+        it.icon = Icons.of(icon, dp(48), Ui.TEXT);
+        it.artRequested = true;
+        return it;
+    }
+
+    private static final int GLOW_DEFAULT = 0xFF2B3A67;
+
+    private static int[] glowColors(int c) {
+        return new int[] {c, Ui.mix(c, Config.APP_BASE, 0.62f), Config.APP_BASE};
+    }
+
+    /** Fades the glow toward {@code it}'s color; keeps the last one when its art is not loaded yet. */
+    private void tintFor(Item it) {
+        if (glow.getVisibility() != View.VISIBLE) return;
+        Integer target = Catalog.special(it) ? Integer.valueOf(GLOW_DEFAULT) : tints.get(it.id);
+        if (target == null) {
+            Drawable art = it.banner != null ? it.banner : it.icon;
+            if (art == null) return;
+            target = Ui.vibrant(art);
+            tints.put(it.id, target);
+        }
+        if (target == glowColor) return;
+        if (glowAnim != null) glowAnim.cancel();
+        int from = glowColor, to = target;
+        glowColor = to;
+        glowAnim = ValueAnimator.ofArgb(from, to);
+        glowAnim.setDuration(450);
+        glowAnim.addUpdateListener(a -> glowBg.setColors(glowColors((Integer) a.getAnimatedValue())));
+        glowAnim.start();
     }
 
     private void loadArt(Item it) {
@@ -875,6 +930,7 @@ public final class Home extends Activity {
         boolean image = "image".equals(cfg.get(Config.BACKGROUND));
         File file = image ? cfg.wallpaper() : null;
         root.setBackgroundColor(cfg.background());
+        glow.setVisibility("app".equals(cfg.get(Config.BACKGROUND)) ? View.VISIBLE : View.GONE);
         int dim = Integer.parseInt(cfg.get(Config.DIM));
         shade.setBackgroundColor(file == null ? Color.TRANSPARENT : Color.argb(dim * 255 / 100, 0, 0, 0));
         String key = file == null ? null : file.getPath() + ":" + file.lastModified();
@@ -1184,6 +1240,16 @@ public final class Home extends Activity {
             Options.pickFavorites(this, apps.all, this::apply);
             return;
         }
+        if (Catalog.LIBRARY.equals(t.item.id)) {
+            Options.pickApps(this, apps.all, this::apply);
+            return;
+        }
+        if (Catalog.STORE.equals(t.item.id)) {
+            Intent store = Catalog.storeIntent(this);
+            if (store == null) Toast.makeText(this, "The Appstore is not available", Toast.LENGTH_SHORT).show();
+            else launch(store, Catalog.APPSTORE);
+            return;
+        }
         launch(new Intent(t.item.intent), Catalog.INPUTS.equals(t.kind) ? null : t.item.id);
     }
 
@@ -1200,7 +1266,7 @@ public final class Home extends Activity {
             FAV_ADD = "Add to Favorites", FAV_REMOVE = "Remove from Favorites";
 
     private void menu(Tile t) {
-        if (Catalog.ADD.equals(t.item.id)) {
+        if (Catalog.special(t.item)) {
             open(t);
             return;
         }
@@ -1286,6 +1352,8 @@ public final class Home extends Activity {
         LinearLayout strip = (LinearLayout) moving.getParent();
         int from = strip.indexOfChild(moving), to = from + by;
         if (to < 0 || to >= strip.getChildCount()) return;
+        // apps stay in front of the Get more apps / App library buttons
+        if (Catalog.special(((Tile) strip.getChildAt(to)).item)) return;
         ViewGroup.LayoutParams lp = moving.getLayoutParams();
         strip.removeViewAt(from);
         strip.addView(moving, to, lp);
@@ -1299,7 +1367,10 @@ public final class Home extends Activity {
         LinearLayout strip = (LinearLayout) t.getParent();
         if (strip == null) return;
         List<String> ids = new ArrayList<>();
-        for (int i = 0; i < strip.getChildCount(); i++) ids.add(((Tile) strip.getChildAt(i)).item.id);
+        for (int i = 0; i < strip.getChildCount(); i++) {
+            Item it = ((Tile) strip.getChildAt(i)).item;
+            if (!Catalog.special(it)) ids.add(it.id);
+        }
         Catalog.saveOrder(cfg, t.kind, ids);
         applied = cfg.version();
     }
