@@ -87,7 +87,6 @@ public final class Options extends Activity {
         list.addView(choice(Config.APPS_LAYOUT));
         list.addView(choice(Config.RECENT));
         list.addView(choice(Config.SWITCH));
-        list.addView(choice(Config.NIGHT));
         list.addView(action("Favorites", () -> {
             openingPicker = true;
             Picker.open(this, Picker.FAVS);
@@ -116,6 +115,14 @@ public final class Options extends Activity {
             Home.frameNow = true;
             finish();
         }));
+
+        section("Night", Icons.SLEEP);
+        list.addView(choice(Config.NIGHT));
+        list.addView(timeRow(Config.NIGHT_START, "Starts at", 22 * 60));
+        list.addView(timeRow(Config.NIGHT_END, "Ends at", 6 * 60));
+        list.addView(choice(Config.NIGHT_DIM));
+        list.addView(note("A warm dim over the home screen, and no photo frame, so the TV can fall"
+                + " asleep. The sleep timer is the moon button in the top bar."));
 
         section("More", Icons.DOTS);
         list.addView(action("Reset order, names and hidden tiles", this::reset));
@@ -153,13 +160,69 @@ public final class Options extends Activity {
         refresh();
     }
 
-    private static final String CHOICE = "choice";
+    private static final String CHOICE = "choice", TIME = "time";
+
+    /** A time setting: left/right moves it 15 minutes, OK opens the exact-time picker. */
+    private View timeRow(String key, String title, int fallback) {
+        LinearLayout row = row();
+        row.setTag(TIME);
+        row.setId(100 + key.hashCode() % 50 + 50);
+        TextView value = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
+        row.addView(label(title), new LinearLayout.LayoutParams(0, WRAP, 1f));
+        row.addView(value, new LinearLayout.LayoutParams(WRAP, WRAP));
+        row.setOnClickListener(v -> TimeChooser.show(this, title, cfg.time(key, fallback), clock24(), m -> {
+            cfg.setTime(key, m);
+            refresh();
+        }));
+        row.setOnKeyListener((v, code, e) -> {
+            if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+            int by = code == KeyEvent.KEYCODE_DPAD_LEFT ? -15 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 15 : 0;
+            if (by == 0) return false;
+            v.playSoundEffect(by < 0 ? SoundEffectConstants.NAVIGATION_LEFT : SoundEffectConstants.NAVIGATION_RIGHT);
+            int m = cfg.time(key, fallback);
+            cfg.setTime(key, ((m / 15 * 15 + by) % 1440 + 1440) % 1440);
+            refresh();
+            return true;
+        });
+        Runnable show = () -> {
+            String text = clockText(cfg.time(key, fallback));
+            boolean focused = row.isFocused();
+            value.setText(focused ? "\u2039  " + text + "  \u203A" : text);
+            value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
+            row.setAlpha("on".equals(cfg.get(Config.NIGHT)) ? 1f : 0.4f);
+        };
+        row.setOnFocusChangeListener((v, has) -> show.run());
+        refreshers.add(show);
+        refreshers.add(() -> style(row));
+        return row;
+    }
+
+    private boolean clock24() {
+        String mode = cfg.get(Config.CLOCK);
+        return "24h".equals(mode) || "auto".equals(mode) && android.text.format.DateFormat.is24HourFormat(this);
+    }
+
+    private String clockText(int m) {
+        int h = m / 60, min = m % 60;
+        if (clock24()) return String.format(java.util.Locale.ROOT, "%02d:%02d", h, min);
+        return (h % 12 == 0 ? 12 : h % 12) + ":" + String.format(java.util.Locale.ROOT, "%02d", min) + (h < 12 ? " AM" : " PM");
+    }
+
+    /** A line of small print under a group. */
+    private View note(String text) {
+        TextView v = Ui.text(this, 14, Ui.FAINT, Ui.MEDIUM);
+        v.setText(text);
+        v.setLineSpacing(0, 1.3f);
+        v.setPadding(dp(16), dp(6), dp(16), dp(4));
+        return v;
+    }
     private LinearLayout hintBar;
 
     private void showHints(View now) {
         if (hintBar == null || now == null) return;
         if (now.getParent() == list) {
             if (CHOICE.equals(now.getTag())) Ui.hintLines(hintBar, "\u25C0 \u25B6", "Change", "Back", "To the groups");
+            else if (TIME.equals(now.getTag())) Ui.hintLines(hintBar, "\u25C0 \u25B6", "15 minutes", "OK", "Exact time", "Back", "To the groups");
             else Ui.hintLines(hintBar, "OK", "Open", "Back", "To the groups");
         } else {
             Ui.hintLines(hintBar, "\u25B2 \u25BC", "Choose a group", "\u25B6", "Open it", "Back", "Close");
@@ -266,7 +329,8 @@ public final class Options extends Activity {
                 value.setCompoundDrawablePadding(dp(10));
             }
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
-            boolean off = (c == Config.DIM || c == Config.ROTATE)
+            boolean off = c == Config.NIGHT_DIM && !"on".equals(cfg.get(Config.NIGHT))
+                    || (c == Config.DIM || c == Config.ROTATE)
                     && !"image".equals(cfg.get(Config.BACKGROUND))
                     || (c == Config.UNITS || c == Config.W_ICON || c == Config.W_HOURS || c == Config.W_FEELS
                         || c == Config.W_SUN) && !"on".equals(cfg.get(Config.WEATHER))

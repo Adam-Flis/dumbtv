@@ -670,13 +670,15 @@ public final class Home extends Activity {
         // current weather, and under it the next sunrise/sunset and tomorrow
         LinearLayout weatherCol = new LinearLayout(this);
         weatherCol.setOrientation(LinearLayout.VERTICAL);
-        weatherCol.setPadding(dp(34), 0, 0, 0);
+        weatherCol.setPadding(dp(24), 0, 0, 0);
         weatherCol.addView(weatherBox);
         sunLine = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
         sunLine.setSingleLine();
         sunLine.setPadding(dp(2), dp(10), 0, 0);
         sunLine.setVisibility(View.GONE);
         weatherCol.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
+        // time on the left; all the weather together on the right, ending where the top bar ends
+        middle.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         middle.addView(weatherCol);
         // the next hours sit right after the current weather, split by a thin line
         hoursRule = new View(this);
@@ -686,8 +688,6 @@ public final class Home extends Activity {
         rlp.leftMargin = dp(28);
         rlp.rightMargin = dp(12);
         rlp.topMargin = dp(16);
-        // the forecast ends where the top bar ends, so the header has one right edge
-        middle.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         middle.addView(hoursRule, rlp);
         // next hours, and under them the next sunrise/sunset and tomorrow: one forecast block
         LinearLayout forecast = new LinearLayout(this);
@@ -1125,15 +1125,13 @@ public final class Home extends Activity {
         weather();
         frameInfo();
         nightShade.setVisibility(isNight() ? View.VISIBLE : View.GONE);
+        nightShade.setBackgroundColor(Color.argb(cfg.nightAlpha(), 24, 11, 0));
         updateSleepChip();
     }
 
-    /** Night mode: from the chosen hour until 6 AM. */
+    /** Night mode: between the chosen start and end times. */
     private boolean isNight() {
-        String start = cfg.get(Config.NIGHT);
-        if ("off".equals(start)) return false;
-        int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
-        return h >= Integer.parseInt(start) || h < 6;
+        return cfg.nightNow();
     }
 
     // ---- sleep timer ----

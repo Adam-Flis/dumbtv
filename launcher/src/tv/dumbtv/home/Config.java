@@ -107,8 +107,50 @@ final class Config {
             new String[] {"on", "off"},
             new String[] {"On", "Off"});
     static final Choice NIGHT = new Choice("night", "Night mode", "off",
-            new String[] {"off", "21", "22", "23"},
-            new String[] {"Off", "9 PM to 6 AM", "10 PM to 6 AM", "11 PM to 6 AM"});
+            new String[] {"off", "on"},
+            new String[] {"Off", "On"});
+    static final Choice NIGHT_DIM = new Choice("night.dim", "Dim strength", "medium",
+            new String[] {"light", "medium", "strong"},
+            new String[] {"Light", "Medium", "Strong"});
+    static final String NIGHT_START = "night.start", NIGHT_END = "night.end";
+    private static final int[] NIGHT_ALPHA = {80, 125, 170};
+
+    /** Minutes after midnight stored as "HH:MM" under {@code key}. */
+    int time(String key, int fallback) {
+        String v = get(key, "");
+        int colon = v.indexOf(':');
+        try {
+            if (colon > 0) return (Integer.parseInt(v.substring(0, colon)) % 24) * 60 + Integer.parseInt(v.substring(colon + 1)) % 60;
+        } catch (NumberFormatException ignored) {
+            // falls back
+        }
+        return fallback;
+    }
+
+    void setTime(String key, int minutes) {
+        set(key, String.format(Locale.ROOT, "%02d:%02d", minutes / 60 % 24, minutes % 60));
+    }
+
+    int nightStart() {
+        return time(NIGHT_START, 22 * 60);
+    }
+
+    int nightEnd() {
+        return time(NIGHT_END, 6 * 60);
+    }
+
+    /** Night mode is on and the clock is between its start and end (which may cross midnight). */
+    boolean nightNow() {
+        if (!"on".equals(get(NIGHT))) return false;
+        Calendar c = Calendar.getInstance();
+        int now = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE), s = nightStart(), e = nightEnd();
+        if (s == e) return false;
+        return s < e ? now >= s && now < e : now >= s || now < e;
+    }
+
+    int nightAlpha() {
+        return NIGHT_ALPHA[Arrays.asList(NIGHT_DIM.values).indexOf(get(NIGHT_DIM))];
+    }
 
     static final Choice W_ICON = toggle("weather.icon", "Condition icon");
     static final Choice W_HOURS = toggle("weather.hours", "Next hours");
@@ -128,7 +170,8 @@ final class Config {
                 "1 hour, then TV may sleep", "2 hours, then TV may sleep"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, W_ICON, W_HOURS, W_FEELS, W_SUN, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT};
+        WEATHER, UNITS, W_ICON, W_HOURS, W_FEELS, W_SUN, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT,
+        NIGHT_DIM};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";
@@ -184,6 +227,12 @@ final class Config {
                 int eq = line.indexOf('=');
                 if (line.startsWith("#") || eq <= 0) continue;
                 values.put(line.substring(0, eq).trim(), line.substring(eq + 1).trim());
+            }
+            // older builds kept the night start hour in "night" (21, 22, 23)
+            String night = values.get(NIGHT.key);
+            if (night != null && night.matches("\\d+")) {
+                values.put(NIGHT.key, "on");
+                if (!values.containsKey(NIGHT_START)) values.put(NIGHT_START, night + ":00");
             }
         } catch (IOException e) {
             Log.w("dumbtv", "could not read " + file, e);
