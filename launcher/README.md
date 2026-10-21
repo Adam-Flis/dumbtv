@@ -93,13 +93,20 @@ upstream home screen:
 - **Night mode** (Options › Night & photos): a schedule with exact start/end times (time picker)
   and a dim slider (10-90 %); warm dim, no photo frame. The top bar's moon-and-stars button
   switches it on or off now; that lasts until the schedule's next change.
-- **Sleep timer** (top bar, stopwatch icon): 15 min to 2 h, then the TV turns off. While it runs the
-  button stays open with the minutes left, in amber. It needs dumbtv as a device administrator
+- **Sleep timer** (top bar, stopwatch icon): 15 min to 2 h, or **Custom…** (hours and minutes,
+  up to 9 h 55), then the TV turns off. While it runs the button stays open with the time left,
+  and its menu shows the time left with **Add 15 / 30 minutes**, **New length…** and
+  **Cancel the timer** (no "Off" row when nothing is running). It needs dumbtv as a device administrator
   with the single "lock screen" policy (what turns a TV off). Fire OS 6 answers the normal
   "Activate" screen with a dummy, so allow it once from a computer:
   `adb shell dpm set-active-admin tv.dumbtv.home/.Admin`. Without it the button offers Fire TV's
   own sleep timer. Options › More › Remove sleep timer permission, or `install.sh --undo`, takes
   it away (Android needs that before an uninstall).
+- **Settings** (top bar, gear): a short menu of Fire TV sections that open directly (Network &
+  Wi-Fi, Device & Software, Apps, Remotes & Bluetooth) plus **All Fire TV settings**. Amazon's
+  settings grid draws its top row (Device & Software, Network, Account) off screen on this TV,
+  most likely because it counts on its slide-in animation and animations are off. Fire OS lets
+  other apps open only those four sections (the rest need an Amazon-only permission).
 - **Key hints**: the app grid, Options and Move mode show which remote keys do what.
 - **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
   them to the photo frame (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`

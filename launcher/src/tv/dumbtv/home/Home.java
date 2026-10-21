@@ -613,7 +613,7 @@ public final class Home extends Activity {
         sleepChip = chip(Icons.TIMER, "Sleep timer", this::sleepMenu);
         bar.addView(sleepChip);
         bar.addView(chip(Icons.SLIDERS, "Options", v -> startActivity(new Intent(this, Options.class))));
-        bar.addView(chip(Icons.GEAR, "Settings", v -> openSettings()));
+        bar.addView(chip(Icons.GEAR, "Settings  \u25BE", this::settingsMenu));
         top.addView(bar, new LinearLayout.LayoutParams(WRAP, WRAP));
         head.addView(top, new LinearLayout.LayoutParams(MATCH, WRAP));
 
@@ -1240,7 +1240,9 @@ public final class Home extends Activity {
             box.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
             if (focus == null) focus = row;
         }
-        pop.showAsDropDown(anchor, 0, dp(8));
+        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        pop.setWidth(box.getMeasuredWidth()); // a known width lets it line up under the chip
+        pop.showAsDropDown(anchor, 0, dp(8), Gravity.END);
         if (focus != null) focus.requestFocus();
     }
 
@@ -1413,6 +1415,78 @@ public final class Home extends Activity {
         }
         o.inJustDecodeBounds = false;
         return BitmapFactory.decodeFile(f.getPath(), o);
+    }
+
+    /**
+     * The gear's dropdown. Amazon's own settings grid draws its top row off screen on this TV, so
+     * the sections it hides (and the most used ones) open directly from here. Only the sections
+     * Fire OS lets other apps open are listed; "All Fire TV settings" opens Amazon's grid.
+     */
+    private void settingsMenu(View anchor) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(8), dp(10), dp(8), dp(8));
+        PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
+        pop.setBackgroundDrawable(Ui.round(0xF5202126, dp(18)));
+        pop.setElevation(dp(12));
+
+        TextView head = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
+        head.setLetterSpacing(0.08f);
+        head.setPadding(dp(16), dp(4), dp(16), dp(4));
+        head.setText("FIRE TV SETTINGS");
+        box.addView(head);
+        box.addView(menuRule());
+
+        String[][] sections = {
+            {"Network & Wi-Fi", Settings.ACTION_WIFI_SETTINGS},
+            {"Device & Software", Settings.ACTION_DEVICE_INFO_SETTINGS},
+            {"Apps", Settings.ACTION_APPLICATION_SETTINGS},
+            {"Remotes & Bluetooth", "com.amazon.device.settings.action.CONTROLLERS"},
+        };
+        int accent = cfg.accent();
+        TextView first = null;
+        for (String[] s : sections) {
+            Intent i = new Intent(s[1]);
+            if (i.resolveActivity(getPackageManager()) == null) continue;
+            TextView row = menuRow(s[0], accent, () -> {
+                pop.dismiss();
+                launch(i, null);
+            });
+            box.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
+            if (first == null) first = row;
+        }
+        if (first != null) box.addView(menuRule());
+        TextView all = menuRow("All Fire TV settings", accent, () -> {
+            pop.dismiss();
+            openSettings();
+        });
+        box.addView(all, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
+        if (first == null) first = all;
+        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        pop.setWidth(box.getMeasuredWidth()); // a known width lets it line up under the chip
+        pop.showAsDropDown(anchor, 0, dp(8), Gravity.END);
+        first.requestFocus();
+    }
+
+    private View menuRule() {
+        View rule = new View(this);
+        rule.setBackgroundColor(0x24FFFFFF);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(1)));
+        lp.setMargins(dp(12), dp(6), dp(12), dp(6));
+        rule.setLayoutParams(lp);
+        return rule;
+    }
+
+    private TextView menuRow(String label, int accent, Runnable run) {
+        TextView row = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
+        row.setText(label);
+        row.setMinWidth(dp(260));
+        row.setPadding(dp(16), dp(12), dp(16), dp(12));
+        row.setFocusable(true);
+        row.setClickable(true);
+        Ui.focusStyle(row, accent, 0x00000000, dp(10));
+        row.setOnClickListener(v -> run.run());
+        return row;
     }
 
     /**
