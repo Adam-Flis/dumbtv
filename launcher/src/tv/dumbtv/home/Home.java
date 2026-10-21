@@ -1164,45 +1164,89 @@ public final class Home extends Activity {
     private void updateSleepChip() {
         if (sleepChip == null) return;
         int left = Sleep.left(cfg);
-        chipLabels.put(sleepChip, left > 0 ? "Sleep in " + left + " min" : "Sleep timer");
+        chipLabels.put(sleepChip, left <= 0 ? "Sleep timer" : left < 60 ? "Sleep in " + left + " min"
+                : String.format(java.util.Locale.ROOT, "Sleep in %d:%02d", left / 60, left % 60));
         chipIcon(sleepChip);
         // the last minutes count down more often than the once-a-minute clock tick
         ui.removeCallbacks(sleepTick);
         if (left > 0 && resumed) ui.postDelayed(sleepTick, left <= 2 ? 10_000 : 30_000);
     }
 
-    /** The sleep timer's dropdown: Off and a few lengths; the running one is marked. */
+    /**
+     * The sleep timer's dropdown. No timer: a few lengths and "Custom…". A timer running: its time
+     * left on top, then add 15 / 30 min, set a new length, or cancel it.
+     */
     private void sleepMenu(View anchor) {
         int left = Sleep.left(cfg);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(8), dp(8), dp(8), dp(8));
+        box.setPadding(dp(8), dp(10), dp(8), dp(8));
         PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
-        pop.setBackgroundDrawable(Ui.round(0xF2202126, dp(16)));
+        pop.setBackgroundDrawable(Ui.round(0xF5202126, dp(18)));
         pop.setElevation(dp(12));
+
         TextView head = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
-        head.setText(left > 0 ? "The TV turns off in " + left + " min" : "Turn the TV off after");
-        head.setPadding(dp(16), dp(8), dp(16), dp(8));
+        head.setLetterSpacing(0.08f);
+        head.setPadding(dp(16), dp(4), dp(16), dp(4));
+        head.setText(left > 0 ? "SLEEP TIMER" : "TURN THE TV OFF IN");
         box.addView(head);
+        if (left > 0) {
+            TextView big = Ui.text(this, 30, 0xFFFFC53D, Ui.LIGHT);
+            big.setText(Sleep.label(left) + " left");
+            big.setPadding(dp(16), dp(2), dp(16), dp(10));
+            box.addView(big);
+        }
+        View rule = new View(this);
+        rule.setBackgroundColor(0x24FFFFFF);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(1)));
+        rlp.setMargins(dp(12), dp(6), dp(12), dp(6));
+        box.addView(rule, rlp);
+
+        List<String> labels = new ArrayList<>();
+        List<Runnable> runs = new ArrayList<>();
+        if (left > 0) {
+            labels.add("Add 15 minutes");
+            runs.add(() -> chooseSleep(left + 15));
+            labels.add("Add 30 minutes");
+            runs.add(() -> chooseSleep(left + 30));
+            labels.add("New length\u2026");
+            runs.add(() -> customSleep(left));
+            labels.add("Cancel the timer");
+            runs.add(() -> chooseSleep(0));
+        } else {
+            for (int m : Sleep.MINUTES) {
+                if (m == 0) continue;
+                labels.add(Sleep.label(m));
+                runs.add(() -> chooseSleep(m));
+            }
+            labels.add("Custom\u2026");
+            runs.add(() -> customSleep(60));
+        }
         int accent = cfg.accent();
         TextView focus = null;
-        for (int m : Sleep.MINUTES) {
+        for (int i = 0; i < labels.size(); i++) {
             TextView row = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
-            row.setText(m == 0 ? (left > 0 ? "Cancel the timer" : "Off") : Sleep.label(m));
-            row.setMinWidth(dp(240));
+            row.setText(labels.get(i));
+            row.setMinWidth(dp(260));
             row.setPadding(dp(16), dp(12), dp(16), dp(12));
             row.setFocusable(true);
             row.setClickable(true);
             Ui.focusStyle(row, accent, 0x00000000, dp(10));
+            Runnable run = runs.get(i);
             row.setOnClickListener(v -> {
                 pop.dismiss();
-                chooseSleep(m);
+                run.run();
             });
             box.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-            if (left > 0 ? m == 0 : m == 30) focus = row;
+            if (focus == null) focus = row;
         }
         pop.showAsDropDown(anchor, 0, dp(8));
         if (focus != null) focus.requestFocus();
+    }
+
+    /** Any length: hours and minutes picked like a time. */
+    private void customSleep(int minutes) {
+        TimeChooser.showDuration(this, "Turn the TV off in", Math.max(5, (minutes + 2) / 5 * 5), this::chooseSleep);
     }
 
     private void chooseSleep(int minutes) {

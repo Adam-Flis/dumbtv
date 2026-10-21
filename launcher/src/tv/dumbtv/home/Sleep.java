@@ -57,11 +57,13 @@ public final class Sleep extends BroadcastReceiver {
         if (am != null) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
     }
 
+    /** "45 min", "1 hour", "1 hr 20 min", "2 hours". */
     static String label(int minutes) {
-        if (minutes == 0) return "Off";
-        if (minutes < 60) return minutes + " minutes";
-        if (minutes == 60) return "1 hour";
-        return minutes % 60 == 0 ? minutes / 60 + " hours" : minutes / 60 + "½ hours";
+        if (minutes <= 0) return "Off";
+        int h = minutes / 60, m = minutes % 60;
+        if (h == 0) return m + " min";
+        if (m == 0) return h == 1 ? "1 hour" : h + " hours";
+        return h + " hr " + m + " min";
     }
 
     @Override

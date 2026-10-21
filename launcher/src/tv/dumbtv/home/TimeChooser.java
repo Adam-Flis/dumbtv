@@ -28,9 +28,19 @@ final class TimeChooser {
 
     private TimeChooser() {}
 
+    /** A length of time: hours (0-9) and minutes (0-55 in fives). */
+    static void showDuration(Activity a, String title, int minutes, Done done) {
+        build(a, title, minutes, true, true, done);
+    }
+
     static void show(Activity a, String title, int minutes, boolean h24, Done done) {
+        build(a, title, minutes, h24, false, done);
+    }
+
+    private static void build(Activity a, String title, int minutes, boolean h24, boolean length, Done done) {
         int accent = Config.get(a).accent();
-        int[] v = {(minutes / 60) % 24, minutes % 60};
+        int[] v = {length ? Math.min(9, minutes / 60) : (minutes / 60) % 24, minutes % 60};
+        int hours = length ? 10 : 24;
         Dialog d = new Dialog(a);
         d.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
@@ -52,15 +62,23 @@ final class TimeChooser {
         wheels.setPadding(0, dp(a, 18), 0, dp(a, 8));
         panel.addView(wheels);
         TextView hour = wheel(a, wheels, accent);
-        TextView colon = Ui.text(a, 48, Ui.MUTED, Ui.LIGHT);
-        colon.setText(":");
+        TextView colon = Ui.text(a, length ? 22 : 48, Ui.MUTED, length ? Ui.MEDIUM : Ui.LIGHT);
+        colon.setText(length ? "hr" : ":");
+        colon.setPadding(dp(a, 4), 0, dp(a, 4), 0);
         wheels.addView(colon, 1);
         TextView minute = wheel(a, wheels, accent);
         TextView half = h24 ? null : wheel(a, wheels, accent);
+        if (length) {
+            TextView unit = Ui.text(a, 22, Ui.MUTED, Ui.MEDIUM);
+            unit.setText("min");
+            unit.setPadding(dp(a, 4), 0, 0, 0);
+            wheels.addView(unit);
+        }
 
         Runnable show = () -> {
             int h = v[0];
-            hour.setText(h24 ? String.format(Locale.ROOT, "%02d", h) : String.valueOf(h % 12 == 0 ? 12 : h % 12));
+            hour.setText(length ? String.valueOf(h)
+                    : h24 ? String.format(Locale.ROOT, "%02d", h) : String.valueOf(h % 12 == 0 ? 12 : h % 12));
             minute.setText(String.format(Locale.ROOT, "%02d", v[1]));
             if (half != null) half.setText(h < 12 ? "AM" : "PM");
         };
@@ -69,7 +87,7 @@ final class TimeChooser {
         LinearLayout buttons = new LinearLayout(a);
         buttons.setGravity(Gravity.CENTER);
         buttons.setPadding(0, dp(a, 14), 0, 0);
-        TextView save = button(a, "Save", accent);
+        TextView save = button(a, length ? "Start" : "Save", accent);
         TextView cancel = button(a, "Cancel", accent);
         buttons.addView(save);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(WRAP, WRAP);
@@ -80,11 +98,13 @@ final class TimeChooser {
         LinearLayout keys = new LinearLayout(a);
         keys.setGravity(Gravity.CENTER);
         keys.setPadding(dp(a, 22), dp(a, 24), 0, 0);
-        Ui.hints(keys, "▲ ▼", "Change", "◀ ▶", "Move", "OK", "Save");
+        Ui.hints(keys, "▲ ▼", "Change", "◀ ▶", "Move", "OK", length ? "Start" : "Save");
         panel.addView(keys);
 
         Runnable commit = () -> {
-            done.set(v[0] * 60 + v[1]);
+            int total = v[0] * 60 + v[1];
+            if (length && total == 0) return; // a zero-length timer is nothing to start
+            done.set(total);
             d.dismiss();
         };
         save.setOnClickListener(x -> commit.run());
@@ -102,7 +122,7 @@ final class TimeChooser {
                 if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
                 int by = code == KeyEvent.KEYCODE_DPAD_UP ? 1 : code == KeyEvent.KEYCODE_DPAD_DOWN ? -1 : 0;
                 if (by != 0) {
-                    if (view == hour) v[0] = (v[0] + by + 24) % 24;
+                    if (view == hour) v[0] = (v[0] + by + hours) % hours;
                     else if (view == minute) v[1] = by > 0 ? (v[1] / 5 * 5 + 5) % 60 : ((v[1] + 4) / 5 * 5 - 5 + 60) % 60;
                     else v[0] = (v[0] + 12) % 24;
                     view.playSoundEffect(by > 0 ? SoundEffectConstants.NAVIGATION_UP : SoundEffectConstants.NAVIGATION_DOWN);
