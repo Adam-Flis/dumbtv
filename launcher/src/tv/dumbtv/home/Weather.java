@@ -77,6 +77,20 @@ final class Weather {
         return out;
     }
 
+    private static volatile Report latest;
+    private static volatile long latestAt;
+
+    /** The last forecast this process fetched, if under an hour old (the screen saver dream reuses it). */
+    static Report latest() {
+        return System.currentTimeMillis() - latestAt < 60 * 60_000L ? latest : null;
+    }
+
+    /** "Sunny  ·  H 62°  L 39°": conditions and today's range, as the screen saver shows them. */
+    static String summary(Report r) {
+        String words = describe(r.code, r.day), range = "H " + r.hi + "\u00B0  L " + r.lo + "\u00B0";
+        return words.isEmpty() ? range : words + "  \u00B7  " + range;
+    }
+
     static Report fetch(String lat, String lon, boolean fahrenheit, boolean h24) throws IOException, JSONException {
         String url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon
                 + "&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,is_day"
@@ -118,6 +132,8 @@ final class Weather {
         r.tomorrowCode = daily.getJSONArray("weather_code").optInt(1);
         r.tomorrowRain = daily.getJSONArray("precipitation_probability_max").optInt(1);
         r.hint = hint(r, hourly, fahrenheit, h24);
+        latest = r;
+        latestAt = System.currentTimeMillis();
         return r;
     }
 

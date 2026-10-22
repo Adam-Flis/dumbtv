@@ -23,10 +23,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-import android.text.SpannableString;
-import android.text.Spanned;
 import android.text.format.DateFormat;
-import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.SoundEffectConstants;
@@ -1144,20 +1141,11 @@ public final class Home extends Activity {
     }
 
     private void tick() {
-        boolean h24 = cfg.clock24(this);
         Date now = new Date();
-        if (h24) {
-            clock.setText(DateFormat.format("HH:mm", now));
-        } else {
-            SpannableString half = new SpannableString(" " + DateFormat.format("a", now));
-            half.setSpan(new RelativeSizeSpan(0.36f), 0, half.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            clock.setText(DateFormat.format("h:mm", now));
-            clock.append(half);
-        }
+        clock.setText(Clock.time(cfg.clock24(this), now));
         int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
         greeting.setText(hour >= 4 && hour < 12 ? "Good morning" : hour >= 4 && hour < 17 ? "Good afternoon" : "Good evening");
-        Locale locale = Locale.getDefault();
-        date.setText(DateFormat.format(DateFormat.getBestDateTimePattern(locale, "EEEEdMMMM"), now));
+        date.setText(Clock.date(now));
         // hourly and time-of-day rotations change while the screen stays open; a no-op otherwise
         background();
         weather();
@@ -1442,6 +1430,7 @@ public final class Home extends Activity {
     }
 
     private void endFrame() {
+        PhotoFrame.endedAt = System.currentTimeMillis();
         root.setKeepScreenOn(false);
         if (frame != null) frame.pause();
         // the last picture would otherwise sit still until the TV sleeps
@@ -1469,9 +1458,7 @@ public final class Home extends Activity {
     private void frameInfo() {
         if (frame == null) return;
         boolean shown = weather != null && weatherBox.getVisibility() == View.VISIBLE;
-        // the weather heads-up ("Rain likely around 5 PM") shows on the screen saver only
-        frame.setInfo(clock.getText(), date.getText(), shown ? Icons.forCode(weather.code, weather.day) : -1,
-                shown ? temp.getText() : null, shown ? sky.getText() : null, shown ? weather.hint : null);
+        frame.update(cfg, shown ? weather : null);
     }
 
     /** Refreshes the forecast every 30 min while weather is on; shows or hides the weather views. */

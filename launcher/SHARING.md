@@ -35,9 +35,11 @@ Check the TV's software first: Settings › My Fire TV (or Device & Software) �
    - Weather city: Options › Weather.
    - Night mode times: Options › Night.
    - Their own photos: `launcher/tools/push-photos.sh <folder>` from the computer.
-7. **Check Options › Help:** every dot should be green.
-8. **Save their settings:** `launcher/tools/settings.sh backup`.
-9. **Turn ADB debugging off again** (Developer options). It stops anyone else on the network from controlling the TV.
+7. **Optional, the screen saver in every app** (not just the home screen): run the three
+   `adb shell settings put secure ...` lines under "Screen saver in every app" in README.md.
+8. **Check Options › Help:** every dot should be green.
+9. **Save their settings:** `launcher/tools/settings.sh backup`.
+10. **Turn ADB debugging off again** (Developer options). It stops anyone else on the network from controlling the TV.
 
 
 ## Updating later

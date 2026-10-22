@@ -34,6 +34,7 @@ final class ScreenCare {
     private boolean running;
     private View dark;
 
+    /** {@code page} (may be null) is the main layer that drifts; {@code root} receives the dark layer. */
     ScreenCare(Config cfg, Handler ui, FrameLayout root, View page, Busy busy) {
         this.cfg = cfg;
         this.ui = ui;
@@ -105,7 +106,7 @@ final class ScreenCare {
     private void shift() {
         ui.removeCallbacks(shift);
         if (on()) step = (step + 1) % SHIFTS.length;
-        place(page);
+        if (page != null) place(page);
         for (View v : followers) place(v);
         if (running && on()) ui.postDelayed(shift, SHIFT_MS);
     }

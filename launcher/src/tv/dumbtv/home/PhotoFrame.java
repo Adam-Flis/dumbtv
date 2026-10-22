@@ -30,6 +30,11 @@ import java.util.concurrent.ExecutorService;
  */
 final class PhotoFrame extends FrameLayout {
     static final String FOLDER = "photos";
+    /**
+     * When the home screen's own screen saver last ran out (ms). The system dream starts on the
+     * same idle timer right after, so it checks this and lets the TV sleep instead of repeating.
+     */
+    static volatile long endedAt;
     private static final long SLIDE_MS = 20_000, FADE_MS = 2000;
     private static final int MAX_W = 1920, MAX_H = 1080;
 
@@ -132,7 +137,7 @@ final class PhotoFrame extends FrameLayout {
      * Clock and date; the weather icon ({@code iconKind}, or -1 for none), temperature,
      * conditions and the heads-up. Null hides a line; no temperature hides the weather.
      */
-    void setInfo(CharSequence time, CharSequence day, int iconKind, CharSequence degrees, CharSequence conditions,
+    private void setInfo(CharSequence time, CharSequence day, int iconKind, CharSequence degrees, CharSequence conditions,
             CharSequence tip) {
         clock.setText(time);
         date.setText(day);
@@ -142,6 +147,17 @@ final class PhotoFrame extends FrameLayout {
         show(sky, conditions);
         show(hint, tip);
         weatherGroup.setVisibility(degrees == null ? GONE : VISIBLE);
+    }
+
+    /**
+     * Fills the overlay from the clock and a forecast ({@code w} null: no weather). Shared by the
+     * home screen's screen saver and the system one (FrameDream), so both read the same.
+     */
+    void update(Config cfg, Weather.Report w) {
+        java.util.Date now = new java.util.Date();
+        setInfo(Clock.time(cfg.clock24(getContext()), now), Clock.date(now),
+                w == null ? -1 : Icons.forCode(w.code, w.day), w == null ? null : w.temp + "\u00B0",
+                w == null ? null : Weather.summary(w), w == null ? null : w.hint);
     }
 
     /** The clock and weather layer, for screen care to drift. */

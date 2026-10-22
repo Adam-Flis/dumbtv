@@ -112,6 +112,20 @@ upstream home screen:
   settings grid draws its top row (Device & Software, Network, Account) off screen on this TV,
   most likely because it counts on its slide-in animation and animations are off. Fire OS lets
   other apps open only these sections (the rest need an Amazon-only permission).
+- **Screen saver in every app** (`FrameDream.java`, Android's screensaver hook): when an app such
+  as YouTube sits idle (a paused video), Fire TV starts the same screen saver instead of going
+  to sleep, then sleeps after Stop after. Off, at night, or right after the home screen's own
+  screen saver ran, it ends at once and the TV sleeps. Choose it once from a computer; Fire TV
+  only starts a screensaver when its sleep timer is longer than its screen-off timer:
+
+  ```sh
+  adb shell settings put secure screensaver_components tv.dumbtv.home/.FrameDream
+  adb shell settings put secure screensaver_enabled 1
+  adb shell settings put secure sleep_timeout 1800000   # sleep backstop: 30 min
+  ```
+
+  Undo: `screensaver_enabled 0`, `screensaver_components com.amazon.ftv.screensaver/.app.services.ScreensaverService`
+  and `sleep_timeout 300000` (or Amazon's original 840000).
 - **Screen care (OLED)** (Options › Screen saver, on by default): the home screen drifts up to
   2 dp to one of nine spots every 3 minutes, and after 5-30 min with no button pressed (Black screen after; default
   10) it fades to near black (any button brings it back; the TV still sleeps on its own schedule). The
@@ -289,6 +303,8 @@ until another app is opened.
 | `src/.../Popup.java` | every pop-up on that card: message, pick-one list, checklist, choices, text/ZIP entry |
 | `src/.../ValueRow.java` | the one name-and-value row every pop-up list uses |
 | `src/.../FireSettings.java` | the Fire TV settings screens other apps may open, and the full grid |
+| `src/.../FrameDream.java` | the screen saver as the system screensaver, for idle apps |
+| `src/.../Clock.java` | the clock and date format the home screen and screen saver share |
 | `src/.../ScreenCare.java` | OLED care: drift and go dark when idle |
 | `src/.../Help.java`, `RowsEditor.java`, `TimeChooser.java` | Help checks and remote guide, row order, time picker |
 | `sdk.sh` | finds the Android SDK and a JDK; shared by build.sh and test.sh |
