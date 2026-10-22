@@ -167,7 +167,7 @@ final class Help {
         panel.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
     }
 
-    private static LinearLayout panel(Context a) {
+    static LinearLayout panel(Context a) {
         LinearLayout panel = new LinearLayout(a);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(a, 44), dp(a, 32), dp(a, 44), dp(a, 30));
@@ -177,7 +177,7 @@ final class Help {
         return panel;
     }
 
-    private static void show(Activity a, Dialog d, View panel, int widthDp) {
+    static void show(Activity a, Dialog d, View panel, int widthDp) {
         d.setContentView(panel);
         Window w = d.getWindow();
         if (w != null) {

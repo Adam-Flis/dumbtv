@@ -84,6 +84,8 @@ public final class Home extends Activity {
     private final Runnable shift = this::shiftPage;
     private final Runnable restRun = this::startRest;
     private boolean resumed, landed, ticking;
+    /** A key was pressed since the screen came back; late rows then leave the focus alone. */
+    private boolean touched;
     private FrameLayout root;
     private ImageView wall;
     private View shade;
@@ -126,6 +128,7 @@ public final class Home extends Activity {
     /** Every row, top to bottom. */
     private Row[] rows;
     private boolean builtGrid;
+    private List<String> builtOrder;
     private View glow;
     private GradientDrawable glowBg;
     private int glowColor = GLOW_DEFAULT;
@@ -332,10 +335,12 @@ public final class Home extends Activity {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        touched = false;
         Guard.arrived(this);
         cfg.refresh();
         cfg.visited();
-        if (cfg.textScale() != builtScale || "grid".equals(cfg.get(Config.APPS_LAYOUT)) != builtGrid) {
+        if (cfg.textScale() != builtScale || "grid".equals(cfg.get(Config.APPS_LAYOUT)) != builtGrid
+                || !cfg.rowOrder().equals(builtOrder)) {
             // text sizes and the All apps layout are set at build time; rebuilding is simplest
             recreate();
             return;
@@ -457,6 +462,7 @@ public final class Home extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         resetIdle();
+        touched = true;
         // any key wakes the dark screen (and the photo frame under it) and does nothing else
         if (rest != null) {
             if (e.getAction() == KeyEvent.ACTION_DOWN) {
@@ -589,9 +595,12 @@ public final class Home extends Activity {
             @Override
             public View focusSearch(View focused, int direction) {
                 if (direction == View.FOCUS_DOWN && chips.contains(focused)) {
-                    View below = nearest(favs.strip, focused);
-                    if (below == null) below = nearest(apps.strip, focused);
-                    if (below != null) return below;
+                    // the first row on screen that has tiles, in the order chosen in Options
+                    for (Row row : rows) {
+                        if (row.scroll.getVisibility() != View.VISIBLE) continue;
+                        View below = nearest(row.strip, focused);
+                        if (below != null) return below;
+                    }
                 }
                 // up from the first row goes to the closest top-bar button
                 if (direction == View.FOCUS_UP && focused instanceof Tile && focused.getParent() == topStrip()) {
@@ -812,12 +821,20 @@ public final class Home extends Activity {
         column.setPadding(0, 0, 0, dp(32));
         scroll.addView(column, new FrameLayout.LayoutParams(MATCH, WRAP));
 
-        favs = new Row(Catalog.FAVS, "Favorites", Icons.STAR, column);
-        recent = new Row(Catalog.RECENT, "Recently used", Icons.CLOCK, column);
+        // the rows go on the page in the order set in Options › Home screen rows
         builtGrid = "grid".equals(cfg.get(Config.APPS_LAYOUT));
-        apps = new Row(Catalog.APPS, "All apps", Icons.GRID, column, builtGrid);
-        inputs = new Row(Catalog.INPUTS, "Inputs", Icons.INPUT, column);
-        rows = new Row[] {favs, recent, apps, inputs};
+        builtOrder = cfg.rowOrder();
+        rows = new Row[builtOrder.size()];
+        for (int i = 0; i < rows.length; i++) {
+            String kind = builtOrder.get(i);
+            Row row = new Row(kind, RowsEditor.title(kind), RowsEditor.icon(kind), column,
+                    Catalog.APPS.equals(kind) && builtGrid);
+            if (Catalog.FAVS.equals(kind)) favs = row;
+            else if (Catalog.RECENT.equals(kind)) recent = row;
+            else if (Catalog.APPS.equals(kind)) apps = row;
+            else inputs = row;
+            rows[i] = row;
+        }
 
         // Night mode: a warm dim over everything (dialogs and the input card stay above it)
         nightShade = new View(this);
@@ -1034,7 +1051,8 @@ public final class Home extends Activity {
             row.strip.getChildAt(restore).requestFocus();
         } else if (keep != null && row.strip.getChildCount() > 0) {
             row.strip.getChildAt(0).requestFocus();
-        } else if (getCurrentFocus() == null || !landed) {
+        } else if (getCurrentFocus() == null || !landed || (!touched && row == rows[0])) {
+            // the top row filled in late (Recently used loads in the background): land there
             focusFirst();
         }
     }

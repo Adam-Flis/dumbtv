@@ -40,6 +40,8 @@ The TV also shows these in **Options › Help › What the remote buttons do**.
 
 **Move or hide an app:** select it, press ☰ Menu, then choose Move, Rename or Hide. To bring hidden apps back, open Options › More › Reset order, names and hidden tiles.
 
+**Change the order of the rows, or hide some:** Options › Apps › Home screen rows. Press OK on a row to pick it up, ▲ ▼ to move it, OK to put it down. ◀ ▶ shows or hides Recently used and Inputs.
+
 **Sleep timer:** press the stopwatch button and pick a time, or choose **Custom…** for any length. While a timer is running, the same button shows the time left and lets you add time or cancel it.
 
 **Night mode:** press the moon button to turn it on or off now. To set it to turn on and off by itself each evening, go to Options › Night & photos.

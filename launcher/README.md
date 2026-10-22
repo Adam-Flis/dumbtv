@@ -87,7 +87,7 @@ upstream home screen:
   that it is in All apps), Back closes. Both are also in Options › Home screen.
 - **All apps layout** (Options › Home screen): **Grid** (default; every app at once, lines
   that wrap, the page scrolls down) or **One row**.
-- **Recently used** row (Options › Home screen, on by default): the last 5 apps opened, from
+- **Recently used** row (Options › Apps › Home screen rows, on by default): the last 5 apps opened, from
   UsageStats (the Fire OS 6 Keeper's permission), newest first.
 - **"Switch input?" card**: when a device on an HDMI input turns on while the home screen is
   showing, a card offers **Switch** / **Not now** (gone after 15 s). Options › Home screen ›
@@ -107,7 +107,7 @@ upstream home screen:
   it away (Android needs that before an uninstall).
 - **Settings** (top bar, gear): a short menu of Fire TV sections that open directly, each with
   a line saying what is inside: Wi-Fi & network, Device & Software, Apps, Remotes & Bluetooth,
-  **Search all settings** (Amazon's settings search, which reaches the locked sections too), and
+  **Search all settings** (Amazon's own settings search, a way into the sections Amazon locks), and
   **All Fire TV settings**. Home closes any open dropdown. Amazon's
   settings grid draws its top row (Device & Software, Network, Account) off screen on this TV,
   most likely because it counts on its slide-in animation and animations are off. Fire OS lets
@@ -123,6 +123,9 @@ upstream home screen:
 - **Options › Help**: green/amber checks for the Home button, sleep timer permission, internet
   and weather; OK on an amber one explains the fix (on Fire OS 6 it offers the usage-access
   setting). Also a remote-button guide.
+- **Home screen rows** (Options › Apps): Favorites, Recently used, All apps and Inputs in any
+  order (OK picks a row up, ▲▼ moves it, OK puts it down); ◀▶ shows or hides Recently used and
+  Inputs. Favorites and All apps always show. The page lands on the top row.
 - **Key hints**: the app grid, Options and Move mode show which remote keys do what.
 - **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
   them to the photo frame (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`

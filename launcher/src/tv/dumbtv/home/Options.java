@@ -86,8 +86,7 @@ public final class Options extends Activity {
             else startActivity(store.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }));
         list.addView(choice(Config.APPS_LAYOUT));
-        list.addView(choice(Config.RECENT));
-        list.addView(choice(Config.INPUTS));
+        list.addView(action("Home screen rows", () -> RowsEditor.show(this, this::refresh)));
         list.addView(action("Inputs to show", () -> pick(Catalog.INPUTS)));
         list.addView(choice(Config.SWITCH));
 

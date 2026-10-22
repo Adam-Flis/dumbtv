@@ -217,6 +217,23 @@ final class Config {
             new String[] {"15", "30", "60", "120"},
             new String[] {"15 min", "30 min", "1 hour", "2 hours"});
 
+    /** Home screen row order (Catalog kinds, comma-separated); set in Options › Home screen rows. */
+    static final String ROWS = "rows.order";
+    private static final String[] ROW_KINDS = {Catalog.FAVS, Catalog.RECENT, Catalog.APPS, Catalog.INPUTS};
+
+    /** The four rows in their saved order; unknown names are dropped, missing ones added at the end. */
+    List<String> rowOrder() {
+        List<String> out = new ArrayList<>();
+        for (String k : get(ROWS, "").split(",")) {
+            k = k.trim();
+            if (Arrays.asList(ROW_KINDS).contains(k) && !out.contains(k)) out.add(k);
+        }
+        for (String k : ROW_KINDS) {
+            if (!out.contains(k)) out.add(k);
+        }
+        return out;
+    }
+
     /** OLED burn-in care: the home screen drifts a few pixels and goes near black when idle. */
     static final Choice CARE = new Choice("care", "Screen care (OLED)", "on",
             new String[] {"off", "on"}, new String[] {"Off", "On"});
