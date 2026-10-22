@@ -42,10 +42,11 @@ final class Catalog {
     }
 
     /**
-     * The setting that shows or hides a row, or null for rows that always show (Favorites and
-     * All apps, so every app stays reachable).
+     * The setting that shows or hides a row, or null for All apps, which always shows so every
+     * app stays reachable from the home screen.
      */
     static Config.Choice rowSwitch(String kind) {
+        if (FAVS.equals(kind)) return Config.FAVS;
         if (RECENT.equals(kind)) return Config.RECENT;
         if (INPUTS.equals(kind)) return Config.INPUTS;
         return null;

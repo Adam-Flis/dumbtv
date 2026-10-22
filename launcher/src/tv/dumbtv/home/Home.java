@@ -990,18 +990,21 @@ public final class Home extends Activity {
                 ? ((Tile) focused).item.id : null;
         row.strip.removeAllViews();
 
-        boolean enabled = !Catalog.INPUTS.equals(row.kind) || cfg.on(Config.INPUTS);
+        Config.Choice shownSwitch = Catalog.rowSwitch(row.kind);
         List<Item> shown;
-        if (Catalog.FAVS.equals(row.kind)) {
+        if (shownSwitch != null && !cfg.on(shownSwitch)) {
+            // hidden in Options › Home screen layout
+            shown = new ArrayList<>();
+        } else if (Catalog.FAVS.equals(row.kind)) {
             shown = Catalog.favorites(cfg, apps.all);
             // an empty dock shows one tile that opens the picker, so it is never a dead end
             if (shown.isEmpty() && !apps.all.isEmpty()) shown.add(button(Catalog.ADD, "Add favorites", Icons.STAR));
             // the easy way to change the dock: the same picker, from the end of the row
             else if (!shown.isEmpty()) shown.add(button(Catalog.EDIT, "Edit favorites", Icons.PENCIL));
         } else if (Catalog.RECENT.equals(row.kind)) {
-            shown = cfg.on(Config.RECENT) ? new ArrayList<>(recentItems) : new ArrayList<>();
+            shown = new ArrayList<>(recentItems);
         } else {
-            shown = enabled ? Catalog.visible(cfg, row.kind, row.all) : new ArrayList<>();
+            shown = Catalog.visible(cfg, row.kind, row.all);
             // the way to more apps: the Appstore, and every installed app to pick from
             if (Catalog.APPS.equals(row.kind) && !apps.all.isEmpty()) {
                 shown.add(button(Catalog.STORE, "Get more apps", Icons.BAG));

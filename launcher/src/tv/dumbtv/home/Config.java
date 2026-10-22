@@ -72,7 +72,7 @@ final class Config {
     }
     static final Choice LABELS = new Choice("labels", "App names", "focus",
             new String[] {"focus", "always", "never"},
-            new String[] {"Large, at top", "Under the selected app", "Off"});
+            new String[] {"At top", "Under tile", "Off"});
     static final Choice CLOCK = new Choice("clock", "Clock", "auto",
             new String[] {"auto", "24h", "12h"},
             new String[] {"System", "24-hour", "12-hour"});
@@ -81,7 +81,7 @@ final class Config {
             new String[] {"Shown", "Hidden"});
     static final Choice BACKGROUND = new Choice("background", "Background", "app",
             new String[] {"app", "black", "graphite", "midnight", "image"},
-            new String[] {"Selected app's color", "Black", "Graphite", "Midnight", "Image file"});
+            new String[] {"App color", "Black", "Graphite", "Midnight", "Image"});
     static final Choice DIM = new Choice("dim", "Image dim", "40",
             new String[] {"0", "20", "40", "60", "80"},
             new String[] {"0%", "20%", "40%", "60%", "80%"});
@@ -99,11 +99,16 @@ final class Config {
 
     static final Choice APPS_LAYOUT = new Choice("layout", "All apps layout", "grid",
             new String[] {"grid", "row"},
-            new String[] {"Grid", "One row"});
+            new String[] {"Grid", "Scroll"});
     static final Choice RECENT = new Choice("recent", "Recently used row", "on",
             new String[] {"on", "off"},
             new String[] {"Shown", "Hidden"});
-    static final Choice SWITCH = new Choice("switch", "Offer to switch inputs", "on",
+    /** Favorites row shown or hidden (Options › Home screen › Home screen layout). */
+    static final Choice FAVS = new Choice("favs", "Favorites row", "on",
+            new String[] {"on", "off"},
+            new String[] {"Shown", "Hidden"});
+    /** When a device on an HDMI input turns on, offer to switch to it. */
+    static final Choice SWITCH = new Choice("switch", "Detect input", "on",
             new String[] {"on", "off"},
             new String[] {"On", "Off"});
     static final Choice NIGHT = new Choice("night", "Night mode schedule", "off",
@@ -208,7 +213,7 @@ final class Config {
     /** How much weather the header shows; one setting instead of four toggles. */
     static final Choice W_DETAIL = new Choice("weather.detail", "Weather details", "full",
             new String[] {"full", "simple", "today", "minimal"},
-            new String[] {"Everything", "Now and next hours", "Today only", "Temperature only"});
+            new String[] {"Everything", "Next hours", "Today", "Temperature"});
 
     static final Choice FRAME = new Choice("frame", "Photo frame", "off",
             new String[] {"off", "1", "2", "5", "10"},
@@ -247,7 +252,7 @@ final class Config {
             new String[] {"After 5 min", "After 10 min", "After 20 min", "After 30 min"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, REST};
+        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, REST, FAVS};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";

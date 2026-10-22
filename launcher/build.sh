@@ -19,8 +19,6 @@ source ./sdk.sh
 # the logic tests first: a build that breaks them never reaches the TV (SKIP_TESTS=1 skips)
 [[ ${SKIP_TESTS:-} == 1 ]] || MIN_SDK=$MIN_SDK ./test.sh
 
-KEYSTORE=${DUMBTV_KEYSTORE:-$PWD/release.keystore}
-KEYPASS=${DUMBTV_KEYPASS:-dumbtvhome}
 if [[ ! -f $KEYSTORE ]]; then
   "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$KEYSTORE" -alias home -keyalg RSA -keysize 2048 \
     -validity 10000 -storepass "$KEYPASS" -keypass "$KEYPASS" -dname "CN=dumbtv home" >/dev/null

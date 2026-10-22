@@ -73,7 +73,7 @@ public final class Options extends Activity {
         Cond nightOn = () -> cfg.on(Config.NIGHT);
         Cond careOn = () -> cfg.on(Config.CARE);
 
-        section("Apps", Icons.GRID);
+        section("Home screen", Icons.GRID);
         list.addView(action("Favorites", () -> {
             openingPicker = true;
             Picker.open(this, Picker.FAVS);
@@ -85,8 +85,8 @@ public final class Options extends Activity {
             else startActivity(store.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }));
         list.addView(choice(Config.APPS_LAYOUT));
-        list.addView(action("Home screen rows", () -> RowsEditor.show(this, this::refresh)));
-        list.addView(action("Inputs to show", () -> pick(Catalog.INPUTS)));
+        list.addView(action("Home screen layout", () -> RowsEditor.show(this, this::refresh)));
+        list.addView(action("Inputs", () -> pick(Catalog.INPUTS)));
         list.addView(choice(Config.SWITCH));
 
         section("Appearance", Icons.CONTRAST);
@@ -121,16 +121,12 @@ public final class Options extends Activity {
         list.addView(only(timeRow(Config.NIGHT_START, "Starts at", 22 * 60), nightOn));
         list.addView(only(timeRow(Config.NIGHT_END, "Ends at", 6 * 60), nightOn));
         list.addView(slider(Config.NIGHT_DIM, "Night dim", 10, 90, 5));
-        list.addView(note("Dims the screen at night; no photo frame. The moon button in the top bar"
-                + " switches it now."));
         list.addView(choice(Config.CARE));
         list.addView(only(choice(Config.REST), careOn));
-        list.addView(note("For OLED TVs: the home screen moves a few pixels now and then and goes dark"
-                + " when nothing happens. Any button brings it back."));
 
         section("More", Icons.DOTS);
-        list.addView(action("Reset order, names and hidden tiles", this::reset));
-        list.addView(action("Open Amazon's home screen", () -> {
+        list.addView(action("Reset tiles", this::reset));
+        list.addView(action("Amazon home screen", () -> {
             Guard.amazon(this);
             finish();
         }));
@@ -151,11 +147,11 @@ public final class Options extends Activity {
         list.addView(status("Weather", () -> cfg.on(Config.WEATHER)
                         && !cfg.get(Weather.LAT, "").isEmpty(),
                 () -> cfg.get(Weather.PLACE, "On"), "Off", () -> openSection(weather)));
-        list.addView(action("Show the welcome tips again", () -> {
+        list.addView(action("Welcome tips", () -> {
             Home.tipsNow = true;
             finish();
         }));
-        list.addView(action("What the remote buttons do", () -> Help.remote(this)));
+        list.addView(action("Remote guide", () -> Help.remote(this)));
         list.addView(note("Something looks wrong? Press Home on the remote to start over from the home screen."));
 
         TextView about = Ui.text(this, 13, Ui.FAINT, Ui.MEDIUM);
@@ -428,7 +424,7 @@ public final class Options extends Activity {
     private void askCity() {
         EditText field = new EditText(this);
         field.setSingleLine();
-        field.setHint("City, e.g. Cleveland");
+        field.setHint("City or ZIP code");
         field.setText(cfg.get(Weather.CITY, ""));
         field.setSelectAllOnFocus(true);
         FrameLayout box = new FrameLayout(this);
@@ -437,7 +433,7 @@ public final class Options extends Activity {
         AlertDialog d = new AlertDialog.Builder(this, Ui.DIALOG)
                 .setTitle("Weather city")
                 .setView(box)
-                .setPositiveButton("Save", (dialog, w) -> lookUp(field.getText().toString().trim()))
+                .setPositiveButton("Find", (dialog, w) -> lookUp(field.getText().toString().trim()))
                 .setNegativeButton("Cancel", null)
                 .create();
         d.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
@@ -448,27 +444,41 @@ public final class Options extends Activity {
         if (city.isEmpty()) return;
         Ui.notice(this, "Looking up " + city + "\u2026", Icons.PARTLY);
         new Thread(() -> {
-            String[] found;
+            List<Weather.Place> found;
             try {
-                found = Weather.geocode(city);
+                found = Weather.geocode(city, 6);
             } catch (Exception e) {
                 runOnUiThread(() -> Ui.notice(this, "No connection to the weather service", Icons.PARTLY));
                 return;
             }
             runOnUiThread(() -> {
-                if (found == null) {
+                if (isFinishing()) return;
+                if (found.isEmpty()) {
                     Ui.notice(this, "Could not find " + city, Icons.PARTLY);
-                    return;
+                } else if (found.size() == 1) {
+                    useCity(city, found.get(0));
+                } else {
+                    // several places share the name (or the ZIP code): let the viewer pick
+                    CharSequence[] names = new CharSequence[found.size()];
+                    for (int i = 0; i < names.length; i++) names[i] = found.get(i).full;
+                    new AlertDialog.Builder(this, Ui.DIALOG)
+                            .setTitle("Which one?")
+                            .setItems(names, (d, which) -> useCity(city, found.get(which)))
+                            .setNegativeButton("Cancel", null)
+                            .show();
                 }
-                cfg.set(Weather.CITY, city);
-                cfg.set(Weather.LAT, found[0]);
-                cfg.set(Weather.LON, found[1]);
-                cfg.set(Weather.PLACE, found[2]);
-                cfg.setOn(Config.WEATHER, true);
-                Ui.notice(this, "Weather for " + found[2], Icons.PARTLY);
-                refresh();
             });
         }).start();
+    }
+
+    private void useCity(String typed, Weather.Place p) {
+        cfg.set(Weather.CITY, typed);
+        cfg.set(Weather.LAT, p.lat);
+        cfg.set(Weather.LON, p.lon);
+        cfg.set(Weather.PLACE, p.name);
+        cfg.setOn(Config.WEATHER, true);
+        Ui.notice(this, "Weather for " + p.name, Icons.PARTLY);
+        refresh();
     }
 
     interface Label {

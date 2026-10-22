@@ -16,8 +16,8 @@ import java.util.Map;
 
 /**
  * Options › Home screen rows: the four rows in their order. OK picks a row up, up/down moves
- * it, OK puts it down. Left/right shows or hides Recently used and Inputs; Favorites and All
- * apps always show, so every app stays one press away.
+ * it, OK puts it down. Left/right shows or hides a row; All apps always shows, so every app
+ * stays one press away.
  */
 final class RowsEditor {
     private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
@@ -48,11 +48,11 @@ final class RowsEditor {
         Dialog d = Panel.dialog(a);
         LinearLayout panel = Panel.box(a);
         TextView head = Ui.text(a, 24, Ui.TEXT, Ui.LIGHT);
-        head.setText("Home screen rows");
+        head.setText("Home screen layout");
         head.setPadding(dp(16), 0, 0, dp(4));
         panel.addView(head);
         TextView sub = Ui.text(a, 15, Ui.MUTED, Ui.MEDIUM);
-        sub.setText("Top to bottom, the way they appear on the home screen");
+        sub.setText("Top to bottom");
         sub.setPadding(dp(16), 0, 0, dp(16));
         panel.addView(sub);
         panel.addView(list, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
@@ -157,7 +157,7 @@ final class RowsEditor {
             row.setBackground(Ui.rowFocus(accent, dp(12), picked));
         }
         if (moving != null) Ui.hints(hints, "▲ ▼", "Move the row", "OK", "Put it down");
-        else if (anyFocused) Ui.hints(hints, "OK", "Pick up to move", "◀ ▶", "Show or hide", "Back", "Done");
+        else if (anyFocused) Ui.hints(hints, "OK", "Reorder", "◀ ▶", "Show or hide", "Back", "Done");
     }
 
     private int dp(float v) {

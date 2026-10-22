@@ -52,26 +52,21 @@ final class Help {
         return n != null && n.isConnected();
     }
 
-    /** The welcome card: four short lines and one button. {@code done} runs when it closes. */
+    /** The welcome card: three short lines and one button. {@code done} runs when it closes. */
     static void welcome(Activity a, Runnable done) {
         int accent = Config.get(a).accent();
         Dialog d = Panel.dialog(a);
         LinearLayout panel = Panel.box(a);
 
-        TextView head = Ui.text(a, 28, Ui.TEXT, Ui.LIGHT);
-        head.setText("Welcome to your home screen");
+        TextView head = Ui.text(a, 30, Ui.TEXT, Ui.LIGHT);
+        head.setText("Welcome");
         head.setGravity(Gravity.CENTER);
+        head.setPadding(0, 0, 0, dp(a, 18));
         panel.addView(head, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-        TextView sub = Ui.text(a, 16, Ui.MUTED, Ui.MEDIUM);
-        sub.setText("A few things worth knowing");
-        sub.setGravity(Gravity.CENTER);
-        sub.setPadding(0, dp(a, 8), 0, dp(a, 18));
-        panel.addView(sub, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
 
-        tip(panel, Icons.STAR, "Your favorite apps are in the top row. Select one and press OK to open it.");
-        tip(panel, Icons.PENCIL, "To move, rename or hide an app, select it and press ☰ Menu (or hold OK).");
-        tip(panel, Icons.INPUT, "The round buttons at the top switch inputs, set a sleep timer and open Options.");
-        tip(panel, Icons.HOUSE, "Lost? Press Home on the remote to come straight back here.");
+        tip(panel, Icons.STAR, "OK opens an app");
+        tip(panel, Icons.PENCIL, "\u2630 Menu moves or hides it");
+        tip(panel, Icons.HOUSE, "Home brings you back here");
 
         TextView ok = Ui.pill(a, "Got it", accent);
         ok.setMinWidth(dp(a, 180));
@@ -81,16 +76,10 @@ final class Help {
         olp.topMargin = dp(a, 22);
         panel.addView(ok, olp);
 
-        TextView later = Ui.text(a, 14, Ui.FAINT, Ui.MEDIUM);
-        later.setText("See this again any time in Options › Help");
-        later.setGravity(Gravity.CENTER);
-        later.setPadding(0, dp(a, 14), 0, 0);
-        panel.addView(later, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-
         d.setOnDismissListener(x -> {
             if (done != null) done.run();
         });
-        Panel.show(a, d, panel, 760);
+        Panel.show(a, d, panel, 520);
         ok.requestFocus();
     }
 
@@ -114,8 +103,7 @@ final class Help {
         panel.addView(keys);
         TextView note = Ui.text(a, 15, Ui.MUTED, Ui.MEDIUM);
         note.setLineSpacing(0, 1.3f);
-        note.setText("Amazon's own home screen is still there: Options › More › Open Amazon's home screen."
-                + " Press Home to come back.");
+        note.setText("Amazon's home screen: Options \u203A More \u203A Amazon home screen.");
         note.setPadding(0, dp(a, 16), 0, 0);
         panel.addView(note, new LinearLayout.LayoutParams(dp(a, 600), WRAP));
         // Back or OK closes it; nothing inside needs focus

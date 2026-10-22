@@ -44,17 +44,37 @@ final class Weather {
 
     private Weather() {}
 
-    /** Looks a city up; returns {lat, lon, "City, Region"} or null when nothing matches. */
-    static String[] geocode(String city) throws IOException, JSONException {
-        String url = "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name="
-                + URLEncoder.encode(city, "UTF-8");
+    /** One geocoding match: what is saved ({@code name}) and what the list shows ({@code full}). */
+    static final class Place {
+        final String lat, lon, name, full;
+
+        Place(String lat, String lon, String name, String full) {
+            this.lat = lat;
+            this.lon = lon;
+            this.name = name;
+            this.full = full;
+        }
+    }
+
+    /**
+     * Places matching a city name or a postal code, best first, at most {@code max}; empty when
+     * nothing matches. Same-named results in one region are listed once.
+     */
+    static java.util.List<Place> geocode(String query, int max) throws IOException, JSONException {
+        String url = "https://geocoding-api.open-meteo.com/v1/search?count=" + (max * 2)
+                + "&language=en&format=json&name=" + URLEncoder.encode(query, "UTF-8");
         JSONArray results = new JSONObject(get(url)).optJSONArray("results");
-        if (results == null || results.length() == 0) return null;
-        JSONObject r = results.getJSONObject(0);
-        String place = r.getString("name");
-        String region = r.optString("admin1", r.optString("country", ""));
-        if (!region.isEmpty() && !region.equals(place)) place += ", " + region;
-        return new String[] {String.valueOf(r.getDouble("latitude")), String.valueOf(r.getDouble("longitude")), place};
+        java.util.List<Place> out = new java.util.ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (int i = 0; results != null && i < results.length() && out.size() < max; i++) {
+            JSONObject r = results.getJSONObject(i);
+            String city = r.getString("name"), region = r.optString("admin1", ""), country = r.optString("country", "");
+            String name = region.isEmpty() || region.equals(city) ? city : city + ", " + region;
+            String full = country.isEmpty() ? name : name + ", " + country;
+            if (!seen.add(full)) continue;
+            out.add(new Place(String.valueOf(r.getDouble("latitude")), String.valueOf(r.getDouble("longitude")), name, full));
+        }
+        return out;
     }
 
     static Report fetch(String lat, String lon, boolean fahrenheit, boolean h24) throws IOException, JSONException {

@@ -30,7 +30,7 @@ Lost? **Press Home on the remote.** It always brings you back here.
 | Back | Go back one step, or close a menu |
 | Home | Come back to this home screen |
 
-The TV also shows these in **Options › Help › What the remote buttons do**.
+The TV also shows these in **Options › Help › Remote guide**.
 
 ## Everyday things
 
@@ -38,9 +38,9 @@ The TV also shows these in **Options › Help › What the remote buttons do**.
 
 **Change your favorites:** go to the end of the Favorites row and choose **Edit favorites**. Press OK on an app to add it or take it out.
 
-**Move or hide an app:** select it, press ☰ Menu, then choose Move, Rename or Hide. To bring hidden apps back, open Options › More › Reset order, names and hidden tiles.
+**Move or hide an app:** select it, press ☰ Menu, then choose Move, Rename or Hide. To bring hidden apps back, open Options › More › Reset tiles.
 
-**Change the order of the rows, or hide some:** Options › Apps › Home screen rows. Press OK on a row to pick it up, ▲ ▼ to move it, OK to put it down. ◀ ▶ shows or hides Recently used and Inputs.
+**Change the order of the rows, or hide some:** Options › Home screen › Home screen layout. Press OK on a row to reorder it, ▲ ▼ to move it, OK to put it down. ◀ ▶ shows or hides a row.
 
 **Sleep timer:** press the stopwatch button and pick a time, or choose **Custom…** for any length. While a timer is running, the same button shows the time left and lets you add time or cancel it.
 
@@ -56,6 +56,6 @@ The TV also shows these in **Options › Help › What the remote buttons do**.
 2. **Open Options › Help.** A green dot next to an item means it's working. An amber dot means it needs attention; press OK on it to see what to do.
 3. **An app is stuck:** press Home, then open the app again.
 4. **Everything is stuck:** restart the TV. Open the gear button, then Device & Software, then Restart. Or unplug the TV for 10 seconds.
-5. **You need Amazon's own home screen** (to buy or rent something, for example): go to Options › More › Open Amazon's home screen. Press Home to come back.
+5. **You need Amazon's own home screen** (to buy or rent something, for example): go to Options › More › Amazon home screen. Press Home to come back.
 
 Still stuck? Call whoever set up the TV. The settings live on the TV, so nothing is lost if it restarts.

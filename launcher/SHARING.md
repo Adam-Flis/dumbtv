@@ -39,7 +39,7 @@ Check the TV's software first: Settings › My Fire TV (or Device & Software) �
 8. **Save their settings:** `launcher/tools/settings.sh backup`.
 9. **Turn ADB debugging off again** (Developer options). It stops anyone else on the network from controlling the TV.
 
-The welcome card appears on the first visit. If you've already closed it, Options › Help › Show the welcome tips again brings it back.
+The welcome card appears on the first visit. If you've already closed it, Options › Help › Welcome tips brings it back.
 
 ## Updating later
 

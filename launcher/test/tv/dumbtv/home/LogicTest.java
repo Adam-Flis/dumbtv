@@ -15,6 +15,7 @@ public final class LogicTest {
         sleepChip();
         rowOrder();
         minuteSteps();
+        rowSwitches();
         System.out.println(passed + " passed, " + failed + " failed");
         if (failed > 0) System.exit(1);
     }
@@ -42,6 +43,14 @@ public final class LogicTest {
         // missing kinds are appended in default order; unknown and repeated names dropped
         eq(Arrays.asList("inputs", "favs", "recent", "apps"), Config.parseRowOrder("inputs"));
         eq(Arrays.asList("apps", "favs", "recent", "inputs"), Config.parseRowOrder(" apps , bogus, apps"));
+    }
+
+    private static void rowSwitches() {
+        // every row but All apps can be hidden, so no app is ever unreachable
+        eq(true, Catalog.rowSwitch(Catalog.APPS) == null);
+        eq(Config.FAVS, Catalog.rowSwitch(Catalog.FAVS));
+        eq(Config.RECENT, Catalog.rowSwitch(Catalog.RECENT));
+        eq(Config.INPUTS, Catalog.rowSwitch(Catalog.INPUTS));
     }
 
     private static void minuteSteps() {

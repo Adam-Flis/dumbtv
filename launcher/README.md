@@ -80,19 +80,19 @@ upstream home screen:
   **Edit favorites** tile that opens the app grid. Hold OK or ☰ on a tile:
   Add to / Remove from Favorites, Move. Options › Favorites is a checklist. Saved as
   `favorites=` in `home.conf`.
-- **Background › Selected app's color** (default): the screen glows in the color of the app
+- **Background › App color** (default): the screen glows in the color of the app
   you are on (YouTube red, Spotify green), taken from its banner and faded in.
 - **Getting more apps**: All apps ends with **Get more apps** (opens the Appstore's Featured
   page) and **App library**. Favorites and App library open a full-screen grid of every
   installed app: OK ticks an app in or out (a number shows its place in Favorites, a check
   that it is in All apps), Back closes. Both are also in Options › Home screen.
 - **All apps layout** (Options › Home screen): **Grid** (default; every app at once, lines
-  that wrap, the page scrolls down) or **One row**.
-- **Recently used** row (Options › Apps › Home screen rows, on by default): the last 5 apps opened, from
+  that wrap, the page scrolls down) or **Scroll** (one row that scrolls sideways).
+- **Recently used** row (Options › Home screen › Home screen layout, on by default): the last 5 apps opened, from
   UsageStats (the Fire OS 6 Keeper's permission), newest first.
 - **"Switch input?" card**: when a device on an HDMI input turns on while the home screen is
   showing, a card offers **Switch** / **Not now** (gone after 15 s). Options › Home screen ›
-  Offer to switch inputs. Test it with `adb shell touch /sdcard/Android/data/tv.dumbtv.home/files/test-input`
+  Detect input. Test it with `adb shell touch /sdcard/Android/data/tv.dumbtv.home/files/test-input`
   and return to the home screen.
 - **Night mode** (Options › Night & photos): a schedule with exact start/end times (time picker)
   and a dim slider (10-90 %); warm dim, no photo frame. The top bar's moon-and-stars button
@@ -119,13 +119,13 @@ upstream home screen:
   the frame's time is up the screen goes dark instead of holding the last picture. OLED owners
   should also keep Fire TV's own sleep setting on (not "Never").
 - **Welcome card**: the first visit shows four plain-language tips and a Got it button
-  (Options › Help › Show the welcome tips again).
+  (Options › Help › Welcome tips).
 - **Options › Help**: green/amber checks for the Home button, sleep timer permission, internet
   and weather; OK on an amber one explains the fix (on Fire OS 6 it offers the usage-access
   setting). Also a remote-button guide.
-- **Home screen rows** (Options › Apps): Favorites, Recently used, All apps and Inputs in any
-  order (OK picks a row up, ▲▼ moves it, OK puts it down); ◀▶ shows or hides Recently used and
-  Inputs. Favorites and All apps always show. The page lands on the top row.
+- **Home screen layout** (Options › Home screen): Favorites, Recently used, All apps and Inputs in
+  any order (OK picks a row up to reorder, ▲▼ moves it, OK puts it down); ◀▶ shows or hides a row.
+  All apps always shows, so every app stays reachable. The page lands on the top row.
 - **Key hints**: the app grid, Options and Move mode show which remote keys do what.
 - **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
   them to the photo frame (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`
@@ -134,17 +134,16 @@ upstream home screen:
   smooth with Fire OS animations turned off.
 - **Row title size** (Options › Home screen) scales FAVORITES / ALL APPS / INPUTS and their icons.
 - **Apple TV-style look**: greeting, large clock and date, the focused app's name large above
-  the rows (App names › Large, at top), rounded tiles that lift with a shadow on focus.
+  the rows (App names › At top), rounded tiles that lift with a shadow on focus.
 - **Top bar** of icon buttons; the selected one slides open to show its name: Inputs dropdown (green dot = device plugged in), Wi-Fi name with a
   colored Wi-Fi icon (green online, amber no internet, red offline), Options, Settings.
   Amazon's home screen stays in Options › More on purpose, away from accidental presses.
-- **Options**, grouped into Look, Home screen, Weather, Photo frame and More, with the
-  groups listed on the left (Right opens a group, Back or Left returns to the list): accent color,
-  tile size, text size, background, clock 12/24 h, app names (large at top, or under the
-  selected app only), and the below. Row titles are larger with drawn icons.
-- **Options** groups: Apps, Appearance, Weather, Night & photos, More, each heading over a rule. Rows that depend on
+- **Options**, grouped on the left (Right opens a group, Back or Left returns to the list): Home
+  screen, Appearance, Weather, Night & photos, More, Help, each heading over a rule. Values are one
+  or two words (App names: At top / Under tile / Off). Row titles are larger with drawn icons. Rows that depend on
   another setting only appear when it is on.
-- **Weather** (off by default): Options › Weather, Temperature, Weather city. Uses
+- **Weather** (off by default): Options › Weather, Temperature, Weather city (type a city or ZIP
+  code; when several places match, pick one from the list). Uses
   [Open-Meteo](https://open-meteo.com) (no account, no key; only the city's coordinates are
   sent). Shows temperature, conditions and high/low by the clock; the photo frame adds one
   heads-up line ("Rain likely around 5 PM, take a jacket"). Each extra can be shown or hidden: condition
@@ -266,7 +265,7 @@ accessibility:
 3. At boot there is no dumbtv task yet, so the first start uses an alarm-fired
    `PendingIntent`; after that, `moveTaskToFront` takes over.
 
-`Options > Open Amazon's home screen` pauses the Keeper, so Amazon's home stays
+`Options > More > Amazon home screen` pauses the Keeper, so Amazon's home stays
 until another app is opened.
 
 ## Files

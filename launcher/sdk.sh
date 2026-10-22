@@ -1,5 +1,6 @@
 # Sourced by build.sh and test.sh: finds the Android SDK for $MIN_SDK and a JDK.
-# Sets SDK, JAR (android.jar), BT (newest build-tools) and exports JAVA_HOME; exits if missing.
+# Sets SDK, JAR (android.jar), BT (newest build-tools), KEYSTORE, KEYPASS and exports JAVA_HOME;
+# exits if the SDK or JDK is missing.
 SDK=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
 if [[ -z $SDK ]]; then
   for d in /opt/homebrew/share/android-commandlinetools "$HOME/Library/Android/sdk"; do
@@ -20,3 +21,7 @@ if [[ -z ${JAVA_HOME:-} || ! -x ${JAVA_HOME:-}/bin/javac ]]; then
 fi
 [[ -x ${JAVA_HOME:-}/bin/javac ]] || { echo "error: no JDK found — brew install openjdk@17" >&2; exit 1; }
 export JAVA_HOME
+
+# the signing key every APK from this folder shares (updates must keep the same key)
+KEYSTORE=${DUMBTV_KEYSTORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/release.keystore}
+KEYPASS=${DUMBTV_KEYPASS:-dumbtvhome}
