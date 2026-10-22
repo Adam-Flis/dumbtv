@@ -218,8 +218,8 @@ final class Config {
             new String[] {"Everything", "Next hours", "Today", "Temperature"});
 
     static final Choice FRAME = new Choice("frame", "Screen saver", "off",
-            new String[] {"off", "1", "2", "5", "10"},
-            new String[] {"Off", "After 1 min", "After 2 min", "After 5 min", "After 10 min"});
+            new String[] {"off", "1", "2", "5", "10", "15"},
+            new String[] {"Off", "1 min", "2 min", "5 min", "10 min", "15 min"});
     /** Where the screen saver shows the clock and the weather: a corner, or hidden. */
     private static final String[] CORNERS = {"tl", "tr", "bl", "br", "off"};
     private static final String[] CORNER_NAMES = {"Top left", "Top right", "Bottom left", "Bottom right", "Hidden"};
@@ -227,8 +227,8 @@ final class Config {
     static final Choice FRAME_WEATHER = new Choice("frame.weather", "Weather", "br", CORNERS, CORNER_NAMES);
     /** How long the screen saver runs before the TV goes to sleep. */
     static final Choice FRAME_FOR = new Choice("frame.for", "Sleep after saver", "30",
-            new String[] {"15", "30", "60", "120"},
-            new String[] {"15 min", "30 min", "1 hour", "2 hours"});
+            new String[] {"15", "30", "45", "60", "90", "120"},
+            new String[] {"15 min", "30 min", "45 min", "1 hour", "1.5 hours", "2 hours"});
 
     /** Home screen row order (Catalog kinds, comma-separated); set in Options › Home screen rows. */
     static final String ROW_ORDER = "rows.order";
