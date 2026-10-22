@@ -6,7 +6,7 @@ import android.content.Intent;
 
 /**
  * Puts the home keeper back after a reboot or an update. A sleep timer does not survive a
- * reboot. {@code RELEASE_ADMIN} (sent by install.sh --undo) drops the sleep timer permission,
+ * reboot, but survives an update (its alarm is set again). {@code RELEASE_ADMIN} (sent by install.sh --undo) drops the sleep timer permission,
  * which Android requires before the app can be uninstalled.
  */
 public final class BootReceiver extends BroadcastReceiver {
@@ -19,6 +19,7 @@ public final class BootReceiver extends BroadcastReceiver {
             return;
         }
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) Config.get(context).set(Sleep.AT, null);
+        else if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) Sleep.rearm(context);
         Keeper.start(context);
     }
 }

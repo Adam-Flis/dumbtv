@@ -77,12 +77,40 @@ final class Weather {
         return out;
     }
 
+    /** A forecast older than this is not shown: after a long outage no weather beats old weather. */
+    static final long MAX_AGE_MS = 3 * 60 * 60_000L;
+
     private static volatile Report latest;
+    private static volatile String latestKey;
     private static volatile long latestAt;
 
-    /** The last forecast this process fetched, if under an hour old (the screen saver dream reuses it). */
-    static Report latest() {
-        return System.currentTimeMillis() - latestAt < 60 * 60_000L ? latest : null;
+    /**
+     * What a forecast depends on (place, units, clock format), or null when weather is off or no
+     * place is set. A forecast fetched for another key is never shown.
+     */
+    static String key(Config cfg, android.content.Context c) {
+        String lat = cfg.get(LAT, ""), lon = cfg.get(LON, "");
+        if (!cfg.on(Config.WEATHER) || lat.isEmpty() || lon.isEmpty()) return null;
+        return lat + "," + lon + "," + "f".equals(cfg.get(Config.UNITS)) + "," + cfg.clock24(c);
+    }
+
+    /** Fetches the forecast for {@code key} (from {@link #key}); blocks. */
+    static Report fetch(String key) throws IOException, JSONException {
+        String[] k = key.split(",");
+        Report r = fetch(k[0], k[1], Boolean.parseBoolean(k[2]), Boolean.parseBoolean(k[3]));
+        latest = r;
+        latestKey = key;
+        latestAt = System.currentTimeMillis();
+        return r;
+    }
+
+    /**
+     * The last forecast this process fetched for {@code key}, if under an hour old, so the home
+     * screen and the screen saver dream share one download.
+     */
+    static Report latest(String key) {
+        boolean fresh = System.currentTimeMillis() - latestAt < 60 * 60_000L;
+        return fresh && key != null && key.equals(latestKey) ? latest : null;
     }
 
     /** "Sunny  ·  H 62°  L 39°": conditions and today's range, as the screen saver shows them. */
@@ -91,7 +119,7 @@ final class Weather {
         return words.isEmpty() ? range : words + "  \u00B7  " + range;
     }
 
-    static Report fetch(String lat, String lon, boolean fahrenheit, boolean h24) throws IOException, JSONException {
+    private static Report fetch(String lat, String lon, boolean fahrenheit, boolean h24) throws IOException, JSONException {
         String url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon
                 + "&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,is_day"
                 + "&hourly=temperature_2m,precipitation_probability,weather_code,is_day&forecast_hours=9"
@@ -132,8 +160,6 @@ final class Weather {
         r.tomorrowCode = daily.getJSONArray("weather_code").optInt(1);
         r.tomorrowRain = daily.getJSONArray("precipitation_probability_max").optInt(1);
         r.hint = hint(r, hourly, fahrenheit, h24);
-        latest = r;
-        latestAt = System.currentTimeMillis();
         return r;
     }
 

@@ -7,11 +7,14 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStatsManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.PowerManager;
 
 /**
  * Watches for Amazon's launcher coming back to the foreground and puts dumbtv home back on top.
@@ -23,16 +26,19 @@ import android.os.IBinder;
  * first-start fallback, before a Home task exists.
  */
 public final class Keeper extends Service {
-    private static final String AMAZON_PKG = "com.amazon.tv.launcher";
-    // Only the home activity, never Settings/search/other KFTV screens.
-    private static final String AMAZON_HOME = "com.amazon.tv.launcher.ui.HomeActivity_vNext";
     private static final long POLL_MS = 250;
+    /**
+     * While the TV is off nothing can open Amazon's home, so the watch slows right down; turning
+     * the TV on wakes it at once (screenOn below).
+     */
+    private static final long OFF_POLL_MS = 5000;
     private static final long DEBOUNCE_MS = 1500;
 
     private static volatile boolean paused;
     private HandlerThread thread;
     private Handler worker;
     private UsageStatsManager usage;
+    private PowerManager power;
     private long lastLaunch;
     private String topClass;
 
@@ -51,12 +57,22 @@ public final class Keeper extends Service {
     private final Runnable poll = new Runnable() {
         @Override
         public void run() {
+            boolean on = true;
             try {
-                check();
+                on = power == null || power.isInteractive();
+                if (on) check();
             } catch (Throwable ignored) {
                 // Never let one bad query kill the watchdog.
             }
-            worker.postDelayed(this, POLL_MS);
+            worker.postDelayed(this, on ? POLL_MS : OFF_POLL_MS);
+        }
+    };
+
+    private final BroadcastReceiver screenOn = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            worker.removeCallbacks(poll);
+            worker.post(poll);
         }
     };
 
@@ -65,6 +81,7 @@ public final class Keeper extends Service {
     public void onCreate() {
         super.onCreate();
         usage = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
+        power = (PowerManager) getSystemService(Context.POWER_SERVICE);
         startForeground(1, new Notification.Builder(this)
                 .setSmallIcon(android.R.drawable.ic_menu_recent_history)
                 .setContentTitle("dumbtv")
@@ -76,10 +93,12 @@ public final class Keeper extends Service {
         worker = new Handler(thread.getLooper());
         worker.post(poll);
         worker.postDelayed(this::firstStart, 2500);
+        registerReceiver(screenOn, new IntentFilter(Intent.ACTION_SCREEN_ON), null, worker);
     }
 
     @Override
     public void onDestroy() {
+        unregisterReceiver(screenOn);
         if (thread != null) thread.quitSafely();
         super.onDestroy();
     }
@@ -96,11 +115,12 @@ public final class Keeper extends Service {
         long now = System.currentTimeMillis();
         String top = top(now);
         if (top == null) return;
-        if (!AMAZON_PKG.equals(top)) {
+        if (!Guard.AMAZON.equals(top)) {
             if (!"com.android.systemui".equals(top) && !"android".equals(top)) paused = false;
             return;
         }
-        if (!AMAZON_HOME.equals(topClass)) return;
+        // only Amazon's home itself, never its settings, search or other screens
+        if (!Guard.AMAZON_HOME.equals(topClass)) return;
         if (paused) return;
         if (now - lastLaunch < DEBOUNCE_MS) return;
         launch(now);

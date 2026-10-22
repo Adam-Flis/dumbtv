@@ -36,14 +36,21 @@ final class SystemSaver {
         return cfg.frameOn() ? Integer.parseInt(cfg.get(Config.FRAME)) : NO_SAVER_SLEEP_MIN;
     }
 
+    /**
+     * Minutes of idle before Fire TV sleeps even with a screensaver up: the screen saver's own
+     * "Sleep after saver" plus a little room ({@code saverFor} 0: no screen saver).
+     */
+    static int sleepMinutes(int start, int saverFor) {
+        return saverFor > 0 ? start + saverFor + 5 : start;
+    }
+
     /** Writes Fire TV's timers from the current options; a no-op without the grant or when already right. */
     static void apply(Context c, Config cfg) {
         if (!managed(c)) return;
         ContentResolver cr = c.getContentResolver();
         try {
             int start = startMinutes(cfg);
-            // the backstop: the screen saver's own "Sleep after", plus a little room
-            int sleep = cfg.frameOn() ? start + Integer.parseInt(cfg.get(Config.FRAME_FOR)) + 5 : start;
+            int sleep = sleepMinutes(start, cfg.frameOn() ? Integer.parseInt(cfg.get(Config.FRAME_FOR)) : 0);
             putSecure(cr, "screensaver_components", DREAM);
             putSecure(cr, "screensaver_enabled", "1");
             putSecure(cr, "screensaver_activate_on_sleep", "1");

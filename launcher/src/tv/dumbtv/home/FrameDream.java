@@ -8,11 +8,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The screen saver as Android's own screensaver ("dream"), so it also starts when another app
- * sits idle (a paused video), not only on the home screen. Fire OS starts it instead of
- * sleeping once it is chosen as the screensaver (an adb setting, see README). It shows the same
- * PhotoFrame, follows the same settings and screen care, then ends after Stop after and lets
- * the TV sleep. Off, or at night, it ends at once so the TV sleeps as before.
+ * The screen saver as Android's own screensaver ("dream"), so it starts after the same idle time
+ * on the home screen and in any other app (a paused video). SystemSaver makes it Fire TV's
+ * screensaver and sets the timers. It shows the same PhotoFrame with the same settings and
+ * screen care, then ends after "Sleep after saver" and the TV sleeps. With the screen saver off
+ * it ends at once; at night it stays black until the usual no-screen-saver sleep time.
  */
 public final class FrameDream extends DreamService {
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -73,13 +73,11 @@ public final class FrameDream extends DreamService {
 
     /** This process may be fresh (Fire OS stops idle apps): fetch the weather once if none is cached. */
     private void fetchWeather() {
-        String lat = cfg.get(Weather.LAT, ""), lon = cfg.get(Weather.LON, "");
-        if (!cfg.on(Config.WEATHER) || lat.isEmpty() || Weather.latest() != null) return;
-        boolean f = "f".equals(cfg.get(Config.UNITS));
-        boolean h24 = cfg.clock24(this);
+        String key = Weather.key(cfg, this);
+        if (key == null || Weather.latest(key) != null) return;
         io.execute(() -> {
             try {
-                Weather.fetch(lat, lon, f, h24);
+                Weather.fetch(key);
                 ui.post(this::refresh);
             } catch (Exception e) {
                 android.util.Log.w("dumbtv", "dream weather: " + e);
@@ -88,6 +86,6 @@ public final class FrameDream extends DreamService {
     }
 
     private void refresh() {
-        if (frame != null) frame.update(cfg, cfg.on(Config.WEATHER) ? Weather.latest() : null);
+        if (frame != null) frame.update(cfg, Weather.latest(Weather.key(cfg, this)));
     }
 }

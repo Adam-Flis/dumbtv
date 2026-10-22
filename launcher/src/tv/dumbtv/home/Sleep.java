@@ -48,16 +48,38 @@ public final class Sleep extends BroadcastReceiver {
     /** Starts a timer of {@code minutes}, or cancels it with 0. */
     static void set(Context c, int minutes) {
         Config cfg = Config.get(c);
-        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        PendingIntent pi = PendingIntent.getBroadcast(c, 7, new Intent(c, Sleep.class), PendingIntent.FLAG_UPDATE_CURRENT);
-        if (am != null) am.cancel(pi);
+        cancelAlarm(c);
         if (minutes <= 0) {
             cfg.set(AT, null);
             return;
         }
         long at = System.currentTimeMillis() + minutes * 60_000L;
         cfg.set(AT, String.valueOf(at));
-        if (am != null) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+        arm(c, at);
+    }
+
+    /**
+     * An app update stops the app, and Android drops its alarms with it: a running timer is set
+     * again for the same moment (BootReceiver, on MY_PACKAGE_REPLACED).
+     */
+    static void rearm(Context c) {
+        Config cfg = Config.get(c);
+        if (left(cfg) > 0) arm(c, at(cfg));
+        else cfg.set(AT, null);
+    }
+
+    private static PendingIntent alarm(Context c) {
+        return PendingIntent.getBroadcast(c, 7, new Intent(c, Sleep.class), PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private static void cancelAlarm(Context c) {
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        if (am != null) am.cancel(alarm(c));
+    }
+
+    private static void arm(Context c, long at) {
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        if (am != null) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, alarm(c));
     }
 
     /** "45 min", "1 hour", "1 hr 20 min", "2 hours". */

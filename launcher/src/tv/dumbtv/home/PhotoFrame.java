@@ -2,7 +2,6 @@ package tv.dumbtv.home;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,12 +14,10 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -111,11 +108,7 @@ final class PhotoFrame extends FrameLayout {
         if (own != null) {
             Arrays.sort(own);
             for (File f : own) {
-                String n = f.getName().toLowerCase(Locale.ROOT);
-                if (f.isFile() && (n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png")
-                        || n.endsWith(".webp"))) {
-                    photos.add(f);
-                }
+                if (f.isFile() && Images.isPicture(f.getName())) photos.add(f);
             }
         }
         if (photos.isEmpty()) {
@@ -233,7 +226,7 @@ final class PhotoFrame extends FrameLayout {
         Object src = photos.get(next);
         next = (next + 1) % photos.size();
         io.execute(() -> {
-            Bitmap b = decode(src);
+            Bitmap b = Images.decode(getContext(), src, MAX_W, MAX_H, Bitmap.Config.RGB_565);
             ui.post(() -> {
                 if (!running) return;
                 if (b != null) show(b);
@@ -258,27 +251,5 @@ final class PhotoFrame extends FrameLayout {
             in.setAlpha(t);
             out.setAlpha(from * (1 - t));
         }, () -> out.setImageDrawable(null));
-    }
-
-    private Bitmap decode(Object src) {
-        BitmapFactory.Options o = new BitmapFactory.Options();
-        o.inJustDecodeBounds = true;
-        read(src, o);
-        o.inSampleSize = 1;
-        while (o.outWidth / (o.inSampleSize * 2) >= MAX_W && o.outHeight / (o.inSampleSize * 2) >= MAX_H) {
-            o.inSampleSize *= 2;
-        }
-        o.inJustDecodeBounds = false;
-        o.inPreferredConfig = Bitmap.Config.RGB_565;
-        return read(src, o);
-    }
-
-    private Bitmap read(Object src, BitmapFactory.Options o) {
-        if (src instanceof File) return BitmapFactory.decodeFile(((File) src).getPath(), o);
-        try (InputStream in = getContext().getAssets().open((String) src)) {
-            return BitmapFactory.decodeStream(in, null, o);
-        } catch (IOException e) {
-            return null;
-        }
     }
 }

@@ -88,7 +88,8 @@ final class Help {
         Popup.message(a, "Sleep timer needs a one-time setup",
                 "Fire TV only lets this app turn the TV off after one step from a computer:\n\n"
                         + Sleep.ADMIN_COMMAND
-                        + "\n\nUntil then, Fire TV's own sleep timer works (All Fire TV settings).",
+                        + "\n\nRunning ./launcher/install.sh again does it too."
+                        + " Until then, Fire TV's own sleep timer works (All Fire TV settings).",
                 new Popup.Action("Open Fire TV settings", () -> {
                     try {
                         a.startActivity(FireSettings.all(a).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));

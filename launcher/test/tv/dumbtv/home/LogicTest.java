@@ -16,6 +16,9 @@ public final class LogicTest {
         rowOrder();
         minuteSteps();
         rowSwitches();
+        pictures();
+        screenSaverTimers();
+        screenSaverChoices();
         System.out.println(passed + " passed, " + failed + " failed");
         if (failed > 0) System.exit(1);
     }
@@ -60,6 +63,35 @@ public final class LogicTest {
         eq(50, TimeChooser.stepMinute(47, 1));
         eq(45, TimeChooser.stepMinute(47, -1));
         eq(40, TimeChooser.stepMinute(45, -1));
+    }
+
+    private static void pictures() {
+        eq(true, Images.isPicture("Beach.JPG"));
+        eq(true, Images.isPicture("a.webp"));
+        eq(false, Images.isPicture("notes.txt"));
+        // a 4K photo shrinks to the 1080p screen; a 1080p one stays as is
+        eq(2, Images.sampleSize(3840, 2160, 1920, 1080));
+        eq(1, Images.sampleSize(1920, 1080, 1920, 1080));
+        eq(2, Images.sampleSize(4000, 3000, 1920, 1080));
+        // a panorama shrinks by its long side too, instead of decoding 20000 px wide
+        eq(8, Images.sampleSize(20000, 1000, 1920, 1080));
+    }
+
+    private static void screenSaverTimers() {
+        // Fire TV sleeps 5 min after the screen saver's own end; with it off, at the start time
+        eq(140, SystemSaver.sleepMinutes(15, 120));
+        eq(37, SystemSaver.sleepMinutes(2, 30));
+        eq(5, SystemSaver.sleepMinutes(5, 0));
+    }
+
+    private static void screenSaverChoices() {
+        // every value but Off is a whole number of minutes (SystemSaver and Home parse them)
+        for (String v : Config.FRAME.values) {
+            if (!Config.OFF.equals(v)) eq(true, Integer.parseInt(v) > 0);
+        }
+        for (String v : Config.FRAME_FOR.values) eq(true, Integer.parseInt(v) > 0 && Integer.parseInt(v) <= 120);
+        eq("5 min", Config.FRAME.name("5"));
+        eq("1.5 hours", Config.FRAME_FOR.name("90"));
     }
 
     private static void eq(Object want, Object got) {

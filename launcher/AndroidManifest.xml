@@ -5,15 +5,16 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <!-- Fire OS 6 only: the Keeper reads the foreground package through UsageStats.
-         maxSdkVersion keeps Fire OS 7/8 on the permission-free accessibility path. -->
     <!-- Top bar: the Wi-Fi name and whether the internet works. Read-only, no network access. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Only for the optional weather (Options > Weather, off by default): Open-Meteo, no account. -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- granted with adb only (pm grant): lets Options set Fire TV's screensaver timers -->
+    <!-- granted with adb only (pm grant, install.sh does it): lets Options set Fire TV's screensaver timers -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+
+    <!-- Fire OS 6 only: the Keeper reads the foreground package through UsageStats.
+         maxSdkVersion keeps Fire OS 7/8 on the permission-free accessibility path. -->
 
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         android:maxSdkVersion="27" />
@@ -85,7 +86,7 @@
             android:name=".Keeper"
             android:exported="false" />
 
-        <!-- the screen saver as the system screensaver (dream): chosen with adb, see README -->
+        <!-- the screen saver as Fire TV's own screensaver (dream); SystemSaver selects it -->
         <service
             android:name=".FrameDream"
             android:exported="true"

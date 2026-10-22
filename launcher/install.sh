@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# Installs dumbtv home on the TV and gives it the HOME button.
-#   ./launcher/install.sh            download the release APK (checksum-verified), install, take over HOME
-#   ./launcher/install.sh --build    build from source instead (needs a JDK and the Android SDK)
-#   ./launcher/install.sh --undo     hand HOME back to Amazon's launcher
+# Installs dumbtv home on the TV, gives it the HOME button, and allows the sleep timer and the
+# screen saver in every app. Safe to run again: that is also how an update is installed.
+#   ./launcher/install.sh            build this fork from source (needs a JDK and the Android SDK)
+#   ./launcher/install.sh --build    the same
+#   ./launcher/install.sh --release  download upstream's prebuilt APK instead (Fire OS 7/8 only,
+#                                    checksum-verified; it has none of this fork's extras)
+#   ./launcher/install.sh --undo     hand HOME and the screensaver back to Amazon
 # Pick the device with ADB_SERIAL when more than one is connected.
+# README.md (repo root) walks through it step by step; AGENTS.md is the same for an AI agent.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -20,12 +24,12 @@ adb_() { "$ADB" ${ADB_SERIAL:+-s "$ADB_SERIAL"} "$@"; }
 sh_() { adb_ shell "$@" </dev/null; }
 installed() { sh_ pm path "$1" 2>/dev/null | grep -q '^package:'; }
 
-mode=release
+mode=build
 case ${1:-} in
-  "") ;;
-  --build) mode=build ;;
+  ""|--build) ;;
+  --release) mode=release ;;
   --undo) mode=undo ;;
-  *) echo "usage: $0 [--build | --undo]" >&2; exit 2 ;;
+  *) echo "usage: $0 [--build | --release | --undo]" >&2; exit 2 ;;
 esac
 
 command -v "$ADB" >/dev/null || { echo "error: adb not found — install Android platform-tools" >&2; exit 1; }
@@ -82,6 +86,16 @@ if [[ $mode == undo ]]; then
   # force-stop also keeps the Fire OS 6 Keeper from restarting at the next boot.
   sh_ am force-stop $PKG >/dev/null 2>&1 || true
   sh_ appops set $PKG GET_USAGE_STATS default >/dev/null 2>&1 || true
+  # Fire TV's screensaver back to Amazon's (the timers stay as they are)
+  sh_ pm revoke $PKG android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1 || true
+  saver=$(sh_ settings get secure screensaver_components | tr -d '\r')
+  if [[ $saver == *$PKG* ]]; then
+    if installed com.amazon.ftv.screensaver; then
+      sh_ settings put secure screensaver_components com.amazon.ftv.screensaver/.app.services.ScreensaverService
+    else
+      sh_ settings delete secure screensaver_components >/dev/null 2>&1 || true
+    fi
+  fi
   set_futurity off
   set_guard ""
   sh_ am start -a android.intent.action.MAIN -c android.intent.category.HOME >/dev/null
@@ -125,6 +139,24 @@ case $out in
   *) echo "error: adb install failed: $out" >&2; exit 1 ;;
 esac
 echo "installed $PKG"
+
+# Two things Fire OS only lets a computer allow (both are optional; Options › Help shows them):
+# the sleep timer turns the TV off (device admin, "lock screen" policy only), and the screen
+# saver runs in every app (Fire TV's screensaver timers follow Options). Only this fork has them.
+if [[ $mode == build ]]; then
+  if sh_ dumpsys device_policy 2>/dev/null | grep -q "$PKG/.Admin"; then
+    echo "sleep timer: allowed"
+  elif sh_ dpm set-active-admin $PKG/.Admin >/dev/null 2>&1; then
+    echo "sleep timer: allowed"
+  else
+    echo "note: the sleep timer could not be allowed; it uses Fire TV's own sleep timer instead"
+  fi
+  if sh_ pm grant $PKG android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1; then
+    echo "screen saver in apps: allowed"
+  else
+    echo "note: the screen saver will only run on the home screen (pm grant was refused)"
+  fi
+fi
 
 sh_ dumpsys deviceidle whitelist +$PKG >/dev/null
 

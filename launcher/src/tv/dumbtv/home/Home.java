@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -65,7 +64,7 @@ public final class Home extends Activity {
     private boolean swallowUp;
     private final Runnable idle = this::startFrame;
     private final Runnable frameDone = this::endFrame;
-    /** OLED burn-in care: drift and go dark when idle. */
+    /** OLED burn-in care: drift, a dimmer screen saver overlay, black after the screen saver. */
     private ScreenCare care;
     private View pageView;
     private boolean resumed, landed, ticking;
@@ -74,14 +73,12 @@ public final class Home extends Activity {
     private FrameLayout root;
     private ImageView wall;
     private View shade;
-    private TextView greeting, clock, date, focusName, temp, sky, feels, sunLine;
-    private View skyIcon;
-    private LinearLayout hours;
-    private View hoursRule;
-    private LinearLayout weatherBox;
+    private TextView greeting, clock, date, focusName;
+    private WeatherHeader weatherView;
     private Weather.Report weather;
     private String weatherKey;
-    private long weatherAt;
+    /** When the next fetch is due, and when the shown forecast was fetched (ms). */
+    private long weatherAt, weatherGot;
     private boolean fetching;
     private LinearLayout bar;
     private TextView net, sleepChip, nightChip;
@@ -269,6 +266,7 @@ public final class Home extends Activity {
         // going dark waits while the screen saver runs or a menu or dialog has the focus
         care = new ScreenCare(cfg, ui, root, pageView,
                 () -> (frame != null && root.getKeepScreenOn()) || !hasWindowFocus());
+        inputCard = new InputCard(this, root, ui, this::focusFirst);
 
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -388,12 +386,16 @@ public final class Home extends Activity {
         closePop();
         care.stop();
         stopFrame();
-        removeInputCard();
+        inputCard.remove();
         if (moving != null) stopMoving();
     }
 
     @Override
     protected void onDestroy() {
+        // nothing posted by this screen may run after it (recreate() makes a new one)
+        ui.removeCallbacksAndMessages(null);
+        care.stop();
+        if (glowTween != null) glowTween.cancel();
         unregisterReceiver(packages);
         if (tv != null) tv.unregisterCallback(inputWatch);
         if (cm != null) cm.unregisterNetworkCallback(netWatch);
@@ -428,8 +430,8 @@ public final class Home extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (inputCard != null) {
-            hideInputCard();
+        if (inputCard.showing()) {
+            inputCard.hide();
             return;
         }
         focusFirst();
@@ -678,59 +680,10 @@ public final class Home extends Activity {
         date.setPadding(dp(3), dp(10), 0, 0);
         timeCol.addView(date);
         middle.addView(timeCol);
-        // icon, temperature, then conditions and feels-like stacked beside them: two short lines
-        weatherBox = new LinearLayout(this);
-        weatherBox.setGravity(Gravity.CENTER_VERTICAL);
-        weatherBox.setPadding(0, 0, 0, 0);
-        skyIcon = new View(this);
-        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(40), dp(40));
-        ilp.rightMargin = dp(10);
-        weatherBox.addView(skyIcon, ilp);
-        temp = Ui.text(this, 40, Ui.TEXT, Ui.LIGHT);
-        weatherBox.addView(temp);
-        LinearLayout details = new LinearLayout(this);
-        details.setOrientation(LinearLayout.VERTICAL);
-        details.setPadding(dp(14), 0, 0, 0);
-        sky = Ui.text(this, 15, Ui.TEXT, Ui.MEDIUM);
-        sky.setSingleLine();
-        feels = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
-        feels.setSingleLine();
-        feels.setPadding(0, dp(5), 0, 0);
-        details.addView(sky);
-        details.addView(feels);
-        weatherBox.addView(details);
-        weatherBox.setVisibility(View.GONE);
-        // current weather, and under it the next sunrise/sunset and tomorrow
-        LinearLayout weatherCol = new LinearLayout(this);
-        weatherCol.setOrientation(LinearLayout.VERTICAL);
-        weatherCol.setPadding(dp(24), 0, 0, 0);
-        weatherCol.addView(weatherBox);
-        sunLine = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
-        sunLine.setSingleLine();
-        sunLine.setPadding(dp(2), dp(10), 0, 0);
-        sunLine.setVisibility(View.GONE);
-        weatherCol.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
         // time on the left; all the weather together on the right, ending where the top bar ends
         middle.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
-        middle.addView(weatherCol);
-        // the next hours sit right after the current weather, split by a thin line
-        hoursRule = new View(this);
-        hoursRule.setBackgroundColor(0x2EFFFFFF);
-        hoursRule.setVisibility(View.GONE);
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(Math.max(1, dp(1)), dp(56));
-        rlp.leftMargin = dp(28);
-        rlp.rightMargin = dp(12);
-        rlp.topMargin = dp(16);
-        middle.addView(hoursRule, rlp);
-        // next hours, and under them the next sunrise/sunset and tomorrow: one forecast block
-        LinearLayout forecast = new LinearLayout(this);
-        forecast.setOrientation(LinearLayout.VERTICAL);
-        hours = new LinearLayout(this);
-        hours.setVisibility(View.GONE);
-        forecast.addView(hours, new LinearLayout.LayoutParams(WRAP, WRAP));
-        // padding, not a margin: a centered child's margin shifts it and cut off the last line
-        forecast.setPadding(0, dp(16), 0, 0); // clear of the top bar when a button opens up
-        middle.addView(forecast, new LinearLayout.LayoutParams(WRAP, WRAP));
+        weatherView = new WeatherHeader(this);
+        weatherView.addTo(middle);
         head.addView(middle, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         page.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
@@ -943,6 +896,8 @@ public final class Home extends Activity {
             List<Item> list = Catalog.apps(this);
             ui.post(() -> {
                 if (generation != appsGeneration || isDestroyed()) return;
+                // an updated app may have a new banner, so its glow color is worked out again
+                if (changed != null) tints.remove(changed);
                 for (Item fresh : list) {
                     for (Item old : apps.all) {
                         if (old.id.equals(fresh.id) && !old.id.equals(changed) && old.artRequested) {
@@ -1238,13 +1193,11 @@ public final class Home extends Activity {
     // ---- "switch input?" card ----
 
     private final java.util.Map<String, Integer> inputStates = new java.util.HashMap<>();
-    private LinearLayout inputCard;
-    private View cardReturn;
-    private final Runnable cardTimeout = this::hideInputCard;
+    private InputCard inputCard;
 
     /**
      * Something plugged into an input just turned on: offer to switch to it, only while the
-     * home screen is showing. Goes away by itself after 15 s.
+     * home screen is showing.
      */
     private void offerInput(String id) {
         if (!cfg.on(Config.SWITCH) || !resumed) return;
@@ -1254,84 +1207,8 @@ public final class Home extends Activity {
         }
         if (it == null || !Catalog.shown(cfg, Catalog.INPUTS, it)) return;
         if (frame != null) stopFrame();
-        if (inputCard != null) removeInputCard();
         Item input = it;
-        int accent = cfg.accent(), ink = Ui.ink(accent);
-
-        inputCard = new LinearLayout(this) {
-            /** The buttons keep focus to themselves while the card is up. */
-            @Override
-            public View focusSearch(View focused, int direction) {
-                View next = android.view.FocusFinder.getInstance().findNextFocus(this, focused, direction);
-                return next != null ? next : focused;
-            }
-        };
-        inputCard.setGravity(Gravity.CENTER_VERTICAL);
-        inputCard.setPadding(dp(20), dp(18), dp(20), dp(18));
-        inputCard.setBackground(Ui.card(this, 0xF51C1D22, 26));
-        inputCard.setElevation(dp(24));
-
-        View badge = new View(this);
-        GradientDrawable circle = new GradientDrawable();
-        circle.setShape(GradientDrawable.OVAL);
-        circle.setColor(accent);
-        android.graphics.drawable.LayerDrawable art = new android.graphics.drawable.LayerDrawable(
-                new Drawable[] {circle, Icons.of(Icons.INPUT, dp(26), ink)});
-        art.setLayerInset(1, dp(14), dp(14), dp(14), dp(14));
-        badge.setBackground(art);
-        inputCard.addView(badge, new LinearLayout.LayoutParams(dp(54), dp(54)));
-
-        LinearLayout words = new LinearLayout(this);
-        words.setOrientation(LinearLayout.VERTICAL);
-        words.setPadding(dp(18), 0, dp(30), 0);
-        TextView title = Ui.text(this, 21, Ui.TEXT, Ui.MEDIUM);
-        title.setText(Catalog.label(cfg, input) + " just turned on");
-        TextView sub = Ui.text(this, 15, Ui.MUTED, Ui.MEDIUM);
-        sub.setPadding(0, dp(4), 0, 0);
-        sub.setText("Switch to it now?");
-        words.addView(title);
-        words.addView(sub);
-        inputCard.addView(words);
-
-        TextView go = Ui.pill(this, "Switch", accent);
-        go.setOnClickListener(v -> {
-            hideInputCard();
-            launch(new Intent(input.intent), null);
-        });
-        TextView later = Ui.pill(this, "Not now", accent);
-        later.setOnClickListener(v -> hideInputCard());
-        inputCard.addView(go);
-        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(WRAP, WRAP);
-        llp.leftMargin = dp(10);
-        inputCard.addView(later, llp);
-
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.bottomMargin = dp(44);
-        root.addView(inputCard, lp);
-        cardReturn = getCurrentFocus();
-        go.requestFocus();
-        LinearLayout card = inputCard;
-        Tween.run(320, t -> {
-            card.setAlpha(t);
-            card.setTranslationY(dp(36) * (1 - t));
-        }, null);
-        ui.postDelayed(cardTimeout, 15_000);
-    }
-
-    private void hideInputCard() {
-        ui.removeCallbacks(cardTimeout);
-        LinearLayout card = inputCard;
-        if (card == null) return;
-        inputCard = null;
-        if (cardReturn != null && cardReturn.isAttachedToWindow()) cardReturn.requestFocus();
-        else focusFirst();
-        Tween.run(220, t -> card.setAlpha(1 - t), () -> root.removeView(card));
-    }
-
-    private void removeInputCard() {
-        ui.removeCallbacks(cardTimeout);
-        if (inputCard != null) root.removeView(inputCard);
-        inputCard = null;
+        inputCard.show(Catalog.label(cfg, input), cfg.accent(), () -> launch(new Intent(input.intent), null));
     }
 
     private void background() {
@@ -1349,24 +1226,12 @@ public final class Home extends Activity {
             return;
         }
         io.execute(() -> {
-            Bitmap b = decode(file, getResources().getDisplayMetrics().widthPixels,
-                    getResources().getDisplayMetrics().heightPixels);
+            Bitmap b = Images.decode(this, file, getResources().getDisplayMetrics().widthPixels,
+                    getResources().getDisplayMetrics().heightPixels, Bitmap.Config.ARGB_8888);
             ui.post(() -> {
                 if (key.equals(wallKey)) wall.setImageBitmap(b);
             });
         });
-    }
-
-    private static Bitmap decode(File f, int w, int h) {
-        BitmapFactory.Options o = new BitmapFactory.Options();
-        o.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(f.getPath(), o);
-        o.inSampleSize = 1;
-        while (o.outWidth / (o.inSampleSize * 2) >= w && o.outHeight / (o.inSampleSize * 2) >= h) {
-            o.inSampleSize *= 2;
-        }
-        o.inJustDecodeBounds = false;
-        return BitmapFactory.decodeFile(f.getPath(), o);
     }
 
     /**
@@ -1457,37 +1322,34 @@ public final class Home extends Activity {
     }
 
     private void frameInfo() {
-        if (frame == null) return;
-        boolean shown = weather != null && weatherBox.getVisibility() == View.VISIBLE;
-        frame.update(cfg, shown ? weather : null);
+        if (frame != null) frame.update(cfg, weather);
     }
 
-    /** Refreshes the forecast every 30 min while weather is on; shows or hides the weather views. */
+    /**
+     * Refreshes the forecast every 30 min while weather is on; shows or hides the weather views.
+     * A failed fetch keeps the last forecast for up to {@link Weather#MAX_AGE_MS} and retries
+     * every 5 minutes.
+     */
     private void weather() {
-        String lat = cfg.get(Weather.LAT, ""), lon = cfg.get(Weather.LON, "");
-        boolean on = cfg.on(Config.WEATHER) && !lat.isEmpty() && !lon.isEmpty();
-        if (!on) {
-            weather = null;
-            weatherKey = null;
-            showWeather();
-            return;
-        }
-        boolean f = "f".equals(cfg.get(Config.UNITS));
-        boolean h24 = cfg.clock24(this);
-        String key = lat + "," + lon + "," + f + "," + h24;
+        String key = Weather.key(cfg, this);
         long now = System.currentTimeMillis();
-        if (!key.equals(weatherKey)) {
-            weatherKey = key;
+        if (key == null || !key.equals(weatherKey) || now - weatherGot > Weather.MAX_AGE_MS) {
             weather = null;
             weatherAt = 0;
         }
+        weatherKey = key;
+        if (weather == null && key != null) {
+            // the screen saver dream may have fetched it while an app was open
+            weather = Weather.latest(key);
+            if (weather != null) weatherGot = weatherAt = now;
+        }
         showWeather();
-        if (fetching || now - weatherAt < 30 * 60_000L) return;
+        if (key == null || fetching || now - weatherAt < 30 * 60_000L) return;
         fetching = true;
         io.execute(() -> {
             Weather.Report r = null;
             try {
-                r = Weather.fetch(lat, lon, f, h24);
+                r = Weather.fetch(key);
             } catch (Exception e) {
                 android.util.Log.w("dumbtv", "weather: " + e);
             }
@@ -1495,104 +1357,20 @@ public final class Home extends Activity {
             ui.post(() -> {
                 fetching = false;
                 if (!key.equals(weatherKey)) return;
-                // a failure keeps the last forecast and tries again in 5 minutes
-                weatherAt = got != null ? System.currentTimeMillis() : System.currentTimeMillis() - 25 * 60_000L;
-                if (got != null) weather = got;
+                long at = System.currentTimeMillis();
+                weatherAt = got != null ? at : at - 25 * 60_000L;
+                if (got != null) {
+                    weather = got;
+                    weatherGot = at;
+                }
                 showWeather();
             });
         });
     }
 
     private void showWeather() {
-        if (weather == null) {
-            weatherBox.setVisibility(View.GONE);
-            hours.setVisibility(View.GONE);
-            hoursRule.setVisibility(View.GONE);
-            sunLine.setVisibility(View.GONE);
-            return;
-        }
-        temp.setText(weather.temp + "\u00B0");
-        String words = Weather.describe(weather.code, weather.day);
-        String detail = cfg.get(Config.W_DETAIL);
-        boolean full = "full".equals(detail);
-        // Everything: compact, room for feels/wind and tomorrow. The shorter choices use the room
-        // for a bigger temperature with the conditions and today's high/low beside it.
-        float big = full ? 1f : 1.4f;
-        temp.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 40 * big * Ui.scale);
-        sky.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, (full ? 15 : 20) * Ui.scale);
-        feels.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, (full ? 14 : 20) * Ui.scale);
-        int iconSize = dp(40 * big);
-        ViewGroup.LayoutParams ip = skyIcon.getLayoutParams();
-        if (ip.width != iconSize) {
-            ip.width = iconSize;
-            ip.height = iconSize;
-            skyIcon.setLayoutParams(ip);
-        }
-        skyIcon.setBackground(Icons.of(Icons.forCode(weather.code, weather.day), iconSize, 0));
-        String highLow = "H " + weather.hi + "\u00B0  L " + weather.lo + "\u00B0";
-        if (full) {
-            sky.setText((words.isEmpty() ? "" : words + "  \u00B7  ") + highLow);
-            feels.setText("Feels " + weather.feels + "\u00B0  \u00B7  Wind " + weather.wind + " " + weather.windUnit);
-        } else {
-            sky.setText(words.isEmpty() ? highLow : words);
-            feels.setText(words.isEmpty() ? "" : highLow);
-        }
-        boolean minimal = "minimal".equals(detail);
-        sky.setVisibility(minimal ? View.GONE : View.VISIBLE);
-        feels.setVisibility(minimal || feels.length() == 0 ? View.GONE : View.VISIBLE);
-        weatherBox.setVisibility(View.VISIBLE);
-        showHours();
-        if (full && weather.sun != null) {
-            String t = Weather.describe(weather.tomorrowCode, true);
-            sunLine.setText(weather.sun + "  \u00B7  Tomorrow " + weather.tomorrowHi + "\u00B0 / "
-                    + weather.tomorrowLo + "\u00B0" + (t.isEmpty() ? "" : "  " + t)
-                    + (weather.tomorrowRain >= 30 ? "  " + weather.tomorrowRain + "%" : ""));
-            sunLine.setVisibility(View.VISIBLE);
-        } else {
-            sunLine.setVisibility(View.GONE);
-        }
+        weatherView.show(weather, cfg.get(Config.W_DETAIL));
         frameInfo();
-    }
-
-    /** The next five hours under the top bar: time, icon, temperature, chance of rain. */
-    private void showHours() {
-        hours.removeAllViews();
-        String detail = cfg.get(Config.W_DETAIL);
-        if ("minimal".equals(detail) || "today".equals(detail) || weather.hours.isEmpty()) {
-            hours.setVisibility(View.GONE);
-            hoursRule.setVisibility(View.GONE);
-            return;
-        }
-        // the rain line only takes room when one of the hours has a real chance of rain
-        boolean anyRain = false;
-        for (Weather.Hour h : weather.hours) anyRain |= h.rain >= 20;
-        for (Weather.Hour h : weather.hours) {
-            LinearLayout cell = new LinearLayout(this);
-            cell.setOrientation(LinearLayout.VERTICAL);
-            cell.setGravity(Gravity.CENTER_HORIZONTAL);
-            TextView at = Ui.text(this, 13, Ui.MUTED, Ui.MEDIUM);
-            at.setText(h.at);
-            View icon = new View(this);
-            icon.setBackground(Icons.of(Icons.forCode(h.code, h.day), dp(24), 0));
-            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(24), dp(24));
-            ilp.topMargin = dp(4);
-            ilp.bottomMargin = dp(4);
-            TextView t = Ui.text(this, 16, Ui.TEXT, Ui.MEDIUM);
-            t.setText(h.temp + "\u00B0");
-            TextView rain = Ui.text(this, 12, Ui.MUTED, Ui.MEDIUM);
-            rain.setPadding(0, dp(2), 0, 0);
-            rain.setText(h.rain >= 20 ? h.rain + "%" : "");
-            rain.setVisibility(anyRain ? View.VISIBLE : View.GONE);
-            // a vertical LinearLayout gives children full width by default: center their text too
-            for (TextView line : new TextView[] {at, t, rain}) line.setGravity(Gravity.CENTER_HORIZONTAL);
-            cell.addView(at);
-            cell.addView(icon, ilp);
-            cell.addView(t);
-            cell.addView(rain);
-            hours.addView(cell, new LinearLayout.LayoutParams(dp(58), WRAP));
-        }
-        hours.setVisibility(View.VISIBLE);
-        hoursRule.setVisibility(weatherBox.getVisibility());
     }
 
     /** Wi-Fi name (or Ethernet) with a dot: green online, amber no internet, red offline. */

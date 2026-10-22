@@ -486,11 +486,7 @@ final class Config {
         File[] files = new File(dir, WALLPAPERS).listFiles();
         if (files == null) return out;
         for (File f : files) {
-            String n = f.getName().toLowerCase(Locale.ROOT);
-            if (f.isFile() && (n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png")
-                    || n.endsWith(".webp"))) {
-                out.add(f);
-            }
+            if (f.isFile() && Images.isPicture(f.getName())) out.add(f);
         }
         Collections.sort(out);
         return out;

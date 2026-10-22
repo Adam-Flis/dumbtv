@@ -146,7 +146,7 @@ public final class Options extends Activity {
                 () -> Help.explain(this, "Screen saver in apps needs a one-time setup",
                         "So the screen saver also starts when an app sits idle (a paused video), Fire TV"
                         + " has to let this app set its screensaver timers. Run once from a computer:\n\n"
-                        + SystemSaver.GRANT)));
+                        + SystemSaver.GRANT + "\n\nRunning ./launcher/install.sh again does it too.")));
         list.addView(status("Internet", () -> Help.online(this), () -> "Connected", "Not connected",
                 () -> startActivity(FireSettings.wifi(this))));
         list.addView(status("Weather", () -> cfg.on(Config.WEATHER)
@@ -427,7 +427,9 @@ public final class Options extends Activity {
             try {
                 found = Weather.geocode(city, 6);
             } catch (Exception e) {
-                runOnUiThread(() -> Ui.notice(this, "No connection to the weather service", Icons.PARTLY));
+                runOnUiThread(() -> {
+                    if (!isFinishing()) Ui.notice(this, "No connection to the weather service", Icons.PARTLY);
+                });
                 return;
             }
             runOnUiThread(() -> {
