@@ -26,6 +26,8 @@ final class ScreenCare {
     private final View page;
     private final Busy busy;
     private final Runnable shift = this::shift, rest = this::rest;
+    /** Other layers that drift with the page, such as the photo frame's clock and weather. */
+    private final java.util.List<View> followers = new java.util.ArrayList<>();
     private int step;
     private boolean running;
     private View dark;
@@ -40,6 +42,16 @@ final class ScreenCare {
 
     boolean on() {
         return cfg.on(Config.CARE);
+    }
+
+    /** {@code v} drifts with the home screen until {@link #unfollow}. */
+    void follow(View v) {
+        followers.add(v);
+        place(v);
+    }
+
+    void unfollow(View v) {
+        followers.remove(v);
     }
 
     /** The home screen is showing: start drifting. */
@@ -86,15 +98,17 @@ final class ScreenCare {
 
     private void shift() {
         ui.removeCallbacks(shift);
-        if (!on()) {
-            page.setTranslationX(0);
-            page.setTranslationY(0);
-            return;
-        }
-        step = (step + 1) % SHIFTS.length;
-        page.setTranslationX(Ui.dp(page.getContext(), SHIFTS[step][0]));
-        page.setTranslationY(Ui.dp(page.getContext(), SHIFTS[step][1]));
-        if (running) ui.postDelayed(shift, SHIFT_MS);
+        if (on()) step = (step + 1) % SHIFTS.length;
+        place(page);
+        for (View v : followers) place(v);
+        if (running && on()) ui.postDelayed(shift, SHIFT_MS);
+    }
+
+    /** Moves {@code v} to the current spot, or back home when screen care is off. */
+    private void place(View v) {
+        boolean on = on();
+        v.setTranslationX(on ? Ui.dp(v.getContext(), SHIFTS[step][0]) : 0);
+        v.setTranslationY(on ? Ui.dp(v.getContext(), SHIFTS[step][1]) : 0);
     }
 
     private void rest() {

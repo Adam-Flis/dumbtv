@@ -1,7 +1,6 @@
 package tv.dumbtv.home;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.Dialog;
 import android.content.Context;
@@ -52,7 +51,7 @@ final class Help {
         return n != null && n.isConnected();
     }
 
-    /** The welcome card: three short lines and one button. {@code done} runs when it closes. */
+    /** The welcome card: how to get around and set things up, one short line each. */
     static void welcome(Activity a, Runnable done) {
         int accent = Config.get(a).accent();
         Dialog d = Panel.dialog(a);
@@ -61,12 +60,20 @@ final class Help {
         TextView head = Ui.text(a, 30, Ui.TEXT, Ui.LIGHT);
         head.setText("Welcome");
         head.setGravity(Gravity.CENTER);
-        head.setPadding(0, 0, 0, dp(a, 18));
+        head.setPadding(0, 0, 0, dp(a, 6));
         panel.addView(head, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
+        TextView sub = Ui.text(a, 16, Ui.MUTED, Ui.MEDIUM);
+        sub.setText("A quick tour");
+        sub.setGravity(Gravity.CENTER);
+        sub.setPadding(0, 0, 0, dp(a, 18));
+        panel.addView(sub, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
 
-        tip(panel, Icons.STAR, "OK opens an app");
-        tip(panel, Icons.PENCIL, "\u2630 Menu moves or hides it");
-        tip(panel, Icons.HOUSE, "Home brings you back here");
+        tip(panel, Icons.GRID, "Arrows move around. OK opens an app.");
+        tip(panel, Icons.PENCIL, "\u2630 Menu on an app moves, renames or hides it.");
+        tip(panel, Icons.STAR, "Edit favorites is the last tile in Favorites.");
+        tip(panel, Icons.SLIDERS, "Options \u203A Home screen layout reorders or hides rows.");
+        tip(panel, Icons.GEAR, "Buttons up top: inputs, sleep timer, Options, Fire TV settings.");
+        tip(panel, Icons.HOUSE, "Home always brings you back here.");
 
         TextView ok = Ui.pill(a, "Got it", accent);
         ok.setMinWidth(dp(a, 180));
@@ -79,7 +86,7 @@ final class Help {
         d.setOnDismissListener(x -> {
             if (done != null) done.run();
         });
-        Panel.show(a, d, panel, 520);
+        Panel.show(a, d, panel, 720);
         ok.requestFocus();
     }
 
@@ -123,29 +130,23 @@ final class Help {
      * the wording and the command live in one place.
      */
     static void sleepSetup(Activity a) {
-        new AlertDialog.Builder(a, Ui.DIALOG)
-                .setTitle("Sleep timer needs a one-time setup")
-                .setMessage("Fire TV only lets this app turn the TV off after one step from a computer:\n\n"
+        Popup.message(a, "Sleep timer needs a one-time setup",
+                "Fire TV only lets this app turn the TV off after one step from a computer:\n\n"
                         + Sleep.ADMIN_COMMAND
-                        + "\n\nUntil then, Fire TV's own sleep timer works (All Fire TV settings).")
-                .setPositiveButton("Open Fire TV settings", (d, w) -> {
+                        + "\n\nUntil then, Fire TV's own sleep timer works (All Fire TV settings).",
+                new Popup.Action("Open Fire TV settings", () -> {
                     try {
                         a.startActivity(FireSettings.all(a).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
                     } catch (RuntimeException e) {
                         Ui.notice(a, "Could not open that", -1);
                     }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+                }),
+                new Popup.Action("Cancel", null));
     }
 
     /** A plain message with one button, for "this needs setting up" explanations. */
     static void explain(Activity a, String title, String message) {
-        new AlertDialog.Builder(a, Ui.DIALOG)
-                .setTitle(title)
-                .setMessage(message)
-                .setPositiveButton("OK", null)
-                .show();
+        Popup.message(a, title, message, new Popup.Action("OK", null));
     }
 
     private static void tip(LinearLayout panel, int icon, String text) {

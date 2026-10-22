@@ -1,7 +1,6 @@
 package tv.dumbtv.home;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -33,8 +32,6 @@ import android.view.KeyEvent;
 import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
@@ -1454,8 +1451,8 @@ public final class Home extends Activity {
         }
         if (care.isDark()) return;
         care.idle(false);
-        frame = new PhotoFrame(this, io, cfg.dir);
-        frame.setDrift(care.on());
+        frame = new PhotoFrame(this, io, cfg.dir, cfg.get(Config.FRAME_CLOCK));
+        care.follow(frame.overlay());
         frame.setAlpha(0f);
         root.addView(frame, new FrameLayout.LayoutParams(MATCH, MATCH));
         PhotoFrame showing = frame;
@@ -1481,6 +1478,7 @@ public final class Home extends Activity {
         // fade back to the home screen; keys work again at once
         PhotoFrame going = frame;
         frame = null;
+        care.unfollow(going.overlay());
         going.pause();
         Runnable gone = () -> {
             going.stop();
@@ -1493,12 +1491,10 @@ public final class Home extends Activity {
 
     private void frameInfo() {
         if (frame == null) return;
-        CharSequence line = null;
-        if (weather != null && weatherBox.getVisibility() == View.VISIBLE) {
-            line = temp.getText() + "  " + sky.getText();
-        }
+        boolean shown = weather != null && weatherBox.getVisibility() == View.VISIBLE;
         // the weather heads-up ("Rain likely around 5 PM") shows on the photo frame only
-        frame.setInfo(clock.getText(), date.getText(), line, line == null ? null : weather.hint);
+        frame.setInfo(clock.getText(), date.getText(), shown ? temp.getText() : null,
+                shown ? sky.getText() : null, shown ? weather.hint : null);
     }
 
     /** Refreshes the forecast every 30 min while weather is on; shows or hides the weather views. */
@@ -1742,9 +1738,7 @@ public final class Home extends Activity {
             actions.add(RENAME);
             actions.add(HIDE);
         }
-        new AlertDialog.Builder(this, Ui.DIALOG)
-                .setTitle(Catalog.label(cfg, t.item))
-                .setItems(actions.toArray(new String[0]), (d, which) -> {
+        Popup.choose(this, Catalog.label(cfg, t.item).toString(), actions, which -> {
                     switch (actions.get(which)) {
                         case MOVE:
                             if (t.getParent() == null) break;
@@ -1773,35 +1767,18 @@ public final class Home extends Activity {
                             launch(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                     Uri.fromParts("package", t.item.id, null)), null);
                     }
-                })
-                .show();
+                });
     }
 
     private void rename(Tile t) {
-        EditText field = new EditText(this);
-        field.setSingleLine();
-        field.setText(Catalog.label(cfg, t.item));
-        field.setSelectAllOnFocus(true);
-        FrameLayout box = new FrameLayout(this);
-        box.setPadding(dp(24), dp(8), dp(24), 0);
-        box.addView(field);
         String key = "name." + t.item.id;
-        AlertDialog d = new AlertDialog.Builder(this, Ui.DIALOG)
-                .setTitle("Rename")
-                .setView(box)
-                .setPositiveButton("Save", (dialog, w) -> {
-                    String name = field.getText().toString().trim();
-                    cfg.set(key, name.equals(t.item.label.toString()) ? null : name);
-                    apply();
-                })
-                .setNeutralButton("Original", (dialog, w) -> {
-                    cfg.set(key, null);
-                    apply();
-                })
-                .setNegativeButton("Cancel", null)
-                .create();
-        d.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-        d.show();
+        Popup.input(this, "Rename", Catalog.label(cfg, t.item).toString(), false, 0, "Save", name -> {
+            cfg.set(key, name.equals(t.item.label.toString()) ? null : name);
+            apply();
+        }, new Popup.Action("Original", () -> {
+            cfg.set(key, null);
+            apply();
+        }));
     }
 
     private void shift(int by) {

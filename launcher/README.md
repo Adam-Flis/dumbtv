@@ -114,9 +114,8 @@ upstream home screen:
   other apps open only these sections (the rest need an Amazon-only permission).
 - **Screen care (OLED)** (Options › Night & photos, on by default): the home screen drifts up to
   2 dp to one of nine spots every 3 minutes, and after 5-30 min with no button pressed (default 10)
-  it fades to near black (any button brings it back; the TV still sleeps on its own schedule). In
-  the photo frame the clock and date switch corners and shift a little with each picture, and when
-  the frame's time is up the screen goes dark instead of holding the last picture. OLED owners
+  it fades to near black (any button brings it back; the TV still sleeps on its own schedule). The
+  photo frame's clock and weather drift the same way, and when the frame's time is up the screen goes dark instead of holding the last picture. OLED owners
   should also keep Fire TV's own sleep setting on (not "Never").
 - **Welcome card**: the first visit shows four plain-language tips and a Got it button
   (Options › Help › Welcome tips).
@@ -126,6 +125,8 @@ upstream home screen:
 - **Home screen layout** (Options › Home screen): Favorites, Recently used, All apps and Inputs in
   any order (OK picks a row up to reorder, ▲▼ moves it, OK puts it down); ◀▶ shows or hides a row.
   All apps always shows, so every app stays reachable. The page lands on the top row.
+- **Pop-ups** (app menu, rename, ZIP code, inputs, confirmations, help) all use one style
+  (`Popup.java` on `Panel.java`): the dark card, accent-focused rows, pill buttons.
 - **Key hints**: the app grid, Options and Move mode show which remote keys do what.
 - **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
   them to the photo frame (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`
@@ -142,15 +143,16 @@ upstream home screen:
   screen, Appearance, Weather, Night & photos, More, Help, each heading over a rule. Values are one
   or two words (App names: At top / Under tile / Off). Row titles are larger with drawn icons. Rows that depend on
   another setting only appear when it is on.
-- **Weather** (off by default): Options › Weather, Temperature, Weather city (type a city or ZIP
-  code; when several places match, pick one from the list). Uses
+- **Weather** (off by default): Options › Weather, Temperature, Weather city (enter a ZIP code;
+  when other countries share the digits, pick the right place from a list). Uses
   [Open-Meteo](https://open-meteo.com) (no account, no key; only the city's coordinates are
   sent). Shows temperature, conditions and high/low by the clock; the photo frame adds one
   heads-up line ("Rain likely around 5 PM, take a jacket"). Each extra can be shown or hidden: condition
   icon, next 5 hours (icon, temperature, chance of rain), feels like & wind, next
   sunrise/sunset & tomorrow.
 - **Photo frame** (off by default): after 1–10 idle minutes on the home screen, photos
-  cross-fade with the clock and weather; any key returns. Runs 15 min–2 h, then the TV may
+  cross-fade with the clock in one corner (Options › Night & photos › Clock corner) and the
+  weather in the other corner of that edge; any key returns. Runs 15 min–2 h, then the TV may
   sleep. Put your own pictures in `photos/` next to `home.conf`; until then 12 bundled
   public-domain landscapes are used (`assets/photos/CREDITS.txt`).
 
@@ -283,6 +285,7 @@ until another app is opened.
 | `src/.../Ui.java` | shared look: color tokens (GOOD, WARN, ACTIVE, PANEL, MENU, RULE), text, pills, dots, rules, focus backgrounds, notices |
 | `src/.../Dropdown.java` | the top-bar dropdowns (Inputs, Sleep timer, Settings) |
 | `src/.../Panel.java` | the centered card every custom dialog uses |
+| `src/.../Popup.java` | every pop-up on that card: message, pick-one list, checklist, text/ZIP entry |
 | `src/.../FireSettings.java` | the Fire TV settings screens other apps may open, and the full grid |
 | `src/.../ScreenCare.java` | OLED care: drift and go dark when idle |
 | `src/.../Help.java`, `RowsEditor.java`, `TimeChooser.java` | welcome card and checks, row order, time picker |

@@ -36,18 +36,22 @@ final class PhotoFrame extends FrameLayout {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService io;
     private final ImageView[] views = new ImageView[2];
-    private final TextView clock, date, weather, hint;
+    private final TextView clock, date, temp, sky, hint;
     private final List<Object> photos = new ArrayList<>();
     private int next, front;
     private boolean running;
     private Tween fade;
-    private final View info;
+    /** Clock and weather, one full-screen layer over the photos: screen care drifts it as a whole. */
+    private final FrameLayout overlay;
     private final View scrim;
-    private boolean drift, left = true;
 
     private final Runnable advance = this::loadNext;
 
-    PhotoFrame(Context c, ExecutorService io, File dir) {
+    /**
+     * {@code corner} is where the clock sits (Config.FRAME_CLOCK: "bl", "br", "tl", "tr"); the
+     * weather takes the other corner on the same edge, so neither crowds the picture.
+     */
+    PhotoFrame(Context c, ExecutorService io, File dir, String corner) {
         super(c);
         this.io = io;
         setBackgroundColor(0xFF000000);
@@ -57,29 +61,30 @@ final class PhotoFrame extends FrameLayout {
             views[i].setAlpha(0f);
             addView(views[i], new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         }
+        boolean top = corner.startsWith("t"), clockLeft = corner.endsWith("l");
+        int edge = top ? Gravity.TOP : Gravity.BOTTOM;
+        // a soft shade along the edge the text sits on keeps it readable over bright photos
         scrim = new View(c);
-        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
-                new int[] {0xB3000000, 0x00000000}));
-        addView(scrim, new LayoutParams(LayoutParams.MATCH_PARENT, Ui.dp(c, 260), Gravity.BOTTOM));
+        scrim.setBackground(new GradientDrawable(top ? GradientDrawable.Orientation.TOP_BOTTOM
+                : GradientDrawable.Orientation.BOTTOM_TOP, new int[] {0xB3000000, 0x00000000}));
+        addView(scrim, new LayoutParams(LayoutParams.MATCH_PARENT, Ui.dp(c, 260), edge));
 
-        LinearLayout box = new LinearLayout(c);
-        info = box;
-        box.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(c, 56);
-        box.setPadding(pad, 0, pad, Ui.dp(c, 44));
-        clock = Ui.text(c, 72, Ui.TEXT, Ui.LIGHT);
-        date = Ui.text(c, 20, Ui.TEXT, Ui.MEDIUM);
-        date.setPadding(Ui.dp(c, 4), Ui.dp(c, 6), 0, 0);
-        weather = Ui.text(c, 20, Ui.TEXT, Ui.MEDIUM);
-        weather.setPadding(Ui.dp(c, 4), Ui.dp(c, 10), 0, 0);
-        hint = Ui.text(c, 20, Ui.TEXT, Ui.MEDIUM);
-        hint.setPadding(Ui.dp(c, 4), Ui.dp(c, 4), 0, 0);
-        for (TextView t : new TextView[] {clock, date, weather, hint}) {
-            t.setShadowLayer(Ui.dp(c, 6), 0, 0, 0x99000000);
-            box.addView(t);
-        }
-        addView(box, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM | Gravity.START));
+        overlay = new FrameLayout(c);
+        addView(overlay, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        int side = Ui.dp(c, 56), gap = Ui.dp(c, 44);
+
+        LinearLayout time = corner(c, clockLeft, top, side, gap);
+        clock = line(c, time, 72, Ui.LIGHT, 0);
+        date = line(c, time, 20, Ui.MEDIUM, 6);
+        overlay.addView(time, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT,
+                edge | (clockLeft ? Gravity.START : Gravity.END)));
+
+        LinearLayout weather = corner(c, !clockLeft, top, side, gap);
+        temp = line(c, weather, 48, Ui.LIGHT, 0);
+        sky = line(c, weather, 20, Ui.MEDIUM, 6);
+        hint = line(c, weather, 18, Ui.MEDIUM, 4);
+        overlay.addView(weather, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT,
+                edge | (clockLeft ? Gravity.END : Gravity.START)));
 
         File[] own = new File(dir, FOLDER).listFiles();
         if (own != null) {
@@ -107,32 +112,40 @@ final class PhotoFrame extends FrameLayout {
         Collections.shuffle(photos);
     }
 
-    /** Clock, date, weather and hint lines; null or empty hides a line. */
-    void setInfo(CharSequence time, CharSequence day, CharSequence sky, CharSequence tip) {
+    /** Clock and date in one corner; temperature, conditions and the heads-up in the other. Null hides a line. */
+    void setInfo(CharSequence time, CharSequence day, CharSequence degrees, CharSequence conditions, CharSequence tip) {
         clock.setText(time);
         date.setText(day);
-        weather.setText(sky);
-        weather.setVisibility(sky == null || sky.length() == 0 ? GONE : VISIBLE);
-        hint.setText(tip);
-        hint.setVisibility(tip == null || tip.length() == 0 ? GONE : VISIBLE);
+        show(temp, degrees);
+        show(sky, conditions);
+        show(hint, tip);
     }
 
-    /** Screen care: the clock and date switch corners and shift a little with each picture. */
-    void setDrift(boolean on) {
-        drift = on;
+    /** The clock and weather layer, for screen care to drift. */
+    View overlay() {
+        return overlay;
     }
 
-    private void moveInfo() {
-        left = !left;
-        LayoutParams lp = (LayoutParams) info.getLayoutParams();
-        lp.gravity = Gravity.BOTTOM | (left ? Gravity.START : Gravity.END);
-        info.setLayoutParams(lp);
-        ((LinearLayout) info).setGravity(left ? Gravity.START : Gravity.END);
-        int d = Ui.dp(getContext(), 16);
-        info.setTranslationX((float) (Math.random() * 2 - 1) * d);
-        info.setTranslationY((float) -Math.random() * d);
-        info.setAlpha(0f);
-        Tween.run(FADE_MS, info::setAlpha, null);
+    private static void show(TextView v, CharSequence text) {
+        v.setText(text);
+        v.setVisibility(text == null || text.length() == 0 ? GONE : VISIBLE);
+    }
+
+    /** A column of lines for one corner, aligned to its own side. */
+    private static LinearLayout corner(Context c, boolean left, boolean top, int side, int gap) {
+        LinearLayout box = new LinearLayout(c);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(left ? Gravity.START : Gravity.END);
+        box.setPadding(side, top ? gap : 0, side, top ? 0 : gap);
+        return box;
+    }
+
+    private static TextView line(Context c, LinearLayout box, float sp, android.graphics.Typeface face, int topDp) {
+        TextView t = Ui.text(c, sp, Ui.TEXT, face);
+        t.setPadding(0, Ui.dp(c, topDp), 0, 0);
+        t.setShadowLayer(Ui.dp(c, 6), 0, 0, 0x99000000);
+        box.addView(t);
+        return t;
     }
 
     void start() {
@@ -176,8 +189,7 @@ final class PhotoFrame extends FrameLayout {
         // the incoming picture fades in on top of the outgoing one, under the scrim and text
         in.bringToFront();
         scrim.bringToFront();
-        info.bringToFront();
-        if (drift) moveInfo();
+        overlay.bringToFront();
         // a slow cross-fade, drawn frame by frame so it works with system animations off
         float from = out.getAlpha();
         fade = Tween.run(FADE_MS, t -> {

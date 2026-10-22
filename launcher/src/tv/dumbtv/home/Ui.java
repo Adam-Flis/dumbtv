@@ -27,7 +27,6 @@ final class Ui {
     static final int MENU = 0xF5202126;
     /** Thin dividers. */
     static final int RULE = 0x24FFFFFF;
-    static final int DIALOG = android.R.style.Theme_DeviceDefault_Dialog_Alert;
     static final Typeface LIGHT = Typeface.create("sans-serif-light", Typeface.NORMAL);
     static final Typeface MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
 

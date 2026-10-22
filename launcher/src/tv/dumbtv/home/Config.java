@@ -218,6 +218,10 @@ final class Config {
     static final Choice FRAME = new Choice("frame", "Photo frame", "off",
             new String[] {"off", "1", "2", "5", "10"},
             new String[] {"Off", "After 1 min", "After 2 min", "After 5 min", "After 10 min"});
+    /** Where the photo frame's clock sits; the weather takes the other corner on that edge. */
+    static final Choice FRAME_CLOCK = new Choice("frame.clock", "Clock corner", "bl",
+            new String[] {"bl", "br", "tl", "tr"},
+            new String[] {"Bottom left", "Bottom right", "Top left", "Top right"});
     static final Choice FRAME_FOR = new Choice("frame.for", "Photo frame lasts", "30",
             new String[] {"15", "30", "60", "120"},
             new String[] {"15 min", "30 min", "1 hour", "2 hours"});
@@ -252,7 +256,7 @@ final class Config {
             new String[] {"After 5 min", "After 10 min", "After 20 min", "After 30 min"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, REST, FAVS};
+        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, REST, FAVS, FRAME_CLOCK};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";

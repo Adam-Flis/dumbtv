@@ -1,7 +1,6 @@
 package tv.dumbtv.home;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.StateListDrawable;
@@ -12,9 +11,6 @@ import android.view.KeyEvent;
 import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
-import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -113,6 +109,7 @@ public final class Options extends Activity {
         section("Night & photos", Icons.SLEEP);
         list.addView(choice(Config.FRAME));
         list.addView(only(choice(Config.FRAME_FOR), frameOn));
+        list.addView(only(choice(Config.FRAME_CLOCK), frameOn));
         list.addView(only(action("Show photo frame now", () -> {
             Home.frameNow = true;
             finish();
@@ -421,23 +418,10 @@ public final class Options extends Activity {
         return row;
     }
 
+    /** The weather location, by ZIP code: digits only, looked up on Open-Meteo. */
     private void askCity() {
-        EditText field = new EditText(this);
-        field.setSingleLine();
-        field.setHint("City or ZIP code");
-        field.setText(cfg.get(Weather.CITY, ""));
-        field.setSelectAllOnFocus(true);
-        FrameLayout box = new FrameLayout(this);
-        box.setPadding(dp(24), dp(8), dp(24), 0);
-        box.addView(field);
-        AlertDialog d = new AlertDialog.Builder(this, Ui.DIALOG)
-                .setTitle("Weather city")
-                .setView(box)
-                .setPositiveButton("Find", (dialog, w) -> lookUp(field.getText().toString().trim()))
-                .setNegativeButton("Cancel", null)
-                .create();
-        d.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-        d.show();
+        String saved = cfg.get(Weather.CITY, "");
+        Popup.input(this, "Enter ZIP code", saved.matches("\\d+") ? saved : "", true, 5, "Find", this::lookUp);
     }
 
     private void lookUp(String city) {
@@ -458,14 +442,10 @@ public final class Options extends Activity {
                 } else if (found.size() == 1) {
                     useCity(city, found.get(0));
                 } else {
-                    // several places share the name (or the ZIP code): let the viewer pick
-                    CharSequence[] names = new CharSequence[found.size()];
-                    for (int i = 0; i < names.length; i++) names[i] = found.get(i).full;
-                    new AlertDialog.Builder(this, Ui.DIALOG)
-                            .setTitle("Which one?")
-                            .setItems(names, (d, which) -> useCity(city, found.get(which)))
-                            .setNegativeButton("Cancel", null)
-                            .show();
+                    // several places share the ZIP code (other countries use the same digits)
+                    List<String> names = new ArrayList<>();
+                    for (Weather.Place p : found) names.add(p.full);
+                    Popup.choose(this, "Which one?", names, i -> useCity(city, found.get(i)));
                 }
             });
         }).start();
@@ -520,19 +500,17 @@ public final class Options extends Activity {
             Help.explain(this, "Home button needs a one-time setup", why + "\n\n" + computer);
             return;
         }
-        new AlertDialog.Builder(this, Ui.DIALOG)
-                .setTitle("Home button needs a one-time setup")
-                .setMessage(why + "\n\nYou may be able to fix it here: Open the setting, choose"
-                        + " \"dumbtv\" and switch it on, then press Back.\n\nIf that does not work: " + computer)
-                .setPositiveButton("Open the setting", (d, w) -> {
+        Popup.message(this, "Home button needs a one-time setup",
+                why + "\n\nYou may be able to fix it here: open the setting, choose \"dumbtv\" and"
+                        + " switch it on, then press Back.\n\nIf that does not work: " + computer,
+                new Popup.Action("Open the setting", () -> {
                     try {
                         startActivity(new Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS));
                     } catch (RuntimeException e) {
                         Ui.notice(this, "This TV does not allow that here", -1);
                     }
-                })
-                .setNegativeButton("Not now", null)
-                .show();
+                }),
+                new Popup.Action("Not now", null));
     }
 
     private boolean step(Config.Choice c, int by) {
@@ -658,27 +636,21 @@ public final class Options extends Activity {
             return;
         }
         List<Item> items = Catalog.inputs(this, (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE));
-        CharSequence[] names = new CharSequence[items.size()];
+        List<String> names = new ArrayList<>();
         boolean[] on = new boolean[items.size()];
         for (int i = 0; i < items.size(); i++) {
-            names[i] = Catalog.label(cfg, items.get(i));
+            names.add(Catalog.label(cfg, items.get(i)).toString());
             on[i] = Catalog.shown(cfg, kind, items.get(i));
         }
-        new AlertDialog.Builder(this, Ui.DIALOG)
-                .setTitle(Catalog.APPS.equals(kind) ? "Apps on home screen" : "Inputs on home screen")
-                .setMultiChoiceItems(names, on, (d, which, checked) ->
-                        Catalog.setShown(cfg, kind, items.get(which), checked))
-                .setPositiveButton("Done", null)
-                .show();
+        Popup.checklist(this, "Inputs on the home screen", names, on,
+                (i, shown) -> Catalog.setShown(cfg, kind, items.get(i), shown));
     }
 
     private void reset() {
-        new AlertDialog.Builder(this, Ui.DIALOG)
-                .setTitle("Reset the home screen layout?")
-                .setMessage("Order, names and hidden tiles go back to default. Colors and sizes stay.")
-                .setPositiveButton("Reset", (d, w) -> cfg.removePrefix("name.", "apps.", "inputs."))
-                .setNegativeButton("Cancel", null)
-                .show();
+        Popup.message(this, "Reset tiles?", "Order, names and hidden tiles go back to default. Colors and sizes stay.",
+                // Cancel first: it has the focus, so a stray OK changes nothing
+                new Popup.Action("Cancel", null),
+                new Popup.Action("Reset", () -> cfg.removePrefix("name.", "apps.", "inputs.")));
     }
 
     private int dp(float v) {
