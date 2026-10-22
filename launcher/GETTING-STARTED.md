@@ -44,11 +44,11 @@ The TV also shows these in **Options › Help › Remote guide**.
 
 **Sleep timer:** press the stopwatch button and pick a time, or choose **Custom…** for any length. While a timer is running, the same button shows the time left and lets you add time or cancel it.
 
-**Night mode:** press the moon button to turn it on or off now. To set it to turn on and off by itself each evening, go to Options › Night & photos.
+**Night mode:** press the moon button to turn it on or off now. To set it to turn on and off by itself each evening, go to Options › Night.
 
-**Photo frame:** if it's turned on, the TV shows photos after a few minutes without anyone pressing a button. Any button brings the home screen back.
+**Screen saver:** if it's turned on, the TV shows photos after a few minutes without anyone pressing a button. Any button brings the home screen back.
 
-**Screen goes dark by itself:** that's Screen care. It protects some TVs from burn-in. Press any button and the screen comes back. You can change or turn it off in Options › Night & photos.
+**Screen goes dark by itself:** that's Screen care. It protects some TVs from burn-in. Press any button and the screen comes back. You can change or turn it off in Options › Screen saver.
 
 ## If something seems wrong
 

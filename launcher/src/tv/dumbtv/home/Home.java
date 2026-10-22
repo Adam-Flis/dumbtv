@@ -60,14 +60,10 @@ public final class Home extends Activity {
     private TvInputManager tv;
     private int applied = -1, appsGeneration;
     private float builtScale;
-    /** Set by Options > Show photo frame now. */
+    /** Set by Options › Screen saver › Start screen saver. */
     static boolean frameNow;
-    /** Set by Options › Help › Show welcome tips again. */
-    static boolean tipsNow;
-    private boolean tipsOpen;
     /** The open top-bar dropdown, closed when Home is pressed or the screen is left. */
     private Dropdown openPop;
-    private final Runnable tips = this::showTips;
     private PhotoFrame frame;
     private boolean swallowUp;
     private final Runnable idle = this::startFrame;
@@ -273,7 +269,7 @@ public final class Home extends Activity {
         tv = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
         builtScale = Ui.scale = cfg.textScale();
         setContentView(build());
-        // going dark waits while the photo frame runs or a menu or dialog has the focus
+        // going dark waits while the screen saver runs or a menu or dialog has the focus
         care = new ScreenCare(cfg, ui, root, pageView,
                 () -> (frame != null && root.getKeepScreenOn()) || !hasWindowFocus());
 
@@ -365,14 +361,8 @@ public final class Home extends Activity {
             Sleep.set(this, 1);
             updateSleepChip();
         }
-        // first visit (or asked for again from Options): the welcome card
         // the Home-button watcher on Fire OS 6; a no-op if it runs (or once usage access is new)
         Keeper.start(this);
-        if (tipsNow || cfg.get(Help.TIPS_SEEN, "").isEmpty()) {
-            tipsNow = false;
-            ui.removeCallbacks(tips);
-            ui.postDelayed(tips, 900);
-        }
         // developer aid: `adb shell touch .../files/test-rest` goes dark (screen care) after 3 s
         File restTest = new File(cfg.dir, "test-rest");
         if (restTest.isFile() && restTest.delete()) care.darkIn(3000);
@@ -396,7 +386,6 @@ public final class Home extends Activity {
         if (ticking) unregisterReceiver(time);
         ticking = false;
         ui.removeCallbacks(idle);
-        ui.removeCallbacks(tips);
         closePop();
         care.stop();
         stopFrame();
@@ -451,7 +440,7 @@ public final class Home extends Activity {
     public boolean dispatchKeyEvent(KeyEvent e) {
         resetIdle();
         touched = true;
-        // any key wakes the dark screen (and the photo frame under it) and does nothing else
+        // any key wakes the dark screen (and the screen saver under it) and does nothing else
         if (care.isDark()) {
             if (e.getAction() == KeyEvent.ACTION_DOWN) {
                 care.wake();
@@ -461,7 +450,7 @@ public final class Home extends Activity {
             }
             return true;
         }
-        // any key wakes the photo frame and does nothing else
+        // any key wakes the screen saver and does nothing else
         if (frame != null) {
             if (e.getAction() == KeyEvent.ACTION_DOWN) {
                 stopFrame();
@@ -1421,23 +1410,11 @@ public final class Home extends Activity {
         openPop = null;
     }
 
-    private void showTips() {
-        if (!resumed || tipsOpen || isFinishing()) return;
-        if (frame != null) stopFrame();
-        care.wake();
-        tipsOpen = true;
-        Help.welcome(this, () -> {
-            tipsOpen = false;
-            cfg.set(Help.TIPS_SEEN, "1");
-            resetIdle();
-        });
-    }
-
     private void resetIdle() {
         ui.removeCallbacks(idle);
         care.idle(resumed && frame == null);
         String after = cfg.get(Config.FRAME);
-        // no photo frame at night: the TV should be allowed to fall asleep
+        // no screen saver at night: the TV should be allowed to fall asleep
         if (frame != null || !cfg.frameOn() || !resumed || isNight()) return;
         ui.postDelayed(idle, Integer.parseInt(after) * 60_000L);
     }
@@ -1451,7 +1428,7 @@ public final class Home extends Activity {
         }
         if (care.isDark()) return;
         care.idle(false);
-        frame = new PhotoFrame(this, io, cfg.dir, cfg.get(Config.FRAME_CLOCK));
+        frame = new PhotoFrame(this, io, cfg.dir, cfg.get(Config.FRAME_CLOCK), cfg.get(Config.FRAME_WEATHER));
         care.follow(frame.overlay());
         frame.setAlpha(0f);
         root.addView(frame, new FrameLayout.LayoutParams(MATCH, MATCH));
@@ -1492,9 +1469,9 @@ public final class Home extends Activity {
     private void frameInfo() {
         if (frame == null) return;
         boolean shown = weather != null && weatherBox.getVisibility() == View.VISIBLE;
-        // the weather heads-up ("Rain likely around 5 PM") shows on the photo frame only
-        frame.setInfo(clock.getText(), date.getText(), shown ? temp.getText() : null,
-                shown ? sky.getText() : null, shown ? weather.hint : null);
+        // the weather heads-up ("Rain likely around 5 PM") shows on the screen saver only
+        frame.setInfo(clock.getText(), date.getText(), shown ? Icons.forCode(weather.code, weather.day) : -1,
+                shown ? temp.getText() : null, shown ? sky.getText() : null, shown ? weather.hint : null);
     }
 
     /** Refreshes the forecast every 30 min while weather is on; shows or hides the weather views. */

@@ -94,8 +94,8 @@ upstream home screen:
   showing, a card offers **Switch** / **Not now** (gone after 15 s). Options › Home screen ›
   Detect input. Test it with `adb shell touch /sdcard/Android/data/tv.dumbtv.home/files/test-input`
   and return to the home screen.
-- **Night mode** (Options › Night & photos): a schedule with exact start/end times (time picker)
-  and a dim slider (10-90 %); warm dim, no photo frame. The top bar's moon-and-stars button
+- **Night mode** (Options › Night): a schedule with exact start/end times (time picker)
+  and a dim slider (10-90 %); warm dim, no screen saver. The top bar's moon-and-stars button
   switches it on or off now; that lasts until the schedule's next change.
 - **Sleep timer** (top bar, stopwatch icon): 15 min to 2 h, or **Custom…** (hours and minutes,
   up to 9 h 55), then the TV turns off. While it runs the button stays open with the time left,
@@ -112,16 +112,14 @@ upstream home screen:
   settings grid draws its top row (Device & Software, Network, Account) off screen on this TV,
   most likely because it counts on its slide-in animation and animations are off. Fire OS lets
   other apps open only these sections (the rest need an Amazon-only permission).
-- **Screen care (OLED)** (Options › Night & photos, on by default): the home screen drifts up to
+- **Screen care (OLED)** (Options › Screen saver, on by default): the home screen drifts up to
   2 dp to one of nine spots every 3 minutes, and after 5-30 min with no button pressed (default 10)
   it fades to near black (any button brings it back; the TV still sleeps on its own schedule). The
-  photo frame's clock and weather drift the same way, and when the frame's time is up the screen goes dark instead of holding the last picture. OLED owners
+  screen saver's clock and weather drift the same way, and when the screen saver's time is up the screen goes dark instead of holding the last picture. OLED owners
   should also keep Fire TV's own sleep setting on (not "Never").
-- **Welcome card**: the first visit shows four plain-language tips and a Got it button
-  (Options › Help › Welcome tips).
-- **Options › Help**: green/amber checks for the Home button, sleep timer permission, internet
-  and weather; OK on an amber one explains the fix (on Fire OS 6 it offers the usage-access
-  setting). Also a remote-button guide.
+- **Options › Help**: green/amber checks for the sleep timer permission, internet and weather
+  (OK on an amber one explains the fix), a Home button row that only appears when Home opens
+  Amazon's home (on Fire OS 6 it offers the usage-access setting), and a remote-button guide.
 - **Home screen layout** (Options › Home screen): Favorites, Recently used, All apps and Inputs in
   any order (OK picks a row up to reorder, ▲▼ moves it, OK puts it down); ◀▶ shows or hides a row.
   All apps always shows, so every app stays reachable. The page lands on the top row.
@@ -129,9 +127,9 @@ upstream home screen:
   (`Popup.java` on `Panel.java`): the dark card, accent-focused rows, pill buttons.
 - **Key hints**: the app grid, Options and Move mode show which remote keys do what.
 - **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
-  them to the photo frame (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`
+  them to the screen saver (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`
   keeps copies of home.conf in `launcher/tools/backups/` (git-ignored).
-- Fades (photo frame, background glow, the input card) are drawn frame by frame, so they stay
+- Fades (screen saver, background glow, the input card) are drawn frame by frame, so they stay
   smooth with Fire OS animations turned off.
 - **Row title size** (Options › Home screen) scales FAVORITES / ALL APPS / INPUTS and their icons.
 - **Apple TV-style look**: greeting, large clock and date, the focused app's name large above
@@ -140,19 +138,20 @@ upstream home screen:
   colored Wi-Fi icon (green online, amber no internet, red offline), Options, Settings.
   Amazon's home screen stays in Options › More on purpose, away from accidental presses.
 - **Options**, grouped on the left (Right opens a group, Back or Left returns to the list): Home
-  screen, Appearance, Weather, Night & photos, More, Help, each heading over a rule. Values are one
+  screen, Appearance, Weather, Screen saver, Night, More, Help, each heading over a rule. Values are one
   or two words (App names: At top / Under tile / Off). Row titles are larger with drawn icons. Rows that depend on
   another setting only appear when it is on.
 - **Weather** (off by default): Options › Weather, Temperature, Weather city (enter a ZIP code;
   when other countries share the digits, pick the right place from a list). Uses
   [Open-Meteo](https://open-meteo.com) (no account, no key; only the city's coordinates are
-  sent). Shows temperature, conditions and high/low by the clock; the photo frame adds one
+  sent). Shows temperature, conditions and high/low by the clock; the screen saver adds one
   heads-up line ("Rain likely around 5 PM, take a jacket"). Each extra can be shown or hidden: condition
   icon, next 5 hours (icon, temperature, chance of rain), feels like & wind, next
   sunrise/sunset & tomorrow.
-- **Photo frame** (off by default): after 1–10 idle minutes on the home screen, photos
-  cross-fade with the clock in one corner (Options › Night & photos › Clock corner) and the
-  weather in the other corner of that edge; any key returns. Runs 15 min–2 h, then the TV may
+- **Screen saver** (off by default): after 1–10 idle minutes on the home screen, photos
+  cross-fade under the clock and the weather (icon, temperature, conditions). Options › Screen
+  saver › Adjust overlay puts each in any corner, or hides it; two in one corner stack. Any key
+  returns. Runs 15 min–2 h, then the TV may
   sleep. Put your own pictures in `photos/` next to `home.conf`; until then 12 bundled
   public-domain landscapes are used (`assets/photos/CREDITS.txt`).
 
@@ -288,7 +287,7 @@ until another app is opened.
 | `src/.../Popup.java` | every pop-up on that card: message, pick-one list, checklist, text/ZIP entry |
 | `src/.../FireSettings.java` | the Fire TV settings screens other apps may open, and the full grid |
 | `src/.../ScreenCare.java` | OLED care: drift and go dark when idle |
-| `src/.../Help.java`, `RowsEditor.java`, `TimeChooser.java` | welcome card and checks, row order, time picker |
+| `src/.../Help.java`, `RowsEditor.java`, `TimeChooser.java` | Help checks and remote guide, row order, time picker |
 | `sdk.sh` | finds the Android SDK and a JDK; shared by build.sh and test.sh |
 | `test.sh`, `test/` | plain-JVM tests for pure logic (labels, row order, time steps) |
 | `build.sh` | aapt2 → javac → d8 → zipalign → apksigner |

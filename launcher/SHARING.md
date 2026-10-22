@@ -11,7 +11,7 @@ Check the TV's software first: Settings › My Fire TV (or Device & Software) �
 | TV | Home screen | Notes |
 |---|---|---|
 | **Fire TV Edition TV or stick, Fire OS 6** (Android 7.1) | Yes, tested | Built and tested here on a Toshiba Fire TV (Fire OS 6.7.1.1). |
-| **Fire TV, Fire OS 7** (Android 9) | Yes | The original dumbtv launcher was built on Fire OS 7. This fork's extras (sleep timer, weather, photo frame, screen care) haven't been tried on it yet. |
+| **Fire TV, Fire OS 7** (Android 9) | Yes | The original dumbtv launcher was built on Fire OS 7. This fork's extras (sleep timer, weather, screen saver, screen care) haven't been tried on it yet. |
 | **Fire TV, Fire OS 8** (Android 11) | Not yet | Android 11 blocks the Home button hand-over. See `docs/GOTCHAS.md`. |
 | **Google TV / Android TV** (Sony, TCL, Hisense, Philips, Shield, Chromecast) | Untested | The upstream method is to disable the stock launcher. The Fire-specific parts (Keeper, Guard, Amazon settings shortcuts) won't apply. |
 | **Samsung, LG, Roku, Vizio, VIDAA, Panasonic** | No | These TVs don't let anyone install a home screen. Block ads at the router instead (`docs/OTHER-TVS.md`). |
@@ -33,13 +33,12 @@ Check the TV's software first: Settings › My Fire TV (or Device & Software) �
 6. **Set it up with them, on the TV:**
    - Favorites: Edit favorites at the end of the row.
    - Weather city: Options › Weather.
-   - Night mode times: Options › Night & photos.
+   - Night mode times: Options › Night.
    - Their own photos: `launcher/tools/push-photos.sh <folder>` from the computer.
 7. **Check Options › Help:** every dot should be green.
 8. **Save their settings:** `launcher/tools/settings.sh backup`.
 9. **Turn ADB debugging off again** (Developer options). It stops anyone else on the network from controlling the TV.
 
-The welcome card appears on the first visit. If you've already closed it, Options › Help › Welcome tips brings it back.
 
 ## Updating later
 

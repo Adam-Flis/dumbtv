@@ -72,8 +72,9 @@ public final class Picker extends Activity {
         hint.setLineSpacing(0, 1.35f);
         hint.setPadding(0, dp(10), 0, 0);
         hint.setText(favs
-                ? "Pick your favorite apps. The number is their order.\nTo reorder: hold OK on a favorite, then Move."
-                : "Ticked apps show in All apps.");
+                ? "Select your favorite apps. The number shows their order.\n"
+                        + "To change the order, hold OK on a favorite on the home screen and choose Move."
+                : "Checked apps show in All apps.");
         column.addView(hint);
         count = Ui.text(this, 16, Ui.TEXT, Ui.MEDIUM);
         count.setPadding(0, dp(10), 0, dp(18));

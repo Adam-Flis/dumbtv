@@ -10,7 +10,7 @@ import android.view.Window;
 import android.widget.LinearLayout;
 
 /**
- * The centered card every custom dialog uses (time picker, welcome, remote guide, row order):
+ * The centered card every custom dialog uses (time picker, remote guide, row order, Popup):
  * one look, one place to change it.
  */
 final class Panel {

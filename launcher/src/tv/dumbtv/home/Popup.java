@@ -85,35 +85,111 @@ final class Popup {
         if (first != null) first.requestFocus();
     }
 
-    /** Rows that OK switches between Shown and Hidden, and a Done button. */
-    static void checklist(Activity a, String title, List<String> items, boolean[] on, Toggle toggle) {
+    /**
+     * Rows that OK or left/right switch between Shown and Hidden (a hidden name is dimmed, as in
+     * the home screen layout editor), and a Done button. {@code subtitle} may be null.
+     */
+    static void checklist(Activity a, String title, String subtitle, List<String> items, boolean[] on, Toggle toggle) {
         Dialog d = Panel.dialog(a);
         LinearLayout box = Panel.box(a);
         title(box, title);
+        subtitle(box, subtitle);
         LinearLayout list = list(box);
         View first = null;
         for (int i = 0; i < items.size(); i++) {
             int index = i;
-            TextView row = row(a, items.get(i));
-            Runnable show = () -> row.setCompoundDrawablesRelative(null, null,
-                    Ui.dot(on[index] ? Ui.GOOD : 0x33FFFFFF, Ui.dp(a, 14)), null);
-            row.setCompoundDrawablePadding(Ui.dp(a, 16));
-            show.run();
-            row.setOnClickListener(v -> {
+            ValueRow row = new ValueRow(a, items.get(i));
+            Runnable show = () -> row.show(on[index] ? "Shown" : "Hidden", on[index]);
+            Runnable flip = () -> {
                 on[index] = !on[index];
                 toggle.set(index, on[index]);
                 show.run();
-            });
-            list.addView(row, rowParams(a));
-            if (first == null) first = row;
+            };
+            row.onChange(by -> flip.run());
+            show.run();
+            list.addView(row.view, rowParams(a));
+            if (first == null) first = row.view;
         }
-        TextView hint = Ui.text(a, 14, Ui.FAINT, Ui.MEDIUM);
-        hint.setText("Green: shown on the home screen");
-        hint.setPadding(Ui.dp(a, 16), Ui.dp(a, 8), 0, 0);
-        box.addView(hint);
         buttons(d, box, new Action("Done", null));
         Panel.show(a, d, box, 600);
         if (first != null) first.requestFocus();
+    }
+
+    /** Settings that left/right (or OK) step through, saved at once, and a Done button. */
+    static void choices(Activity a, String title, String subtitle, Config cfg, Runnable changed, Config.Choice... cs) {
+        Dialog d = Panel.dialog(a);
+        LinearLayout box = Panel.box(a);
+        title(box, title);
+        subtitle(box, subtitle);
+        LinearLayout list = list(box);
+        View first = null;
+        for (Config.Choice c : cs) {
+            ValueRow row = new ValueRow(a, c.title);
+            Runnable show = () -> row.show(c.name(cfg.get(c)), true);
+            row.onChange(by -> {
+                List<String> values = java.util.Arrays.asList(c.values);
+                int n = values.size(), i = values.indexOf(cfg.get(c));
+                cfg.set(c.key, values.get(((i + by) % n + n) % n));
+                show.run();
+                if (changed != null) changed.run();
+            });
+            show.run();
+            list.addView(row.view, rowParams(a));
+            if (first == null) first = row.view;
+        }
+        buttons(d, box, new Action("Done", null));
+        Panel.show(a, d, box, 600);
+        if (first != null) first.requestFocus();
+    }
+
+    interface Step {
+        void by(int step);
+    }
+
+    /** A name on the left, its value on the right; ‹ › around the value while focused. */
+    private static final class ValueRow {
+        final LinearLayout view;
+        private final TextView name, value;
+        private String text = "";
+        private boolean bright = true;
+
+        ValueRow(Activity a, String label) {
+            view = new LinearLayout(a);
+            view.setGravity(Gravity.CENTER_VERTICAL);
+            view.setFocusable(true);
+            view.setClickable(true);
+            view.setPadding(Ui.dp(a, 16), Ui.dp(a, 13), Ui.dp(a, 16), Ui.dp(a, 13));
+            view.setBackground(Ui.rowFocus(Config.get(a).accent(), Ui.dp(a, 10), false));
+            name = Ui.text(a, 18, Ui.TEXT, Ui.MEDIUM);
+            name.setText(label);
+            view.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1f));
+            value = Ui.text(a, 16, Ui.MUTED, Ui.MEDIUM);
+            view.addView(value);
+            view.setOnFocusChangeListener((v, has) -> show(text, bright));
+        }
+
+        void show(String text, boolean bright) {
+            this.text = text;
+            this.bright = bright;
+            boolean focused = view.isFocused();
+            value.setText(focused ? "\u2039  " + text + "  \u203A" : text);
+            value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
+            name.setAlpha(bright ? 1f : 0.5f);
+        }
+
+        /** OK steps forward; left/right step back and forward, with the navigation tick. */
+        void onChange(Step step) {
+            view.setOnClickListener(v -> step.by(1));
+            view.setOnKeyListener((v, code, e) -> {
+                if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+                int by = code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 0;
+                if (by == 0) return false;
+                v.playSoundEffect(by < 0 ? android.view.SoundEffectConstants.NAVIGATION_LEFT
+                        : android.view.SoundEffectConstants.NAVIGATION_RIGHT);
+                step.by(by);
+                return true;
+            });
+        }
     }
 
     /**
@@ -184,6 +260,18 @@ final class Popup {
     }
 
     // ---- the shared pieces ----
+
+    private static void subtitle(LinearLayout box, String text) {
+        if (text == null) return;
+        TextView t = Ui.text(box.getContext(), 15, Ui.MUTED, Ui.MEDIUM);
+        t.setLineSpacing(0, 1.25f);
+        t.setText(text);
+        // pull it up under the title, then leave room before the rows
+        t.setPadding(0, 0, 0, Ui.dp(box.getContext(), 16));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        lp.topMargin = -Ui.dp(box.getContext(), 10);
+        box.addView(t, lp);
+    }
 
     private static void title(LinearLayout box, String text) {
         TextView t = Ui.text(box.getContext(), 26, Ui.TEXT, Ui.LIGHT);

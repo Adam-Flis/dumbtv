@@ -40,11 +40,11 @@ public final class Options extends Activity {
         screen.setBackgroundColor(0xFF0C0C0E);
         nav = new LinearLayout(this);
         nav.setOrientation(LinearLayout.VERTICAL);
-        nav.setPadding(dp(40), dp(40), dp(20), dp(40));
+        nav.setPadding(dp(40), dp(36), dp(20), dp(28));
         nav.setBackgroundColor(0xFF141519);
         TextView title = Ui.text(this, 30, Ui.TEXT, Ui.LIGHT);
         title.setText("Options");
-        title.setPadding(dp(14), 0, 0, dp(28));
+        title.setPadding(dp(14), 0, 0, dp(18));
         nav.addView(title);
         screen.addView(nav, new LinearLayout.LayoutParams(dp(270), ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -82,7 +82,7 @@ public final class Options extends Activity {
         }));
         list.addView(choice(Config.APPS_LAYOUT));
         list.addView(action("Home screen layout", () -> RowsEditor.show(this, this::refresh)));
-        list.addView(action("Inputs", () -> pick(Catalog.INPUTS)));
+        list.addView(action("Visible inputs", () -> pick(Catalog.INPUTS)));
         list.addView(choice(Config.SWITCH));
 
         section("Appearance", Icons.CONTRAST);
@@ -106,20 +106,24 @@ public final class Options extends Activity {
         list.addView(only(choice(Config.UNITS), weatherOn));
         list.addView(only(choice(Config.W_DETAIL), weatherOn));
 
-        section("Night & photos", Icons.SLEEP);
+        section("Screen saver", Icons.PHOTO);
         list.addView(choice(Config.FRAME));
         list.addView(only(choice(Config.FRAME_FOR), frameOn));
-        list.addView(only(choice(Config.FRAME_CLOCK), frameOn));
-        list.addView(only(action("Show photo frame now", () -> {
+        list.addView(only(action("Adjust overlay", () -> Popup.choices(this, "Adjust overlay",
+                "Where the screen saver shows the clock and the weather", cfg, this::refresh,
+                Config.FRAME_CLOCK, Config.FRAME_WEATHER)), frameOn));
+        list.addView(only(action("Start screen saver", () -> {
             Home.frameNow = true;
             finish();
         }), frameOn));
+        list.addView(choice(Config.CARE));
+        list.addView(only(choice(Config.REST), careOn));
+
+        section("Night", Icons.NIGHT);
         list.addView(choice(Config.NIGHT));
         list.addView(only(timeRow(Config.NIGHT_START, "Starts at", 22 * 60), nightOn));
         list.addView(only(timeRow(Config.NIGHT_END, "Ends at", 6 * 60), nightOn));
         list.addView(slider(Config.NIGHT_DIM, "Night dim", 10, 90, 5));
-        list.addView(choice(Config.CARE));
-        list.addView(only(choice(Config.REST), careOn));
 
         section("More", Icons.DOTS);
         list.addView(action("Reset tiles", this::reset));
@@ -135,8 +139,9 @@ public final class Options extends Activity {
         }), () -> Sleep.allowed(this)));
 
         section("Help", Icons.HELP);
-        list.addView(status("Home button", () -> Help.homeHeld(this), () -> "Brings you here", "Needs setup",
-                this::fixHome));
+        // shown only when it needs fixing: when it works there is nothing to say
+        list.addView(only(status("Home button", () -> false, () -> "", "Opens Amazon's home",
+                this::fixHome), () -> !Help.homeHeld(this)));
         list.addView(status("Sleep timer", () -> Sleep.allowed(this), () -> "Ready", "Needs setup",
                 () -> Help.sleepSetup(this)));
         list.addView(status("Internet", () -> Help.online(this), () -> "Connected", "Not connected",
@@ -144,12 +149,7 @@ public final class Options extends Activity {
         list.addView(status("Weather", () -> cfg.on(Config.WEATHER)
                         && !cfg.get(Weather.LAT, "").isEmpty(),
                 () -> cfg.get(Weather.PLACE, "On"), "Off", () -> openSection(weather)));
-        list.addView(action("Welcome tips", () -> {
-            Home.tipsNow = true;
-            finish();
-        }));
         list.addView(action("Remote guide", () -> Help.remote(this)));
-        list.addView(note("Something looks wrong? Press Home on the remote to start over from the home screen."));
 
         TextView about = Ui.text(this, 13, Ui.FAINT, Ui.MEDIUM);
         about.setLineSpacing(0, 1.4f);
@@ -275,14 +275,6 @@ public final class Options extends Activity {
         return (h % 12 == 0 ? 12 : h % 12) + ":" + String.format(java.util.Locale.ROOT, "%02d", min) + (h < 12 ? " AM" : " PM");
     }
 
-    /** A line of small print under a group. */
-    private View note(String text) {
-        TextView v = Ui.text(this, 14, Ui.FAINT, Ui.MEDIUM);
-        v.setText(text);
-        v.setLineSpacing(0, 1.3f);
-        v.setPadding(dp(16), dp(6), dp(16), dp(4));
-        return v;
-    }
     private LinearLayout hintBar;
 
     private void showHints(View now) {
@@ -590,7 +582,7 @@ public final class Options extends Activity {
         item.setFocusable(true);
         item.setClickable(true);
         item.setCompoundDrawablePadding(dp(14));
-        item.setPadding(dp(14), dp(13), dp(14), dp(13));
+        item.setPadding(dp(14), dp(10), dp(14), dp(10));
         int accent = cfg.accent();
         StateListDrawable bg = new StateListDrawable();
         bg.addState(new int[] {android.R.attr.state_focused}, Ui.round(accent, dp(12)));
@@ -621,7 +613,7 @@ public final class Options extends Activity {
             return code == KeyEvent.KEYCODE_DPAD_DOWN && index == navItems.size() - 1;
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP);
-        lp.bottomMargin = dp(6);
+        lp.bottomMargin = dp(4);
         nav.addView(item, lp);
         navItems.add(item);
         if (first) item.setSelected(true);
@@ -642,7 +634,7 @@ public final class Options extends Activity {
             names.add(Catalog.label(cfg, items.get(i)).toString());
             on[i] = Catalog.shown(cfg, kind, items.get(i));
         }
-        Popup.checklist(this, "Inputs on the home screen", names, on,
+        Popup.checklist(this, "Visible inputs", "Shown in the Inputs row and the Inputs button", names, on,
                 (i, shown) -> Catalog.setShown(cfg, kind, items.get(i), shown));
     }
 

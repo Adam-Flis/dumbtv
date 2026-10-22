@@ -215,14 +215,15 @@ final class Config {
             new String[] {"full", "simple", "today", "minimal"},
             new String[] {"Everything", "Next hours", "Today", "Temperature"});
 
-    static final Choice FRAME = new Choice("frame", "Photo frame", "off",
+    static final Choice FRAME = new Choice("frame", "Screen saver", "off",
             new String[] {"off", "1", "2", "5", "10"},
             new String[] {"Off", "After 1 min", "After 2 min", "After 5 min", "After 10 min"});
-    /** Where the photo frame's clock sits; the weather takes the other corner on that edge. */
-    static final Choice FRAME_CLOCK = new Choice("frame.clock", "Clock corner", "bl",
-            new String[] {"bl", "br", "tl", "tr"},
-            new String[] {"Bottom left", "Bottom right", "Top left", "Top right"});
-    static final Choice FRAME_FOR = new Choice("frame.for", "Photo frame lasts", "30",
+    /** Where the screen saver shows the clock and the weather: a corner, or hidden. */
+    private static final String[] CORNERS = {"tl", "tr", "bl", "br", "off"};
+    private static final String[] CORNER_NAMES = {"Top left", "Top right", "Bottom left", "Bottom right", "Hidden"};
+    static final Choice FRAME_CLOCK = new Choice("frame.clock", "Clock", "bl", CORNERS, CORNER_NAMES);
+    static final Choice FRAME_WEATHER = new Choice("frame.weather", "Weather", "br", CORNERS, CORNER_NAMES);
+    static final Choice FRAME_FOR = new Choice("frame.for", "Screen saver lasts", "30",
             new String[] {"15", "30", "60", "120"},
             new String[] {"15 min", "30 min", "1 hour", "2 hours"});
 
@@ -256,7 +257,7 @@ final class Config {
             new String[] {"After 5 min", "After 10 min", "After 20 min", "After 30 min"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, REST, FAVS, FRAME_CLOCK};
+        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, REST, FAVS, FRAME_CLOCK, FRAME_WEATHER};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";
@@ -313,6 +314,11 @@ final class Config {
                 if (line.startsWith("#") || eq <= 0) continue;
                 values.put(line.substring(0, eq).trim(), line.substring(eq + 1).trim());
             }
+            // older builds put the weather opposite the clock on the same edge; keep that look
+            String clock = values.get(FRAME_CLOCK.key);
+            if (clock != null && clock.length() == 2 && !values.containsKey(FRAME_WEATHER.key)) {
+                values.put(FRAME_WEATHER.key, clock.charAt(0) + (clock.endsWith("l") ? "r" : "l"));
+            }
             // older builds kept the night start hour in "night" (21, 22, 23)
             String night = values.get(NIGHT.key);
             if (night != null && night.matches("\\d+")) {
@@ -355,7 +361,7 @@ final class Config {
         return "24h".equals(mode) || "auto".equals(mode) && android.text.format.DateFormat.is24HourFormat(c);
     }
 
-    /** Whether the photo frame comes on by itself (Photo frame is "off" or a delay in minutes). */
+    /** Whether the screen saver comes on by itself (Screen saver is "off" or a delay in minutes). */
     boolean frameOn() {
         return !"off".equals(get(FRAME));
     }

@@ -14,13 +14,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * Plain-language help for whoever watches this TV: a one-time welcome card, a remote-button
- * guide, and the checks behind Options › Help (is the Home button ours, is the sleep timer
- * allowed, is the TV online).
+ * Plain-language help for whoever watches this TV: a remote-button guide, and the checks
+ * behind Options › Help (is the Home button ours, is the sleep timer allowed, is the TV online).
  */
 final class Help {
-    /** home.conf key: the welcome card has been seen. */
-    static final String TIPS_SEEN = "tips.seen";
     private static final int WRAP = ViewGroup.LayoutParams.WRAP_CONTENT;
 
     private Help() {}
@@ -49,45 +46,6 @@ final class Help {
         ConnectivityManager cm = (ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo n = cm == null ? null : cm.getActiveNetworkInfo();
         return n != null && n.isConnected();
-    }
-
-    /** The welcome card: how to get around and set things up, one short line each. */
-    static void welcome(Activity a, Runnable done) {
-        int accent = Config.get(a).accent();
-        Dialog d = Panel.dialog(a);
-        LinearLayout panel = Panel.box(a);
-
-        TextView head = Ui.text(a, 30, Ui.TEXT, Ui.LIGHT);
-        head.setText("Welcome");
-        head.setGravity(Gravity.CENTER);
-        head.setPadding(0, 0, 0, dp(a, 6));
-        panel.addView(head, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-        TextView sub = Ui.text(a, 16, Ui.MUTED, Ui.MEDIUM);
-        sub.setText("A quick tour");
-        sub.setGravity(Gravity.CENTER);
-        sub.setPadding(0, 0, 0, dp(a, 18));
-        panel.addView(sub, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-
-        tip(panel, Icons.GRID, "Arrows move around. OK opens an app.");
-        tip(panel, Icons.PENCIL, "\u2630 Menu on an app moves, renames or hides it.");
-        tip(panel, Icons.STAR, "Edit favorites is the last tile in Favorites.");
-        tip(panel, Icons.SLIDERS, "Options \u203A Home screen layout reorders or hides rows.");
-        tip(panel, Icons.GEAR, "Buttons up top: inputs, sleep timer, Options, Fire TV settings.");
-        tip(panel, Icons.HOUSE, "Home always brings you back here.");
-
-        TextView ok = Ui.pill(a, "Got it", accent);
-        ok.setMinWidth(dp(a, 180));
-        ok.setOnClickListener(v -> d.dismiss());
-        LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(WRAP, WRAP);
-        olp.gravity = Gravity.CENTER_HORIZONTAL;
-        olp.topMargin = dp(a, 22);
-        panel.addView(ok, olp);
-
-        d.setOnDismissListener(x -> {
-            if (done != null) done.run();
-        });
-        Panel.show(a, d, panel, 720);
-        ok.requestFocus();
     }
 
     /** What each remote button does here, as key caps. */
@@ -147,23 +105,6 @@ final class Help {
     /** A plain message with one button, for "this needs setting up" explanations. */
     static void explain(Activity a, String title, String message) {
         Popup.message(a, title, message, new Popup.Action("OK", null));
-    }
-
-    private static void tip(LinearLayout panel, int icon, String text) {
-        Context a = panel.getContext();
-        LinearLayout line = new LinearLayout(a);
-        line.setGravity(Gravity.CENTER_VERTICAL);
-        line.setPadding(0, dp(a, 8), 0, dp(a, 8));
-        View art = new View(a);
-        art.setBackground(Icons.of(icon, dp(a, 26), Config.get(a).accent()));
-        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(a, 26), dp(a, 26));
-        alp.rightMargin = dp(a, 18);
-        line.addView(art, alp);
-        TextView t = Ui.text(a, 18, Ui.TEXT, Ui.MEDIUM);
-        t.setLineSpacing(0, 1.2f);
-        t.setText(text);
-        line.addView(t, new LinearLayout.LayoutParams(0, WRAP, 1f));
-        panel.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
     }
 
     private static int dp(Context c, float v) {

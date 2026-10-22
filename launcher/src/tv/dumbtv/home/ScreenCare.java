@@ -10,7 +10,7 @@ import android.widget.FrameLayout;
  * button is pressed. Everything here hangs off Config.CARE and Config.REST.
  */
 final class ScreenCare {
-    /** True while going dark would get in the way: the photo frame runs, a menu is open. */
+    /** True while going dark would get in the way: the screen saver runs, a menu is open. */
     interface Busy {
         boolean now();
     }
@@ -26,7 +26,7 @@ final class ScreenCare {
     private final View page;
     private final Busy busy;
     private final Runnable shift = this::shift, rest = this::rest;
-    /** Other layers that drift with the page, such as the photo frame's clock and weather. */
+    /** Other layers that drift with the page, such as the screen saver's clock and weather. */
     private final java.util.List<View> followers = new java.util.ArrayList<>();
     private int step;
     private boolean running;
@@ -77,7 +77,7 @@ final class ScreenCare {
         }
     }
 
-    /** Goes dark after {@code ms} regardless of the setting's delay (the photo frame ended, tests). */
+    /** Goes dark after {@code ms} regardless of the setting's delay (the screen saver ended, tests). */
     void darkIn(long ms) {
         ui.removeCallbacks(rest);
         ui.postDelayed(rest, ms);
