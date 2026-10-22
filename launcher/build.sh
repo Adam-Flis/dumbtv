@@ -12,26 +12,12 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 source version.env
 MIN_SDK=${MIN_SDK:-28}
 
-SDK=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
-if [[ -z $SDK ]]; then
-  for d in /opt/homebrew/share/android-commandlinetools "$HOME/Library/Android/sdk"; do
-    if [[ -f $d/platforms/android-$MIN_SDK/android.jar ]]; then SDK=$d; break; fi
-  done
-fi
-JAR=$SDK/platforms/android-$MIN_SDK/android.jar
-BT=$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1 || true)
-[[ -f $JAR ]] || { echo "error: $JAR missing — sdkmanager 'platforms;android-$MIN_SDK'" >&2; exit 1; }
-[[ -x $BT/aapt2 ]] || { echo "error: no build-tools in $SDK — sdkmanager 'build-tools;34.0.0'" >&2; exit 1; }
+# finds the SDK (JAR, BT) and a JDK (JAVA_HOME); shared with test.sh
+# shellcheck disable=SC1091
+source ./sdk.sh
 
-if [[ -z ${JAVA_HOME:-} || ! -x ${JAVA_HOME:-}/bin/javac ]]; then
-  for j in /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
-           /opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home \
-           "$(/usr/libexec/java_home 2>/dev/null || true)"; do
-    if [[ -n $j && -x $j/bin/javac ]]; then JAVA_HOME=$j; break; fi
-  done
-fi
-[[ -x ${JAVA_HOME:-}/bin/javac ]] || { echo "error: no JDK found — brew install openjdk@17" >&2; exit 1; }
-export JAVA_HOME
+# the logic tests first: a build that breaks them never reaches the TV (SKIP_TESTS=1 skips)
+[[ ${SKIP_TESTS:-} == 1 ]] || MIN_SDK=$MIN_SDK ./test.sh
 
 KEYSTORE=${DUMBTV_KEYSTORE:-$PWD/release.keystore}
 KEYPASS=${DUMBTV_KEYPASS:-dumbtvhome}

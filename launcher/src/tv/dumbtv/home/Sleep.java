@@ -11,7 +11,10 @@ import android.content.Intent;
 /** The sleep timer: an alarm that turns the TV off, set from the top bar. */
 public final class Sleep extends BroadcastReceiver {
     static final String AT = "sleep.at";
-    static final int[] MINUTES = {0, 15, 30, 45, 60, 90, 120};
+    /** The lengths the sleep menu offers (Custom… covers the rest). */
+    static final int[] MINUTES = {15, 30, 45, 60, 90, 120};
+    /** The one-time step that lets the app turn the TV off (Fire OS answers the UI with a dummy). */
+    static final String ADMIN_COMMAND = "adb shell dpm set-active-admin tv.dumbtv.home/.Admin";
 
     static ComponentName admin(Context c) {
         return new ComponentName(c, Admin.class);
@@ -64,6 +67,13 @@ public final class Sleep extends BroadcastReceiver {
         if (h == 0) return m + " min";
         if (m == 0) return h == 1 ? "1 hour" : h + " hours";
         return h + " hr " + m + " min";
+    }
+
+    /** The top-bar button's label: "Sleep timer", "Sleep in 45 min", "Sleep in 1:55". */
+    static String chip(int left) {
+        if (left <= 0) return "Sleep timer";
+        if (left < 60) return "Sleep in " + left + " min";
+        return String.format(java.util.Locale.ROOT, "Sleep in %d:%02d", left / 60, left % 60);
     }
 
     @Override

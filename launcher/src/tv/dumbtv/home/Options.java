@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.media.tv.TvInputManager;
 import android.os.Bundle;
@@ -69,10 +68,10 @@ public final class Options extends Activity {
         // Six short groups. Rows that only matter for another setting appear when it is on
         // (the image rows with an image background, the night times with night mode, ...).
         Cond image = () -> "image".equals(cfg.get(Config.BACKGROUND));
-        Cond weatherOn = () -> "on".equals(cfg.get(Config.WEATHER));
-        Cond frameOn = () -> !"off".equals(cfg.get(Config.FRAME));
-        Cond nightOn = () -> "on".equals(cfg.get(Config.NIGHT));
-        Cond careOn = () -> "on".equals(cfg.get(Config.CARE));
+        Cond weatherOn = () -> cfg.on(Config.WEATHER);
+        Cond frameOn = cfg::frameOn;
+        Cond nightOn = () -> cfg.on(Config.NIGHT);
+        Cond careOn = () -> cfg.on(Config.CARE);
 
         section("Apps", Icons.GRID);
         list.addView(action("Favorites", () -> {
@@ -105,7 +104,7 @@ public final class Options extends Activity {
         list.addView(choice(Config.LABELS));
         list.addView(choice(Config.CLOCK));
 
-        section("Weather", Icons.PARTLY);
+        int weather = section("Weather", Icons.PARTLY);
         list.addView(choice(Config.WEATHER));
         list.addView(only(cityRow(), weatherOn));
         list.addView(only(choice(Config.UNITS), weatherOn));
@@ -145,16 +144,13 @@ public final class Options extends Activity {
         section("Help", Icons.HELP);
         list.addView(status("Home button", () -> Help.homeHeld(this), () -> "Brings you here", "Needs setup",
                 this::fixHome));
-        list.addView(status("Sleep timer", () -> Sleep.allowed(this), () -> "Ready", "Needs setup", () ->
-                Help.explain(this, "Sleep timer needs a one-time setup",
-                        "Fire TV only lets this app turn the TV off after a one-time step from a computer:"
-                        + "\n\nadb shell dpm set-active-admin tv.dumbtv.home/.Admin"
-                        + "\n\nUntil then, Fire TV's own sleep timer works: gear button \u203A All Fire TV settings.")));
-        list.addView(status("Internet", () -> Help.online(this), () -> "Connected", "Not connected", () ->
-                startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS))));
-        list.addView(status("Weather", () -> "on".equals(cfg.get(Config.WEATHER))
+        list.addView(status("Sleep timer", () -> Sleep.allowed(this), () -> "Ready", "Needs setup",
+                () -> Help.sleepSetup(this)));
+        list.addView(status("Internet", () -> Help.online(this), () -> "Connected", "Not connected",
+                () -> startActivity(FireSettings.wifi(this))));
+        list.addView(status("Weather", () -> cfg.on(Config.WEATHER)
                         && !cfg.get(Weather.LAT, "").isEmpty(),
-                () -> cfg.get(Weather.PLACE, "On"), "Off", () -> openSection(2))); // 2: Weather
+                () -> cfg.get(Weather.PLACE, "On"), "Off", () -> openSection(weather)));
         list.addView(action("Show the welcome tips again", () -> {
             Home.tipsNow = true;
             finish();
@@ -233,7 +229,7 @@ public final class Options extends Activity {
         row.setOnFocusChangeListener((v, has) -> show.run());
         refreshers.add(show);
         refreshers.add(() -> style(row));
-        return only(row, () -> "on".equals(cfg.get(Config.NIGHT)));
+        return only(row, () -> cfg.on(Config.NIGHT));
     }
 
     interface Cond {
@@ -254,7 +250,7 @@ public final class Options extends Activity {
         TextView value = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
         row.addView(label(title), new LinearLayout.LayoutParams(0, WRAP, 1f));
         row.addView(value, new LinearLayout.LayoutParams(WRAP, WRAP));
-        row.setOnClickListener(v -> TimeChooser.show(this, title, cfg.time(key, fallback), clock24(), m -> {
+        row.setOnClickListener(v -> TimeChooser.show(this, title, cfg.time(key, fallback), cfg.clock24(this), m -> {
             cfg.setTime(key, m);
             refresh();
         }));
@@ -280,14 +276,9 @@ public final class Options extends Activity {
         return row;
     }
 
-    private boolean clock24() {
-        String mode = cfg.get(Config.CLOCK);
-        return "24h".equals(mode) || "auto".equals(mode) && android.text.format.DateFormat.is24HourFormat(this);
-    }
-
     private String clockText(int m) {
         int h = m / 60, min = m % 60;
-        if (clock24()) return String.format(java.util.Locale.ROOT, "%02d:%02d", h, min);
+        if (cfg.clock24(this)) return String.format(java.util.Locale.ROOT, "%02d:%02d", h, min);
         return (h % 12 == 0 ? 12 : h % 12) + ":" + String.format(java.util.Locale.ROOT, "%02d", min) + (h < 12 ? " AM" : " PM");
     }
 
@@ -408,12 +399,7 @@ public final class Options extends Activity {
             String text = c.name(cfg.get(c));
             value.setText(focused ? "‹  " + text + "  ›" : text);
             if (c == Config.ACCENT) {
-                // a drawable swatch: Fire OS "high contrast text" repaints colored text
-                GradientDrawable dot = new GradientDrawable();
-                dot.setShape(GradientDrawable.OVAL);
-                dot.setColor(cfg.accent());
-                dot.setBounds(0, 0, dp(14), dp(14));
-                value.setCompoundDrawablesRelative(dot, null, null, null);
+                value.setCompoundDrawablesRelative(Ui.dot(cfg.accent(), dp(14)), null, null, null);
                 value.setCompoundDrawablePadding(dp(10));
             }
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
@@ -478,7 +464,7 @@ public final class Options extends Activity {
                 cfg.set(Weather.LAT, found[0]);
                 cfg.set(Weather.LON, found[1]);
                 cfg.set(Weather.PLACE, found[2]);
-                if (!"on".equals(cfg.get(Config.WEATHER))) cfg.set(Config.WEATHER.key, "on");
+                cfg.setOn(Config.WEATHER, true);
                 Ui.notice(this, "Weather for " + found[2], Icons.PARTLY);
                 refresh();
             });
@@ -506,12 +492,7 @@ public final class Options extends Activity {
         refreshers.add(() -> {
             boolean ok = good.ok();
             value.setText(ok ? okText.text() : badText + "  \u203A");
-            // a drawable dot: Fire OS "high contrast text" repaints colored text
-            GradientDrawable dot = new GradientDrawable();
-            dot.setShape(GradientDrawable.OVAL);
-            dot.setColor(ok ? 0xFF34C759 : 0xFFFFB020);
-            dot.setBounds(0, 0, dp(12), dp(12));
-            value.setCompoundDrawablesRelative(dot, null, null, null);
+            value.setCompoundDrawablesRelative(Ui.dot(ok ? Ui.GOOD : Ui.WARN, dp(12)), null, null, null);
             style(row);
         });
         return row;
@@ -589,11 +570,7 @@ public final class Options extends Activity {
     }
 
     private void style(View row) {
-        StateListDrawable bg = new StateListDrawable();
-        bg.addState(new int[] {android.R.attr.state_focused},
-                Ui.round((cfg.accent() & 0x00FFFFFF) | 0x33000000, dp(10)));
-        bg.addState(new int[0], Ui.round(0x00000000, dp(10)));
-        row.setBackground(bg);
+        row.setBackground(Ui.rowFocus(cfg.accent(), dp(10), false));
     }
 
     private TextView label(String text) {
@@ -602,8 +579,11 @@ public final class Options extends Activity {
         return v;
     }
 
-    /** A group heading: small, spaced capitals above its rows. */
-    private void section(String name, int icon) {
+    /**
+     * A group heading (small, spaced capitals above its rows) and its entry in the left list.
+     * Returns the group's index, for {@link #openSection}.
+     */
+    private int section(String name, int icon) {
         boolean first = headers.isEmpty();
         TextView v = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
         v.setText(name.toUpperCase(java.util.Locale.ROOT));
@@ -612,14 +592,7 @@ public final class Options extends Activity {
         list.addView(v);
         headers.add(v);
         // a thin rule under the heading separates it from its settings
-        View rule = new View(this);
-        rule.setBackgroundColor(0x2EFFFFFF);
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                Math.max(1, dp(1)));
-        rlp.leftMargin = dp(16);
-        rlp.rightMargin = dp(16);
-        rlp.bottomMargin = dp(8);
-        list.addView(rule, rlp);
+        list.addView(Ui.rule(this, 0x2EFFFFFF, 16, 0, 8));
 
         int index = navItems.size();
         TextView item = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
@@ -665,6 +638,7 @@ public final class Options extends Activity {
         navItems.add(item);
         if (first) item.setSelected(true);
         navIcon(item);
+        return index;
     }
 
     private void pick(String kind) {

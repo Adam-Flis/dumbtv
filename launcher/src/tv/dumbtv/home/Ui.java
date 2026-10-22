@@ -14,6 +14,19 @@ final class Ui {
     static final int MUTED = 0x99FFFFFF;
     static final int FAINT = 0x66FFFFFF;
     static final int SURFACE = 0xFF1C1D21;
+    // One place for the colors that carry meaning; change them here, not where they are used.
+    /** Working / online / ready. */
+    static final int GOOD = 0xFF34C759;
+    /** Needs attention / offline. */
+    static final int WARN = 0xFFFFB340;
+    /** Something is running: the sleep timer, night mode. */
+    static final int ACTIVE = 0xFFFFC53D;
+    /** Dialog and card fill, and their thin outline. */
+    static final int PANEL = 0xFA1C1D22, OUTLINE = 0x29FFFFFF;
+    /** Top-bar dropdown fill. */
+    static final int MENU = 0xF5202126;
+    /** Thin dividers. */
+    static final int RULE = 0x24FFFFFF;
     static final int DIALOG = android.R.style.Theme_DeviceDefault_Dialog_Alert;
     static final Typeface LIGHT = Typeface.create("sans-serif-light", Typeface.NORMAL);
     static final Typeface MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
@@ -110,6 +123,59 @@ final class Ui {
         return d;
     }
 
+    /** A rounded card with the thin outline dialogs, notices and the input card share. */
+    static GradientDrawable card(Context c, int fill, float radiusDp) {
+        GradientDrawable d = round(fill, dp(c, radiusDp));
+        d.setStroke(Math.max(1, dp(c, 1)), OUTLINE);
+        return d;
+    }
+
+    /**
+     * A colored dot sized for a compound drawable. Drawn, not text: Fire OS "high contrast
+     * text" repaints colored text black or white.
+     */
+    static GradientDrawable dot(int color, int px) {
+        GradientDrawable d = new GradientDrawable();
+        d.setShape(GradientDrawable.OVAL);
+        d.setColor(color);
+        d.setBounds(0, 0, px, px);
+        return d;
+    }
+
+    /** A one-pixel divider for a vertical LinearLayout, inset by the given margins (dp). */
+    static android.view.View rule(Context c, int color, float sideDp, float topDp, float bottomDp) {
+        android.view.View v = new android.view.View(c);
+        v.setBackgroundColor(color);
+        android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(c, 1)));
+        lp.setMargins(dp(c, sideDp), dp(c, topDp), dp(c, sideDp), dp(c, bottomDp));
+        v.setLayoutParams(lp);
+        return v;
+    }
+
+    /** A list row's background: a soft accent tint when focused ({@code strong}: full accent). */
+    static StateListDrawable rowFocus(int accent, float radius, boolean strong) {
+        StateListDrawable bg = new StateListDrawable();
+        bg.addState(new int[] {android.R.attr.state_focused},
+                round(strong ? accent : (accent & 0x00FFFFFF) | 0x33000000, radius));
+        bg.addState(new int[0], round(0, radius));
+        return bg;
+    }
+
+    /** A pill button (Save, Got it, Start): accent fill when focused, outlined otherwise. */
+    static TextView pill(Context c, String label, int accent) {
+        TextView b = text(c, 17, TEXT, MEDIUM);
+        b.setId(android.view.View.generateViewId());
+        b.setText(label);
+        b.setGravity(android.view.Gravity.CENTER);
+        b.setMinWidth(dp(c, 120));
+        b.setPadding(dp(c, 22), dp(c, 11), dp(c, 22), dp(c, 11));
+        b.setFocusable(true);
+        b.setClickable(true);
+        chipStyle(b, accent, dp(c, 22), Math.max(1, dp(c, 1)));
+        return b;
+    }
+
     /**
      * Fills {@code bar} with remote-button hints: a key cap, then what it does.
      * {@code pairs} is key, text, key, text...
@@ -121,7 +187,7 @@ final class Ui {
             TextView key = text(c, 13, TEXT, MEDIUM);
             key.setText(pairs[i]);
             key.setPadding(dp(c, 10), dp(c, 4), dp(c, 10), dp(c, 5));
-            GradientDrawable cap = round(0x24FFFFFF, dp(c, 8));
+            GradientDrawable cap = round(RULE, dp(c, 8));
             cap.setStroke(Math.max(1, dp(c, 1)), 0x47FFFFFF);
             key.setBackground(cap);
             TextView what = text(c, 15, 0xCCFFFFFF, MEDIUM);
@@ -160,9 +226,7 @@ final class Ui {
         pill.setTag(NOTICE);
         pill.setGravity(android.view.Gravity.CENTER_VERTICAL);
         pill.setPadding(dp(a, icon < 0 ? 26 : 20), dp(a, 14), dp(a, 26), dp(a, 14));
-        GradientDrawable bg = round(0xF51C1D22, dp(a, 30));
-        bg.setStroke(Math.max(1, dp(a, 1)), 0x29FFFFFF);
-        pill.setBackground(bg);
+        pill.setBackground(card(a, 0xF51C1D22, 30));
         pill.setElevation(dp(a, 20));
         if (icon >= 0) {
             android.view.View art = new android.view.View(a);

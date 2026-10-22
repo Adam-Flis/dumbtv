@@ -218,17 +218,22 @@ final class Config {
             new String[] {"15 min", "30 min", "1 hour", "2 hours"});
 
     /** Home screen row order (Catalog kinds, comma-separated); set in Options › Home screen rows. */
-    static final String ROWS = "rows.order";
-    private static final String[] ROW_KINDS = {Catalog.FAVS, Catalog.RECENT, Catalog.APPS, Catalog.INPUTS};
+    static final String ROW_ORDER = "rows.order";
 
-    /** The four rows in their saved order; unknown names are dropped, missing ones added at the end. */
+    /** The home screen rows in their saved order. */
     List<String> rowOrder() {
+        return parseRowOrder(get(ROW_ORDER, ""));
+    }
+
+    /** Every row kind exactly once: saved ones first, unknown names dropped, missing ones appended. */
+    static List<String> parseRowOrder(String saved) {
+        List<String> kinds = Arrays.asList(Catalog.ROWS);
         List<String> out = new ArrayList<>();
-        for (String k : get(ROWS, "").split(",")) {
+        for (String k : saved.split(",")) {
             k = k.trim();
-            if (Arrays.asList(ROW_KINDS).contains(k) && !out.contains(k)) out.add(k);
+            if (kinds.contains(k) && !out.contains(k)) out.add(k);
         }
-        for (String k : ROW_KINDS) {
+        for (String k : kinds) {
             if (!out.contains(k)) out.add(k);
         }
         return out;
@@ -328,6 +333,26 @@ final class Config {
     String get(String key, String fallback) {
         String v = values.get(key);
         return v == null || v.isEmpty() ? fallback : v;
+    }
+
+    /** Whether an on/off choice is on: the one place that knows the stored word is "on". */
+    boolean on(Choice c) {
+        return "on".equals(get(c));
+    }
+
+    /** Options › Clock: 24-hour time, or the TV's own choice when set to Auto. */
+    boolean clock24(Context c) {
+        String mode = get(CLOCK);
+        return "24h".equals(mode) || "auto".equals(mode) && android.text.format.DateFormat.is24HourFormat(c);
+    }
+
+    /** Whether the photo frame comes on by itself (Photo frame is "off" or a delay in minutes). */
+    boolean frameOn() {
+        return !"off".equals(get(FRAME));
+    }
+
+    void setOn(Choice c, boolean on) {
+        set(c.key, on ? "on" : "off");
     }
 
     String get(Choice c) {

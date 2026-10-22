@@ -39,7 +39,6 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -70,19 +69,15 @@ public final class Home extends Activity {
     static boolean tipsNow;
     private boolean tipsOpen;
     /** The open top-bar dropdown, closed when Home is pressed or the screen is left. */
-    private PopupWindow openPop;
+    private Dropdown openPop;
     private final Runnable tips = this::showTips;
     private PhotoFrame frame;
     private boolean swallowUp;
     private final Runnable idle = this::startFrame;
     private final Runnable frameDone = this::endFrame;
-    // screen care (OLED): the page drifts a few pixels every few minutes; idle, it goes dark
-    private static final long SHIFT_MS = 3 * 60_000L;
-    private static final int[][] SHIFTS = {{0, 0}, {2, 0}, {2, 2}, {0, 2}, {-2, 2}, {-2, 0}, {-2, -2}, {0, -2}, {2, -2}};
-    private int shiftStep;
-    private View pageView, rest;
-    private final Runnable shift = this::shiftPage;
-    private final Runnable restRun = this::startRest;
+    /** OLED burn-in care: drift and go dark when idle. */
+    private ScreenCare care;
+    private View pageView;
     private boolean resumed, landed, ticking;
     /** A key was pressed since the screen came back; late rows then leave the focus alone. */
     private boolean touched;
@@ -102,7 +97,7 @@ public final class Home extends Activity {
     private TextView net, sleepChip, nightChip;
     private View nightShade;
     private LinearLayout moveHint;
-    private int netColor = 0xFF34C759;
+    private int netColor = Ui.GOOD;
     private final java.util.Map<TextView, String> chipLabels = new java.util.HashMap<>();
     private ConnectivityManager cm;
     private WifiManager wifi;
@@ -281,6 +276,9 @@ public final class Home extends Activity {
         tv = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
         builtScale = Ui.scale = cfg.textScale();
         setContentView(build());
+        // going dark waits while the photo frame runs or a menu or dialog has the focus
+        care = new ScreenCare(cfg, ui, root, pageView,
+                () -> (frame != null && root.getKeepScreenOn()) || !hasWindowFocus());
 
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -351,8 +349,7 @@ public final class Home extends Activity {
             // back from an app: the recently used row moves it to the front
             loadRecent();
         }
-        ui.removeCallbacks(shift);
-        shiftPage();
+        care.start();
         if (frameNow) {
             frameNow = false;
             ui.postDelayed(idle, 600);
@@ -381,10 +378,7 @@ public final class Home extends Activity {
         }
         // developer aid: `adb shell touch .../files/test-rest` goes dark (screen care) after 3 s
         File restTest = new File(cfg.dir, "test-rest");
-        if (restTest.isFile() && restTest.delete()) {
-            ui.removeCallbacks(restRun);
-            ui.postDelayed(restRun, 3000);
-        }
+        if (restTest.isFile() && restTest.delete()) care.darkIn(3000);
         // developer aid: `adb shell touch .../files/test-input` shows the input card on next return
         File test = new File(cfg.dir, "test-input");
         if (test.isFile() && test.delete() && !inputs.all.isEmpty()) {
@@ -407,10 +401,7 @@ public final class Home extends Activity {
         ui.removeCallbacks(idle);
         ui.removeCallbacks(tips);
         closePop();
-        ui.removeCallbacks(shift);
-        ui.removeCallbacks(restRun);
-        if (rest != null) root.removeView(rest);
-        rest = null;
+        care.stop();
         stopFrame();
         removeInputCard();
         if (moving != null) stopMoving();
@@ -464,10 +455,11 @@ public final class Home extends Activity {
         resetIdle();
         touched = true;
         // any key wakes the dark screen (and the photo frame under it) and does nothing else
-        if (rest != null) {
+        if (care.isDark()) {
             if (e.getAction() == KeyEvent.ACTION_DOWN) {
-                stopRest();
+                care.wake();
                 if (frame != null) stopFrame();
+                resetIdle();
                 swallowUp = true;
             }
             return true;
@@ -827,7 +819,7 @@ public final class Home extends Activity {
         rows = new Row[builtOrder.size()];
         for (int i = 0; i < rows.length; i++) {
             String kind = builtOrder.get(i);
-            Row row = new Row(kind, RowsEditor.title(kind), RowsEditor.icon(kind), column,
+            Row row = new Row(kind, Catalog.rowTitle(kind), Catalog.rowIcon(kind), column,
                     Catalog.APPS.equals(kind) && builtGrid);
             if (Catalog.FAVS.equals(kind)) favs = row;
             else if (Catalog.RECENT.equals(kind)) recent = row;
@@ -938,7 +930,7 @@ public final class Home extends Activity {
         // a ringed dot after the name, so green never sits on blue.
         int ink = Ui.ink(cfg.accent());
         int color = v.isFocused() ? ink : v == net ? netColor
-                : sleepLeft > 0 || v == nightChip && isNight() ? 0xFFFFC53D : Ui.TEXT;
+                : sleepLeft > 0 || v == nightChip && isNight() ? Ui.ACTIVE : Ui.TEXT;
         android.graphics.drawable.Drawable status = null;
         if (open && v == net) {
             GradientDrawable dot = new GradientDrawable();
@@ -1008,7 +1000,7 @@ public final class Home extends Activity {
                 ? ((Tile) focused).item.id : null;
         row.strip.removeAllViews();
 
-        boolean enabled = !Catalog.INPUTS.equals(row.kind) || "on".equals(cfg.get(Config.INPUTS));
+        boolean enabled = !Catalog.INPUTS.equals(row.kind) || cfg.on(Config.INPUTS);
         List<Item> shown;
         if (Catalog.FAVS.equals(row.kind)) {
             shown = Catalog.favorites(cfg, apps.all);
@@ -1017,7 +1009,7 @@ public final class Home extends Activity {
             // the easy way to change the dock: the same picker, from the end of the row
             else if (!shown.isEmpty()) shown.add(button(Catalog.EDIT, "Edit favorites", Icons.PENCIL));
         } else if (Catalog.RECENT.equals(row.kind)) {
-            shown = "on".equals(cfg.get(Config.RECENT)) ? new ArrayList<>(recentItems) : new ArrayList<>();
+            shown = cfg.on(Config.RECENT) ? new ArrayList<>(recentItems) : new ArrayList<>();
         } else {
             shown = enabled ? Catalog.visible(cfg, row.kind, row.all) : new ArrayList<>();
             // the way to more apps: the Appstore, and every installed app to pick from
@@ -1097,7 +1089,7 @@ public final class Home extends Activity {
      */
     private void loadRecent() {
         int generation = ++recentGeneration;
-        if (!"on".equals(cfg.get(Config.RECENT))) {
+        if (!cfg.on(Config.RECENT)) {
             recentItems = new ArrayList<>();
             render(recent);
             return;
@@ -1173,8 +1165,7 @@ public final class Home extends Activity {
     }
 
     private void tick() {
-        String mode = cfg.get(Config.CLOCK);
-        boolean h24 = "24h".equals(mode) || "auto".equals(mode) && DateFormat.is24HourFormat(this);
+        boolean h24 = cfg.clock24(this);
         Date now = new Date();
         if (h24) {
             clock.setText(DateFormat.format("HH:mm", now));
@@ -1228,8 +1219,7 @@ public final class Home extends Activity {
     private void updateSleepChip() {
         if (sleepChip == null) return;
         int left = Sleep.left(cfg);
-        chipLabels.put(sleepChip, left <= 0 ? "Sleep timer" : left < 60 ? "Sleep in " + left + " min"
-                : String.format(java.util.Locale.ROOT, "Sleep in %d:%02d", left / 60, left % 60));
+        chipLabels.put(sleepChip, Sleep.chip(left));
         chipIcon(sleepChip);
         // the last minutes count down more often than the once-a-minute clock tick
         ui.removeCallbacks(sleepTick);
@@ -1242,73 +1232,22 @@ public final class Home extends Activity {
      */
     private void sleepMenu(View anchor) {
         int left = Sleep.left(cfg);
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(8), dp(10), dp(8), dp(8));
-        PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
-        openPop = pop;
-        pop.setBackgroundDrawable(Ui.round(0xF5202126, dp(18)));
-        pop.setElevation(dp(12));
-
-        TextView head = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
-        head.setLetterSpacing(0.08f);
-        head.setPadding(dp(16), dp(4), dp(16), dp(4));
-        head.setText(left > 0 ? "SLEEP TIMER" : "TURN THE TV OFF IN");
-        box.addView(head);
+        Dropdown menu = dropdown().heading(left > 0 ? "SLEEP TIMER" : "TURN THE TV OFF IN");
         if (left > 0) {
-            TextView big = Ui.text(this, 30, 0xFFFFC53D, Ui.LIGHT);
+            TextView big = Ui.text(this, 30, Ui.ACTIVE, Ui.LIGHT);
             big.setText(Sleep.label(left) + " left");
             big.setPadding(dp(16), dp(2), dp(16), dp(10));
-            box.addView(big);
-        }
-        View rule = new View(this);
-        rule.setBackgroundColor(0x24FFFFFF);
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(1)));
-        rlp.setMargins(dp(12), dp(6), dp(12), dp(6));
-        box.addView(rule, rlp);
-
-        List<String> labels = new ArrayList<>();
-        List<Runnable> runs = new ArrayList<>();
-        if (left > 0) {
-            labels.add("Add 15 minutes");
-            runs.add(() -> chooseSleep(left + 15));
-            labels.add("Add 30 minutes");
-            runs.add(() -> chooseSleep(left + 30));
-            labels.add("New length\u2026");
-            runs.add(() -> customSleep(left));
-            labels.add("Cancel the timer");
-            runs.add(() -> chooseSleep(0));
+            menu.add(big).rule();
+            menu.item("Add 15 minutes", () -> chooseSleep(left + 15));
+            menu.item("Add 30 minutes", () -> chooseSleep(left + 30));
+            menu.item("New length\u2026", () -> customSleep(left));
+            menu.item("Cancel the timer", () -> chooseSleep(0));
         } else {
-            for (int m : Sleep.MINUTES) {
-                if (m == 0) continue;
-                labels.add(Sleep.label(m));
-                runs.add(() -> chooseSleep(m));
-            }
-            labels.add("Custom\u2026");
-            runs.add(() -> customSleep(60));
+            menu.rule();
+            for (int m : Sleep.MINUTES) menu.item(Sleep.label(m), () -> chooseSleep(m));
+            menu.item("Custom\u2026", () -> customSleep(60));
         }
-        int accent = cfg.accent();
-        TextView focus = null;
-        for (int i = 0; i < labels.size(); i++) {
-            TextView row = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
-            row.setText(labels.get(i));
-            row.setMinWidth(dp(260));
-            row.setPadding(dp(16), dp(12), dp(16), dp(12));
-            row.setFocusable(true);
-            row.setClickable(true);
-            Ui.focusStyle(row, accent, 0x00000000, dp(10));
-            Runnable run = runs.get(i);
-            row.setOnClickListener(v -> {
-                pop.dismiss();
-                run.run();
-            });
-            box.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-            if (focus == null) focus = row;
-        }
-        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        pop.setWidth(box.getMeasuredWidth()); // a known width lets it line up under the chip
-        pop.showAsDropDown(anchor, 0, dp(8), Gravity.END);
-        if (focus != null) focus.requestFocus();
+        menu.show(anchor);
     }
 
     /** Any length: hours and minutes picked like a time. */
@@ -1318,15 +1257,8 @@ public final class Home extends Activity {
 
     private void chooseSleep(int minutes) {
         if (minutes > 0 && !Sleep.allowed(this)) {
-            // Fire OS answers the normal "allow" screen with a dummy, so the one-time permission
-            // has to come from adb. Until then, Fire TV's own timer does the job.
-            new AlertDialog.Builder(this, Ui.DIALOG)
-                    .setTitle("Sleep timer needs a one-time setup")
-                    .setMessage("Run once from a computer:\n\nadb shell dpm set-active-admin tv.dumbtv.home/.Admin"
-                            + "\n\nOr use Fire TV's own sleep timer in Settings.")
-                    .setPositiveButton("Open Fire TV Settings", (d, w) -> openSettings())
-                    .setNegativeButton("Cancel", null)
-                    .show();
+            // Fire OS answers the normal "allow" screen with a dummy: the permission comes from adb
+            Help.sleepSetup(this);
             return;
         }
         Sleep.set(this, minutes);
@@ -1346,7 +1278,7 @@ public final class Home extends Activity {
      * home screen is showing. Goes away by itself after 15 s.
      */
     private void offerInput(String id) {
-        if (!"on".equals(cfg.get(Config.SWITCH)) || !resumed) return;
+        if (!cfg.on(Config.SWITCH) || !resumed) return;
         Item it = null;
         for (Item x : inputs.all) {
             if (x.id.equals(id)) it = x;
@@ -1367,9 +1299,7 @@ public final class Home extends Activity {
         };
         inputCard.setGravity(Gravity.CENTER_VERTICAL);
         inputCard.setPadding(dp(20), dp(18), dp(20), dp(18));
-        GradientDrawable bg = Ui.round(0xF51C1D22, dp(26));
-        bg.setStroke(Math.max(1, dp(1)), 0x29FFFFFF);
-        inputCard.setBackground(bg);
+        inputCard.setBackground(Ui.card(this, 0xF51C1D22, 26));
         inputCard.setElevation(dp(24));
 
         View badge = new View(this);
@@ -1394,12 +1324,12 @@ public final class Home extends Activity {
         words.addView(sub);
         inputCard.addView(words);
 
-        TextView go = cardButton("Switch", accent);
+        TextView go = Ui.pill(this, "Switch", accent);
         go.setOnClickListener(v -> {
             hideInputCard();
             launch(new Intent(input.intent), null);
         });
-        TextView later = cardButton("Not now", accent);
+        TextView later = Ui.pill(this, "Not now", accent);
         later.setOnClickListener(v -> hideInputCard());
         inputCard.addView(go);
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(WRAP, WRAP);
@@ -1417,18 +1347,6 @@ public final class Home extends Activity {
             card.setTranslationY(dp(36) * (1 - t));
         }, null);
         ui.postDelayed(cardTimeout, 15_000);
-    }
-
-    private TextView cardButton(String label, int accent) {
-        TextView b = Ui.text(this, 16, Ui.TEXT, Ui.MEDIUM);
-        b.setText(label);
-        b.setGravity(Gravity.CENTER);
-        b.setMinWidth(dp(104));
-        b.setPadding(dp(20), dp(11), dp(20), dp(11));
-        b.setFocusable(true);
-        b.setClickable(true);
-        Ui.chipStyle(b, accent, dp(22), Math.max(1, dp(1)));
-        return b;
     }
 
     private void hideInputCard() {
@@ -1484,108 +1402,39 @@ public final class Home extends Activity {
 
     /**
      * The gear's dropdown. Amazon's own settings grid draws its top row off screen on this TV, so
-     * the sections it hides (and the most used ones) open directly from here. Only the sections
-     * Fire OS lets other apps open are listed; "All Fire TV settings" opens Amazon's grid.
+     * the sections it hides (and the most used ones) open directly from here.
      */
     private void settingsMenu(View anchor) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(8), dp(10), dp(8), dp(8));
-        PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
-        openPop = pop;
-        pop.setBackgroundDrawable(Ui.round(0xF5202126, dp(18)));
-        pop.setElevation(dp(12));
-
-        TextView head = Ui.text(this, 14, Ui.MUTED, Ui.MEDIUM);
-        head.setLetterSpacing(0.08f);
-        head.setPadding(dp(16), dp(4), dp(16), dp(4));
-        head.setText("FIRE TV SETTINGS");
-        box.addView(head);
-        box.addView(menuRule());
-
-        // label, what is inside, action. Amazon locks the rest (Display & Sounds, Account,
-        // Preferences, Accessibility) to its own apps; Search reaches them, and so does the grid.
-        String[][] sections = {
-            {"Wi-Fi & network", "Connect, forget a network", Settings.ACTION_WIFI_SETTINGS},
-            {"Device & Software", "Restart, sleep, storage, about", Settings.ACTION_DEVICE_INFO_SETTINGS},
-            {"Apps", "Manage, clear data, uninstall", Settings.ACTION_APPLICATION_SETTINGS},
-            {"Remotes & Bluetooth", "Remotes, headphones, speakers", "com.amazon.device.settings.action.CONTROLLERS"},
-            {"Search all settings", "Picture, sound, account, Alexa\u2026", "com.amazon.tv.device.settings.action.SEARCH_SETTINGS"},
-        };
-        int accent = cfg.accent();
-        TextView first = null;
-        for (String[] s : sections) {
-            Intent i = new Intent(s[2]);
-            if (i.resolveActivity(getPackageManager()) == null) continue;
-            TextView row = menuRow(s[0], s[1], accent, () -> {
-                pop.dismiss();
-                launch(i, null);
-            });
-            box.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-            if (first == null) first = row;
+        Dropdown menu = dropdown().heading("FIRE TV SETTINGS").rule();
+        List<FireSettings.Section> sections = FireSettings.sections(this);
+        for (FireSettings.Section sec : sections) {
+            menu.item(sec.label, sec.hint, null, () -> launch(new Intent(sec.action), null));
         }
-        if (first != null) box.addView(menuRule());
-        TextView all = menuRow("All Fire TV settings", "Amazon's full settings grid", accent, () -> {
-            pop.dismiss();
-            openSettings();
-        });
-        box.addView(all, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-        if (first == null) first = all;
-        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        pop.setWidth(box.getMeasuredWidth()); // a known width lets it line up under the chip
-        pop.showAsDropDown(anchor, 0, dp(8), Gravity.END);
-        first.requestFocus();
+        if (!sections.isEmpty()) menu.rule();
+        menu.item("All Fire TV settings", "Amazon's full settings grid", null, this::openSettings);
+        menu.show(anchor);
     }
 
-    private View menuRule() {
-        View rule = new View(this);
-        rule.setBackgroundColor(0x24FFFFFF);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(1)));
-        lp.setMargins(dp(12), dp(6), dp(12), dp(6));
-        rule.setLayoutParams(lp);
-        return rule;
+    /** A new top-bar dropdown; Home closes it when the screen is left or Home is pressed. */
+    private Dropdown dropdown() {
+        closePop();
+        openPop = new Dropdown(this, cfg.accent());
+        return openPop;
     }
 
-    /** A dropdown row; {@code hint}, if any, is a smaller second line saying what is inside. */
-    private TextView menuRow(String label, String hint, int accent, Runnable run) {
-        TextView row = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
-        if (hint == null) {
-            row.setText(label);
-        } else {
-            android.text.SpannableString s = new android.text.SpannableString(label + "\n" + hint);
-            s.setSpan(new android.text.style.RelativeSizeSpan(0.76f), label.length() + 1, s.length(), 0);
-            row.setText(s);
-            row.setLineSpacing(dp(3), 1f);
-        }
-        row.setMinWidth(dp(260));
-        row.setPadding(dp(16), dp(12), dp(16), dp(12));
-        row.setFocusable(true);
-        row.setClickable(true);
-        Ui.focusStyle(row, accent, 0x00000000, dp(10));
-        row.setOnClickListener(v -> run.run());
-        return row;
-    }
-
-    /**
-     * Fire OS answers the generic settings action with a stub that reopens Amazon's home, which
-     * Guard then replaces with ours. The TV settings entry point opens the real settings screen.
-     */
     private void openSettings() {
-        Intent tvSettings = new Intent(Intent.ACTION_MAIN)
-                .addCategory("android.intent.category.LEANBACK_SETTINGS");
-        boolean found = tvSettings.resolveActivity(getPackageManager()) != null;
-        launch(found ? tvSettings : new Intent(Settings.ACTION_SETTINGS), null);
+        launch(FireSettings.all(this), null);
     }
 
     private void closePop() {
-        if (openPop != null && openPop.isShowing()) openPop.dismiss();
+        if (openPop != null) openPop.dismiss();
         openPop = null;
     }
 
     private void showTips() {
         if (!resumed || tipsOpen || isFinishing()) return;
         if (frame != null) stopFrame();
-        if (rest != null) stopRest();
+        care.wake();
         tipsOpen = true;
         Help.welcome(this, () -> {
             tipsOpen = false;
@@ -1594,58 +1443,12 @@ public final class Home extends Activity {
         });
     }
 
-    private boolean care() {
-        return "on".equals(cfg.get(Config.CARE));
-    }
-
-    /** Moves the home screen to the next of nine spots, at most 2 dp from its place. */
-    private void shiftPage() {
-        ui.removeCallbacks(shift);
-        if (pageView == null) return;
-        if (!care()) {
-            pageView.setTranslationX(0);
-            pageView.setTranslationY(0);
-            return;
-        }
-        shiftStep = (shiftStep + 1) % SHIFTS.length;
-        pageView.setTranslationX(dp(SHIFTS[shiftStep][0]));
-        pageView.setTranslationY(dp(SHIFTS[shiftStep][1]));
-        if (resumed) ui.postDelayed(shift, SHIFT_MS);
-    }
-
-    /** Idle with screen care on: fade to near black (the TV still sleeps on its own schedule). */
-    private void startRest() {
-        if (rest != null || !resumed || !care()) return;
-        // the photo frame is running, or a dropdown is open: try again later
-        if ((frame != null && root.getKeepScreenOn()) || !hasWindowFocus()) {
-            ui.postDelayed(restRun, 60_000L);
-            return;
-        }
-        rest = new View(this);
-        rest.setBackgroundColor(0xFF000000);
-        rest.setAlpha(0f);
-        root.addView(rest, new FrameLayout.LayoutParams(MATCH, MATCH));
-        View r = rest;
-        Tween.run(2500, t -> r.setAlpha(0.92f * t), null);
-    }
-
-    private void stopRest() {
-        View going = rest;
-        rest = null;
-        if (going == null) return;
-        Tween.run(300, t -> going.setAlpha(0.92f * (1 - t)), () -> root.removeView(going));
-        resetIdle();
-    }
-
     private void resetIdle() {
         ui.removeCallbacks(idle);
-        ui.removeCallbacks(restRun);
-        if (resumed && frame == null && rest == null && care()) {
-            ui.postDelayed(restRun, Integer.parseInt(cfg.get(Config.REST)) * 60_000L);
-        }
+        care.idle(resumed && frame == null);
         String after = cfg.get(Config.FRAME);
         // no photo frame at night: the TV should be allowed to fall asleep
-        if (frame != null || "off".equals(after) || !resumed || isNight()) return;
+        if (frame != null || !cfg.frameOn() || !resumed || isNight()) return;
         ui.postDelayed(idle, Integer.parseInt(after) * 60_000L);
     }
 
@@ -1656,10 +1459,10 @@ public final class Home extends Activity {
             resetIdle();
             return;
         }
-        if (rest != null) return;
-        ui.removeCallbacks(restRun);
+        if (care.isDark()) return;
+        care.idle(false);
         frame = new PhotoFrame(this, io, cfg.dir);
-        frame.setDrift(care());
+        frame.setDrift(care.on());
         frame.setAlpha(0f);
         root.addView(frame, new FrameLayout.LayoutParams(MATCH, MATCH));
         PhotoFrame showing = frame;
@@ -1675,7 +1478,7 @@ public final class Home extends Activity {
         root.setKeepScreenOn(false);
         if (frame != null) frame.pause();
         // the last picture would otherwise sit still until the TV sleeps
-        if (care()) startRest();
+        if (care.on()) care.darkIn(0);
     }
 
     private void stopFrame() {
@@ -1708,7 +1511,7 @@ public final class Home extends Activity {
     /** Refreshes the forecast every 30 min while weather is on; shows or hides the weather views. */
     private void weather() {
         String lat = cfg.get(Weather.LAT, ""), lon = cfg.get(Weather.LON, "");
-        boolean on = "on".equals(cfg.get(Config.WEATHER)) && !lat.isEmpty() && !lon.isEmpty();
+        boolean on = cfg.on(Config.WEATHER) && !lat.isEmpty() && !lon.isEmpty();
         if (!on) {
             weather = null;
             weatherKey = null;
@@ -1716,7 +1519,7 @@ public final class Home extends Activity {
             return;
         }
         boolean f = "f".equals(cfg.get(Config.UNITS));
-        boolean h24 = clock24();
+        boolean h24 = cfg.clock24(this);
         String key = lat + "," + lon + "," + f + "," + h24;
         long now = System.currentTimeMillis();
         if (!key.equals(weatherKey)) {
@@ -1800,10 +1603,6 @@ public final class Home extends Activity {
         frameInfo();
     }
 
-    private boolean on(Config.Choice c) {
-        return "on".equals(cfg.get(c));
-    }
-
     /** The next five hours under the top bar: time, icon, temperature, chance of rain. */
     private void showHours() {
         hours.removeAllViews();
@@ -1845,11 +1644,6 @@ public final class Home extends Activity {
         hoursRule.setVisibility(weatherBox.getVisibility());
     }
 
-    private boolean clock24() {
-        String mode = cfg.get(Config.CLOCK);
-        return "24h".equals(mode) || "auto".equals(mode) && DateFormat.is24HourFormat(this);
-    }
-
     /** Wi-Fi name (or Ethernet) with a dot: green online, amber no internet, red offline. */
     private void showNet() {
         if (net == null) return;
@@ -1874,7 +1668,7 @@ public final class Home extends Activity {
                 name = "Connected";
             }
             boolean online = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
-            color = online ? 0xFF34C759 : 0xFFFFB340;
+            color = online ? Ui.GOOD : Ui.WARN;
             if (!online) name += " \u00B7 No internet";
         }
         // a drawable, not a colored character: Fire OS "high contrast text" repaints text black/white
@@ -1883,18 +1677,8 @@ public final class Home extends Activity {
         chipIcon(net);
     }
 
-    private android.graphics.drawable.Drawable dot(int color) {
-        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
-        d.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        d.setColor(color);
-        d.setBounds(0, 0, dp(10), dp(10));
-        return d;
-    }
-
     private void openWifi() {
-        Intent i = new Intent(Settings.ACTION_WIFI_SETTINGS);
-        if (i.resolveActivity(getPackageManager()) != null) launch(i, null);
-        else openSettings();
+        launch(FireSettings.wifi(this), null);
     }
 
     /** The Inputs dropdown under its top-bar button: every shown input, a dot when something is plugged in. */
@@ -1904,37 +1688,13 @@ public final class Home extends Activity {
             Ui.notice(this, "No inputs found", Icons.INPUT);
             return;
         }
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(8), dp(8), dp(8), dp(8));
-        PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
-        openPop = pop;
-        pop.setBackgroundDrawable(Ui.round(0xF2202126, dp(16)));
-        pop.setElevation(dp(12));
-        int accent = cfg.accent();
-        TextView first = null;
+        Dropdown menu = dropdown();
         for (Item it : list) {
-            TextView row = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
-            String label = Catalog.label(cfg, it).toString();
-            row.setText(label);
-            if (it.state == TvInputManager.INPUT_STATE_CONNECTED) {
-                row.setCompoundDrawablesRelative(null, null, dot(0xFF34C759), null);
-                row.setCompoundDrawablePadding(dp(12));
-            }
-            row.setMinWidth(dp(220));
-            row.setPadding(dp(16), dp(12), dp(16), dp(12));
-            row.setFocusable(true);
-            row.setClickable(true);
-            Ui.focusStyle(row, accent, 0x00000000, dp(10));
-            row.setOnClickListener(v -> {
-                pop.dismiss();
-                launch(new Intent(it.intent), null);
-            });
-            box.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-            if (first == null) first = row;
+            boolean live = it.state == TvInputManager.INPUT_STATE_CONNECTED;
+            menu.item(Catalog.label(cfg, it).toString(), null, live ? Ui.dot(Ui.GOOD, dp(10)) : null,
+                    () -> launch(new Intent(it.intent), null));
         }
-        pop.showAsDropDown(anchor, 0, dp(8));
-        first.requestFocus();
+        menu.show(anchor);
     }
 
     private void open(Tile t) {

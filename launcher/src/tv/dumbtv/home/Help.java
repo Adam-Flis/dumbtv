@@ -5,15 +5,12 @@ import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.Dialog;
 import android.content.Context;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -58,9 +55,8 @@ final class Help {
     /** The welcome card: four short lines and one button. {@code done} runs when it closes. */
     static void welcome(Activity a, Runnable done) {
         int accent = Config.get(a).accent();
-        Dialog d = new Dialog(a);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        LinearLayout panel = panel(a);
+        Dialog d = Panel.dialog(a);
+        LinearLayout panel = Panel.box(a);
 
         TextView head = Ui.text(a, 28, Ui.TEXT, Ui.LIGHT);
         head.setText("Welcome to your home screen");
@@ -77,14 +73,8 @@ final class Help {
         tip(panel, Icons.INPUT, "The round buttons at the top switch inputs, set a sleep timer and open Options.");
         tip(panel, Icons.HOUSE, "Lost? Press Home on the remote to come straight back here.");
 
-        TextView ok = Ui.text(a, 18, Ui.TEXT, Ui.MEDIUM);
-        ok.setText("Got it");
-        ok.setGravity(Gravity.CENTER);
+        TextView ok = Ui.pill(a, "Got it", accent);
         ok.setMinWidth(dp(a, 180));
-        ok.setPadding(dp(a, 28), dp(a, 12), dp(a, 28), dp(a, 12));
-        ok.setFocusable(true);
-        ok.setClickable(true);
-        Ui.chipStyle(ok, accent, dp(a, 24), Math.max(1, dp(a, 1)));
         ok.setOnClickListener(v -> d.dismiss());
         LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(WRAP, WRAP);
         olp.gravity = Gravity.CENTER_HORIZONTAL;
@@ -100,15 +90,14 @@ final class Help {
         d.setOnDismissListener(x -> {
             if (done != null) done.run();
         });
-        show(a, d, panel, 760);
+        Panel.show(a, d, panel, 760);
         ok.requestFocus();
     }
 
     /** What each remote button does here, as key caps. */
     static void remote(Activity a) {
-        Dialog d = new Dialog(a);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        LinearLayout panel = panel(a);
+        Dialog d = Panel.dialog(a);
+        LinearLayout panel = Panel.box(a);
         TextView head = Ui.text(a, 24, Ui.TEXT, Ui.LIGHT);
         head.setText("Your remote");
         head.setPadding(0, 0, 0, dp(a, 14));
@@ -138,7 +127,28 @@ final class Help {
             }
             return false;
         });
-        show(a, d, panel, 700);
+        Panel.show(a, d, panel, 700);
+    }
+
+    /**
+     * The sleep timer cannot turn the TV off yet. Shared by the top bar and Options › Help so
+     * the wording and the command live in one place.
+     */
+    static void sleepSetup(Activity a) {
+        new AlertDialog.Builder(a, Ui.DIALOG)
+                .setTitle("Sleep timer needs a one-time setup")
+                .setMessage("Fire TV only lets this app turn the TV off after one step from a computer:\n\n"
+                        + Sleep.ADMIN_COMMAND
+                        + "\n\nUntil then, Fire TV's own sleep timer works (All Fire TV settings).")
+                .setPositiveButton("Open Fire TV settings", (d, w) -> {
+                    try {
+                        a.startActivity(FireSettings.all(a).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                    } catch (RuntimeException e) {
+                        Ui.notice(a, "Could not open that", -1);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /** A plain message with one button, for "this needs setting up" explanations. */
@@ -165,28 +175,6 @@ final class Help {
         t.setText(text);
         line.addView(t, new LinearLayout.LayoutParams(0, WRAP, 1f));
         panel.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
-    }
-
-    static LinearLayout panel(Context a) {
-        LinearLayout panel = new LinearLayout(a);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(a, 44), dp(a, 32), dp(a, 44), dp(a, 30));
-        GradientDrawable bg = Ui.round(0xFA1C1D22, dp(a, 26));
-        bg.setStroke(Math.max(1, dp(a, 1)), 0x29FFFFFF);
-        panel.setBackground(bg);
-        return panel;
-    }
-
-    static void show(Activity a, Dialog d, View panel, int widthDp) {
-        d.setContentView(panel);
-        Window w = d.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new ColorDrawable(0));
-            w.setDimAmount(0.7f);
-        }
-        d.show();
-        // the dialog theme caps the width; set it so lines do not wrap early
-        if (w != null) w.setLayout(dp(a, widthDp), WRAP);
     }
 
     private static int dp(Context c, float v) {

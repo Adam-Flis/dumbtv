@@ -20,6 +20,36 @@ import java.util.Map;
 /** Where tiles come from, and which of them the user wants on the home screen. */
 final class Catalog {
     static final String APPS = "apps", INPUTS = "inputs", FAVS = "favs", RECENT = "recent";
+    /** The home screen rows, in their default order. Name, icon and on/off switch below. */
+    static final String[] ROWS = {FAVS, RECENT, APPS, INPUTS};
+
+    static String rowTitle(String kind) {
+        switch (kind) {
+            case FAVS: return "Favorites";
+            case RECENT: return "Recently used";
+            case APPS: return "All apps";
+            default: return "Inputs";
+        }
+    }
+
+    static int rowIcon(String kind) {
+        switch (kind) {
+            case FAVS: return Icons.STAR;
+            case RECENT: return Icons.CLOCK;
+            case APPS: return Icons.GRID;
+            default: return Icons.INPUT;
+        }
+    }
+
+    /**
+     * The setting that shows or hides a row, or null for rows that always show (Favorites and
+     * All apps, so every app stays reachable).
+     */
+    static Config.Choice rowSwitch(String kind) {
+        if (RECENT.equals(kind)) return Config.RECENT;
+        if (INPUTS.equals(kind)) return Config.INPUTS;
+        return null;
+    }
     /** home.conf key: the Favorites dock, package names in dock order. */
     static final String FAVORITES = "favorites";
     /** Id of the "Add favorites" tile shown while the dock is empty. */

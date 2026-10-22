@@ -2,14 +2,11 @@ package tv.dumbtv.home;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -41,16 +38,9 @@ final class TimeChooser {
         int accent = Config.get(a).accent();
         int[] v = {length ? Math.min(9, minutes / 60) : (minutes / 60) % 24, minutes % 60};
         int hours = length ? 10 : 24;
-        Dialog d = new Dialog(a);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-
-        LinearLayout panel = new LinearLayout(a);
-        panel.setOrientation(LinearLayout.VERTICAL);
+        Dialog d = Panel.dialog(a);
+        LinearLayout panel = Panel.box(a);
         panel.setGravity(Gravity.CENTER_HORIZONTAL);
-        panel.setPadding(dp(a, 40), dp(a, 28), dp(a, 40), dp(a, 28));
-        GradientDrawable bg = Ui.round(0xFA1C1D22, dp(a, 26));
-        bg.setStroke(Math.max(1, dp(a, 1)), 0x29FFFFFF);
-        panel.setBackground(bg);
 
         TextView head = Ui.text(a, 22, Ui.TEXT, Ui.MEDIUM);
         head.setText(title);
@@ -87,8 +77,8 @@ final class TimeChooser {
         LinearLayout buttons = new LinearLayout(a);
         buttons.setGravity(Gravity.CENTER);
         buttons.setPadding(0, dp(a, 14), 0, 0);
-        TextView save = button(a, length ? "Start" : "Save", accent);
-        TextView cancel = button(a, "Cancel", accent);
+        TextView save = Ui.pill(a, length ? "Start" : "Save", accent);
+        TextView cancel = Ui.pill(a, "Cancel", accent);
         buttons.addView(save);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(WRAP, WRAP);
         clp.leftMargin = dp(a, 12);
@@ -123,7 +113,7 @@ final class TimeChooser {
                 int by = code == KeyEvent.KEYCODE_DPAD_UP ? 1 : code == KeyEvent.KEYCODE_DPAD_DOWN ? -1 : 0;
                 if (by != 0) {
                     if (view == hour) v[0] = (v[0] + by + hours) % hours;
-                    else if (view == minute) v[1] = by > 0 ? (v[1] / 5 * 5 + 5) % 60 : ((v[1] + 4) / 5 * 5 - 5 + 60) % 60;
+                    else if (view == minute) v[1] = stepMinute(v[1], by);
                     else v[0] = (v[0] + 12) % 24;
                     view.playSoundEffect(by > 0 ? SoundEffectConstants.NAVIGATION_UP : SoundEffectConstants.NAVIGATION_DOWN);
                     show.run();
@@ -137,15 +127,7 @@ final class TimeChooser {
             });
         }
 
-        d.setContentView(panel);
-        Window w = d.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new ColorDrawable(0));
-            w.setDimAmount(0.6f);
-        }
-        d.show();
-        // the dialog theme caps the width; let the panel take what it needs so nothing wraps
-        if (w != null) w.setLayout(dp(a, 680), ViewGroup.LayoutParams.WRAP_CONTENT);
+        Panel.show(a, d, panel, 680);
         hour.requestFocus();
     }
 
@@ -182,17 +164,12 @@ final class TimeChooser {
         return t;
     }
 
-    private static TextView button(Activity a, String label, int accent) {
-        TextView b = Ui.text(a, 17, Ui.TEXT, Ui.MEDIUM);
-        b.setId(View.generateViewId());
-        b.setText(label);
-        b.setGravity(Gravity.CENTER);
-        b.setMinWidth(dp(a, 120));
-        b.setPadding(dp(a, 22), dp(a, 11), dp(a, 22), dp(a, 11));
-        b.setFocusable(true);
-        b.setClickable(true);
-        Ui.chipStyle(b, accent, dp(a, 22), Math.max(1, dp(a, 1)));
-        return b;
+    /**
+     * The minute column moves in fives: up goes to the next multiple of 5, down to the previous
+     * one (so 47 goes to 50 or 45), wrapping around the hour.
+     */
+    static int stepMinute(int m, int by) {
+        return by > 0 ? (m / 5 * 5 + 5) % 60 : ((m + 4) / 5 * 5 - 5 + 60) % 60;
     }
 
     private static int dp(Activity a, float v) {

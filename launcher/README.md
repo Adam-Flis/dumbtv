@@ -59,6 +59,7 @@ Gradle: `build.sh` calls aapt2, javac, d8, zipalign and apksigner directly.
 brew install openjdk@17
 brew install --cask android-commandlinetools
 sdkmanager "platforms;android-28" "build-tools;34.0.0"
+./launcher/test.sh               # plain-JVM logic tests (build.sh runs them first)
 ./launcher/build.sh              # → launcher/build/dumbtv-home.apk
 ./launcher/install.sh --build    # build, install, take over HOME
 ```
@@ -281,6 +282,14 @@ until another app is opened.
 | `src/.../Guard.java` | the Fire OS 7/8 HOME takeover described above |
 | `src/.../Keeper.java` | the Fire OS 6 HOME takeover (UsageStats + moveTaskToFront) |
 | `src/.../BootReceiver.java` | restarts the Keeper after a boot or an update |
+| `src/.../Ui.java` | shared look: color tokens (GOOD, WARN, ACTIVE, PANEL, MENU, RULE), text, pills, dots, rules, focus backgrounds, notices |
+| `src/.../Dropdown.java` | the top-bar dropdowns (Inputs, Sleep timer, Settings) |
+| `src/.../Panel.java` | the centered card every custom dialog uses |
+| `src/.../FireSettings.java` | the Fire TV settings screens other apps may open, and the full grid |
+| `src/.../ScreenCare.java` | OLED care: drift and go dark when idle |
+| `src/.../Help.java`, `RowsEditor.java`, `TimeChooser.java` | welcome card and checks, row order, time picker |
+| `sdk.sh` | finds the Android SDK and a JDK; shared by build.sh and test.sh |
+| `test.sh`, `test/` | plain-JVM tests for pure logic (labels, row order, time steps) |
 | `build.sh` | aapt2 → javac → d8 → zipalign → apksigner |
 | `install.sh` | download + checksum (or `--build`), install, HOME hook (Guard or Keeper), `--undo` |
 | `version.env` | the only place `VERSION` and `APK_SHA256` live; both scripts read it |

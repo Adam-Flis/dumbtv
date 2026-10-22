@@ -68,7 +68,7 @@ final class Tile extends View {
         badgeMark.setStrokeWidth(Ui.dp(c, 2.5f));
         badgeMark.setStrokeCap(Paint.Cap.ROUND);
         badgeMark.setStrokeJoin(Paint.Join.ROUND);
-        dot.setColor(0xFF34C759);
+        dot.setColor(Ui.GOOD);
         inner.setColor(Ui.TEXT);
         inner.setTypeface(Ui.MEDIUM);
         inner.setTextAlign(Paint.Align.CENTER);
