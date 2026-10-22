@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Only for the optional weather (Options > Weather, off by default): Open-Meteo, no account. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- granted with adb only (pm grant): lets Options set Fire TV's screensaver timers -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
 
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         android:maxSdkVersion="27" />

@@ -67,7 +67,6 @@ public final class Options extends Activity {
         Cond weatherOn = () -> cfg.on(Config.WEATHER);
         Cond frameOn = cfg::frameOn;
         Cond nightOn = () -> cfg.on(Config.NIGHT);
-        Cond careOn = () -> cfg.on(Config.CARE);
 
         section("Home screen", Icons.GRID);
         list.addView(action("Favorites", () -> {
@@ -117,7 +116,6 @@ public final class Options extends Activity {
             finish();
         }), frameOn));
         list.addView(choice(Config.CARE));
-        list.addView(only(choice(Config.REST), careOn));
 
         section("Night", Icons.NIGHT);
         list.addView(choice(Config.NIGHT));
@@ -144,6 +142,11 @@ public final class Options extends Activity {
                 this::fixHome), () -> !Help.homeHeld(this)));
         list.addView(status("Sleep timer", () -> Sleep.allowed(this), () -> "Ready", "Needs setup",
                 () -> Help.sleepSetup(this)));
+        list.addView(status("Screen saver in apps", () -> SystemSaver.managed(this), () -> "Ready", "Needs setup",
+                () -> Help.explain(this, "Screen saver in apps needs a one-time setup",
+                        "So the screen saver also starts when an app sits idle (a paused video), Fire TV"
+                        + " has to let this app set its screensaver timers. Run once from a computer:\n\n"
+                        + SystemSaver.GRANT)));
         list.addView(status("Internet", () -> Help.online(this), () -> "Connected", "Not connected",
                 () -> startActivity(FireSettings.wifi(this))));
         list.addView(status("Weather", () -> cfg.on(Config.WEATHER)

@@ -327,6 +327,8 @@ public final class Home extends Activity {
         Guard.arrived(this);
         cfg.refresh();
         cfg.visited();
+        // Fire TV's idle timers follow Options › Screen saver (after a change there, or a reset)
+        SystemSaver.apply(this, cfg);
         if (cfg.textScale() != builtScale || "grid".equals(cfg.get(Config.APPS_LAYOUT)) != builtGrid
                 || !cfg.rowOrder().equals(builtOrder)) {
             // text sizes and the All apps layout are set at build time; rebuilding is simplest
@@ -1400,11 +1402,11 @@ public final class Home extends Activity {
 
     private void resetIdle() {
         ui.removeCallbacks(idle);
-        care.idle(resumed && frame == null);
-        String after = cfg.get(Config.FRAME);
-        // no screen saver at night: the TV should be allowed to fall asleep
-        if (frame != null || !cfg.frameOn() || !resumed || isNight()) return;
-        ui.postDelayed(idle, Integer.parseInt(after) * 60_000L);
+        // Fire TV's own timer starts the screen saver (FrameDream) here as in any app, once it
+        // follows Options (SystemSaver); the home screen only keeps its own timer without that.
+        // No screen saver at night: the TV should be allowed to fall asleep.
+        if (SystemSaver.managed(this) || frame != null || !cfg.frameOn() || !resumed || isNight()) return;
+        ui.postDelayed(idle, Integer.parseInt(cfg.get(Config.FRAME)) * 60_000L);
     }
 
     private void startFrame() {
@@ -1415,7 +1417,6 @@ public final class Home extends Activity {
             return;
         }
         if (care.isDark()) return;
-        care.idle(false);
         frame = new PhotoFrame(this, io, cfg.dir, cfg.get(Config.FRAME_CLOCK), cfg.get(Config.FRAME_WEATHER));
         care.follow(frame.overlay());
         frame.setAlpha(0f);

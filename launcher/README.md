@@ -112,26 +112,31 @@ upstream home screen:
   settings grid draws its top row (Device & Software, Network, Account) off screen on this TV,
   most likely because it counts on its slide-in animation and animations are off. Fire OS lets
   other apps open only these sections (the rest need an Amazon-only permission).
-- **Screen saver in every app** (`FrameDream.java`, Android's screensaver hook): when an app such
-  as YouTube sits idle (a paused video), Fire TV starts the same screen saver instead of going
-  to sleep, then sleeps after Stop after. Off, at night, or right after the home screen's own
-  screen saver ran, it ends at once and the TV sleeps. Choose it once from a computer; Fire TV
-  only starts a screensaver when its sleep timer is longer than its screen-off timer:
+- **One screen saver, home screen and apps alike** (`FrameDream.java` + `SystemSaver.java`):
+  the screen saver is Android's screensaver ("dream"), so Fire TV starts it after the same idle
+  time on the home screen and in any app (a paused video); a playing video never triggers it.
+  Options › Screen saver sets both timers: **Screen saver** (Off / after 1-10 min) and **Sleep
+  after saver** (15 min-2 h of screen saver, then the TV sleeps). The launcher writes Fire TV's
+  screensaver_components, screensaver_enabled, screen_off_timeout and sleep_timeout from them,
+  once allowed from a computer:
 
   ```sh
-  adb shell settings put secure screensaver_components tv.dumbtv.home/.FrameDream
-  adb shell settings put secure screensaver_enabled 1
-  adb shell settings put secure sleep_timeout 1800000   # sleep backstop: 30 min
+  adb shell pm grant tv.dumbtv.home android.permission.WRITE_SECURE_SETTINGS
   ```
 
-  Undo: `screensaver_enabled 0`, `screensaver_components com.amazon.ftv.screensaver/.app.services.ScreensaverService`
-  and `sleep_timeout 300000` (or Amazon's original 840000).
-- **Screen care (OLED)** (Options › Screen saver, on by default): the home screen drifts up to
-  2 dp to one of nine spots every 3 minutes, and after 5-30 min with no button pressed (Black screen after; default
-  10) it fades to near black (any button brings it back; the TV still sleeps on its own schedule). The
-  screen saver's clock and weather drift the same way and are drawn at 85 % brightness, and when the screen saver's time is up the screen goes dark instead of holding the last picture. OLED owners
-  should also keep Fire TV's own sleep setting on (not "Never").
-- **Options › Help**: green/amber checks for the sleep timer permission, internet and weather
+  With the screen saver Off, the TV sleeps after 5 idle minutes. At night the screensaver
+  stays black and the TV sleeps at the same 5 minutes. Without the grant, the home screen runs
+  its own screen saver and apps follow Fire TV's own timers (Options › Help shows "Screen saver
+  in apps: Needs setup"). Undo: `pm revoke` instead of `pm grant`, then set Fire TV's
+  screensaver back to Amazon's in its settings (or `settings put secure screensaver_components
+  com.amazon.ftv.screensaver/.app.services.ScreensaverService`).
+- **Screen care (OLED)** (Options › Screen saver, on by default): the home screen and the screen
+  saver's clock and weather drift up to 2 dp to one of nine spots every 3 minutes, the screen
+  saver's clock and weather are drawn at 85 % brightness, and when the home screen's screen saver
+  ends the screen goes black instead of holding the last picture until the TV sleeps. OLED
+  owners should also keep Fire TV's own sleep setting on (not "Never").
+- **Options › Help**: green/amber checks for the sleep timer permission, screen saver in apps,
+  internet and weather
   (OK on an amber one explains the fix), a Home button row that only appears when Home opens
   Amazon's home (on Fire OS 6 it offers the usage-access setting), and a remote-button guide.
 - **Home screen layout** (Options › Home screen): Favorites, Recently used, All apps and Inputs in

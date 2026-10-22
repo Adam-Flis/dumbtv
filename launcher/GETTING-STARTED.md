@@ -46,9 +46,9 @@ The TV also shows these in **Options › Help › Remote guide**.
 
 **Night mode:** press the moon button to turn it on or off now. To set it to turn on and off by itself each evening, go to Options › Night.
 
-**Screen saver:** if it's turned on, the TV shows photos after a few minutes without anyone pressing a button. Any button brings the home screen back.
+**Screen saver:** if it's turned on, the TV shows photos with the time and weather after a few minutes without anyone pressing a button, on the home screen or in a paused app. Any button brings back what you were watching. After a while the TV goes to sleep by itself.
 
-**Screen goes dark by itself:** that's Screen care. It protects some TVs from burn-in. Press any button and the screen comes back. You can change or turn it off in Options › Screen saver.
+**Screen goes black after the screen saver:** that's Screen care, just before the TV sleeps. It protects some TVs from burn-in. Press any button and the screen comes back. You can turn it off in Options › Screen saver.
 
 ## If something seems wrong
 

@@ -30,10 +30,17 @@ public final class FrameDream extends DreamService {
         setFullscreen(true);
         cfg = Config.get(this);
         cfg.refresh();
-        // off, at night, or the home screen's screen saver just ran its course: let the TV sleep
+        // off, or the home screen's screen saver just ran its course: let the TV sleep now
         boolean justRan = System.currentTimeMillis() - PhotoFrame.endedAt < 2 * 60_000L;
-        if (!cfg.frameOn() || cfg.nightNow() || justRan) {
+        if (!cfg.frameOn() || justRan) {
             finish();
+            return;
+        }
+        if (cfg.nightNow()) {
+            // no pictures at night; a black screen until the usual no-screen-saver sleep time
+            setContentView(new android.view.View(this));
+            int wait = SystemSaver.NO_SAVER_SLEEP_MIN - SystemSaver.startMinutes(cfg);
+            ui.postDelayed(done, Math.max(0, wait) * 60_000L);
             return;
         }
         io = Executors.newSingleThreadExecutor();

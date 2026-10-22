@@ -5,9 +5,10 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 /**
- * Burn-in care for OLED TVs (Options › Night & photos › Screen care): the home screen drifts a
- * couple of pixels every few minutes, and after a quiet spell it fades to near black until a
- * button is pressed. Everything here hangs off Config.CARE and Config.REST.
+ * Burn-in care for OLED TVs (Options › Screen saver › Screen care): the home screen and the
+ * screen saver's clock and weather drift a couple of pixels every few minutes, the screen
+ * saver's text is drawn a little dimmer, and when the screen saver ends the screen goes black
+ * until the TV sleeps. Everything here hangs off Config.CARE.
  */
 final class ScreenCare {
     /** True while going dark would get in the way: the screen saver runs, a menu is open. */
@@ -74,14 +75,6 @@ final class ScreenCare {
         ui.removeCallbacks(rest);
         if (dark != null) root.removeView(dark);
         dark = null;
-    }
-
-    /** Something happened: restart the quiet-spell countdown, or hold it while not {@code allowed}. */
-    void idle(boolean allowed) {
-        ui.removeCallbacks(rest);
-        if (running && allowed && dark == null && on()) {
-            ui.postDelayed(rest, Integer.parseInt(cfg.get(Config.REST)) * 60_000L);
-        }
     }
 
     /** Goes dark after {@code ms} regardless of the setting's delay (the screen saver ended, tests). */
