@@ -106,10 +106,9 @@ upstream home screen:
   `adb shell dpm set-active-admin tv.dumbtv.home/.Admin`. Without it the button offers Fire TV's
   own sleep timer. Options › More › Remove sleep timer permission, or `install.sh --undo`, takes
   it away (Android needs that before an uninstall).
-- **Settings** (top bar, gear): a short menu of Fire TV sections that open directly, each with
-  a line saying what is inside: Wi-Fi & network, Device & Software, Apps, Remotes & Bluetooth,
-  **Search all settings** (Amazon's own settings search, a way into the sections Amazon locks), and
-  **All Fire TV settings**. Home closes any open dropdown. Amazon's
+- **Settings** (top bar, gear): a short menu of Fire TV sections that open directly (Wi-Fi &
+  network, Device & Software, Apps, Remotes & Bluetooth) and **All Fire TV settings** for
+  everything else. Home closes any open dropdown. Amazon's
   settings grid draws its top row (Device & Software, Network, Account) off screen on this TV,
   most likely because it counts on its slide-in animation and animations are off. Fire OS lets
   other apps open only these sections (the rest need an Amazon-only permission).
@@ -147,8 +146,8 @@ upstream home screen:
   another setting only appear when it is on.
 - **Weather** (off by default): Options › Weather, Temperature, Weather city. Uses
   [Open-Meteo](https://open-meteo.com) (no account, no key; only the city's coordinates are
-  sent). Shows temperature, conditions and high/low by the clock, plus one heads-up line
-  ("Rain likely around 5 PM, take a jacket"). Each extra can be shown or hidden: condition
+  sent). Shows temperature, conditions and high/low by the clock; the photo frame adds one
+  heads-up line ("Rain likely around 5 PM, take a jacket"). Each extra can be shown or hidden: condition
   icon, next 5 hours (icon, temperature, chance of rain), feels like & wind, next
   sunrise/sunset & tomorrow.
 - **Photo frame** (off by default): after 1–10 idle minutes on the home screen, photos

@@ -2,8 +2,6 @@ package tv.dumbtv.home;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import android.text.SpannableString;
-import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -58,23 +56,13 @@ final class Dropdown {
 
     /** A row; the menu closes before {@code run} runs. */
     TextView item(String label, Runnable run) {
-        return item(label, null, null, run);
+        return item(label, null, run);
     }
 
-    /**
-     * A row with an optional smaller second line ({@code hint}) saying what is inside, and an
-     * optional drawable at its end (the green "plugged in" dot of an input).
-     */
-    TextView item(String label, String hint, Drawable end, Runnable run) {
+    /** A row with an optional drawable at its end (the green "plugged in" dot of an input). */
+    TextView item(String label, Drawable end, Runnable run) {
         TextView row = Ui.text(c, 17, Ui.TEXT, Ui.MEDIUM);
-        if (hint == null) {
-            row.setText(label);
-        } else {
-            SpannableString s = new SpannableString(label + "\n" + hint);
-            s.setSpan(new RelativeSizeSpan(0.76f), label.length() + 1, s.length(), 0);
-            row.setText(s);
-            row.setLineSpacing(dp(3), 1f);
-        }
+        row.setText(label);
         if (end != null) {
             row.setCompoundDrawablesRelative(null, null, end, null);
             row.setCompoundDrawablePadding(dp(12));

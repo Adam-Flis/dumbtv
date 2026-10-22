@@ -16,24 +16,19 @@ import java.util.List;
 final class FireSettings {
     /** One entry of the gear's dropdown. */
     static final class Section {
-        final String label, hint, action;
+        final String label, action;
 
-        Section(String label, String hint, String action) {
+        Section(String label, String action) {
             this.label = label;
-            this.hint = hint;
             this.action = action;
         }
     }
 
     private static final Section[] SECTIONS = {
-        new Section("Wi-Fi & network", "Connect, forget a network", Settings.ACTION_WIFI_SETTINGS),
-        new Section("Device & Software", "Restart, sleep, storage, about", Settings.ACTION_DEVICE_INFO_SETTINGS),
-        new Section("Apps", "Manage, clear data, uninstall", Settings.ACTION_APPLICATION_SETTINGS),
-        new Section("Remotes & Bluetooth", "Remotes, headphones, speakers",
-                "com.amazon.device.settings.action.CONTROLLERS"),
-        // Amazon's settings search: a way into the locked sections
-        new Section("Search all settings", "Picture, sound, account, Alexa…",
-                "com.amazon.tv.device.settings.action.SEARCH_SETTINGS"),
+        new Section("Wi-Fi & network", Settings.ACTION_WIFI_SETTINGS),
+        new Section("Device & Software", Settings.ACTION_DEVICE_INFO_SETTINGS),
+        new Section("Apps", Settings.ACTION_APPLICATION_SETTINGS),
+        new Section("Remotes & Bluetooth", "com.amazon.device.settings.action.CONTROLLERS"),
     };
 
     private FireSettings() {}

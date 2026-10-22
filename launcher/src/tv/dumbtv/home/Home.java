@@ -84,7 +84,7 @@ public final class Home extends Activity {
     private FrameLayout root;
     private ImageView wall;
     private View shade;
-    private TextView greeting, clock, date, focusName, temp, sky, feels, hint, sunLine;
+    private TextView greeting, clock, date, focusName, temp, sky, feels, sunLine;
     private View skyIcon;
     private LinearLayout hours;
     private View hoursRule;
@@ -631,7 +631,7 @@ public final class Home extends Activity {
         root.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
         pageView = page;
 
-        // Header, three lines: greeting | top bar; clock + weather | next hours; date, hint | sun line.
+        // Header: greeting | top bar; clock + weather | next hours; date | sun line.
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.VERTICAL);
         head.setClipChildren(false);
@@ -748,16 +748,6 @@ public final class Home extends Activity {
         middle.addView(forecast, new LinearLayout.LayoutParams(WRAP, WRAP));
         head.addView(middle, new LinearLayout.LayoutParams(MATCH, WRAP));
 
-        LinearLayout bottom = new LinearLayout(this);
-        bottom.setGravity(Gravity.TOP);
-        LinearLayout notes = new LinearLayout(this);
-        notes.setOrientation(LinearLayout.VERTICAL);
-        hint = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
-        hint.setPadding(dp(3), dp(12), 0, 0);
-        hint.setVisibility(View.GONE);
-        notes.addView(hint);
-        bottom.addView(notes, new LinearLayout.LayoutParams(0, WRAP, 1f));
-        head.addView(bottom, new LinearLayout.LayoutParams(MATCH, WRAP));
         page.addView(head, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         focusName = Ui.text(this, 30, Ui.TEXT, Ui.MEDIUM);
@@ -1408,10 +1398,10 @@ public final class Home extends Activity {
         Dropdown menu = dropdown().heading("FIRE TV SETTINGS").rule();
         List<FireSettings.Section> sections = FireSettings.sections(this);
         for (FireSettings.Section sec : sections) {
-            menu.item(sec.label, sec.hint, null, () -> launch(new Intent(sec.action), null));
+            menu.item(sec.label, () -> launch(new Intent(sec.action), null));
         }
         if (!sections.isEmpty()) menu.rule();
-        menu.item("All Fire TV settings", "Amazon's full settings grid", null, this::openSettings);
+        menu.item("All Fire TV settings", this::openSettings);
         menu.show(anchor);
     }
 
@@ -1504,8 +1494,8 @@ public final class Home extends Activity {
         if (weather != null && weatherBox.getVisibility() == View.VISIBLE) {
             line = temp.getText() + "  " + sky.getText();
         }
-        frame.setInfo(clock.getText(), date.getText(), line,
-                hint.getVisibility() == View.VISIBLE ? hint.getText() : null);
+        // the weather heads-up ("Rain likely around 5 PM") shows on the photo frame only
+        frame.setInfo(clock.getText(), date.getText(), line, line == null ? null : weather.hint);
     }
 
     /** Refreshes the forecast every 30 min while weather is on; shows or hides the weather views. */
@@ -1552,7 +1542,6 @@ public final class Home extends Activity {
     private void showWeather() {
         if (weather == null) {
             weatherBox.setVisibility(View.GONE);
-            hint.setVisibility(View.GONE);
             hours.setVisibility(View.GONE);
             hoursRule.setVisibility(View.GONE);
             sunLine.setVisibility(View.GONE);
@@ -1598,8 +1587,6 @@ public final class Home extends Activity {
         } else {
             sunLine.setVisibility(View.GONE);
         }
-        hint.setText(weather.hint);
-        hint.setVisibility(weather.hint == null ? View.GONE : View.VISIBLE);
         frameInfo();
     }
 
@@ -1691,7 +1678,7 @@ public final class Home extends Activity {
         Dropdown menu = dropdown();
         for (Item it : list) {
             boolean live = it.state == TvInputManager.INPUT_STATE_CONNECTED;
-            menu.item(Catalog.label(cfg, it).toString(), null, live ? Ui.dot(Ui.GOOD, dp(10)) : null,
+            menu.item(Catalog.label(cfg, it).toString(), live ? Ui.dot(Ui.GOOD, dp(10)) : null,
                     () -> launch(new Intent(it.intent), null));
         }
         menu.show(anchor);
