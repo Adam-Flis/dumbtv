@@ -17,7 +17,7 @@ final class Icons extends Drawable {
     static final int SUN = 0, MOON = 1, PARTLY = 2, PARTLY_NIGHT = 3, CLOUD = 4, FOG = 5, RAIN = 6,
             SNOW = 7, STORM = 8, STAR = 9, GRID = 10, INPUT = 11, WIFI = 12, GEAR = 13, SLIDERS = 14,
             HOUSE = 15, PALETTE = 16, PHOTO = 17, DOTS = 18, BAG = 19, LIBRARY = 20,
-            PENCIL = 21, CLOCK = 22, SLEEP = 23, CONTRAST = 24, NIGHT = 25, TIMER = 26;
+            PENCIL = 21, CLOCK = 22, SLEEP = 23, CONTRAST = 24, NIGHT = 25, TIMER = 26, HELP = 27;
     private static final int AMBER = 0xFFFFC53D, CLOUDY = 0xFFE3E6EA, BLUE = 0xFF5AB0FF,
             MOONLIGHT = 0xFFEDE7CF;
 
@@ -217,6 +217,16 @@ final class Icons extends Drawable {
                 c.drawLine(s / 2, s * 0.56f, s / 2, s * 0.36f, line);
                 c.drawLine(s * 0.4f, s * 0.1f, s * 0.6f, s * 0.1f, line);
                 c.drawLine(s / 2, s * 0.1f, s / 2, s * 0.22f, line);
+                break;
+            case HELP:
+                // a question mark in a circle
+                stroke(tint, s * 0.08f);
+                c.drawCircle(s / 2, s / 2, s * 0.4f, line);
+                r.set(s * 0.38f, s * 0.25f, s * 0.62f, s * 0.49f);
+                c.drawArc(r, 180, 270, false, line);
+                c.drawLine(s / 2, s * 0.49f, s / 2, s * 0.58f, line);
+                fill.setColor(tint);
+                c.drawCircle(s / 2, s * 0.71f, s * 0.05f, fill);
                 break;
             case CLOCK:
                 stroke(tint, s * 0.09f);

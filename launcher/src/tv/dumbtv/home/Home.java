@@ -66,10 +66,23 @@ public final class Home extends Activity {
     private float builtScale;
     /** Set by Options > Show photo frame now. */
     static boolean frameNow;
+    /** Set by Options › Help › Show welcome tips again. */
+    static boolean tipsNow;
+    private boolean tipsOpen;
+    /** The open top-bar dropdown, closed when Home is pressed or the screen is left. */
+    private PopupWindow openPop;
+    private final Runnable tips = this::showTips;
     private PhotoFrame frame;
     private boolean swallowUp;
     private final Runnable idle = this::startFrame;
     private final Runnable frameDone = this::endFrame;
+    // screen care (OLED): the page drifts a few pixels every few minutes; idle, it goes dark
+    private static final long SHIFT_MS = 3 * 60_000L;
+    private static final int[][] SHIFTS = {{0, 0}, {2, 0}, {2, 2}, {0, 2}, {-2, 2}, {-2, 0}, {-2, -2}, {0, -2}, {2, -2}};
+    private int shiftStep;
+    private View pageView, rest;
+    private final Runnable shift = this::shiftPage;
+    private final Runnable restRun = this::startRest;
     private boolean resumed, landed, ticking;
     private FrameLayout root;
     private ImageView wall;
@@ -333,6 +346,8 @@ public final class Home extends Activity {
             // back from an app: the recently used row moves it to the front
             loadRecent();
         }
+        ui.removeCallbacks(shift);
+        shiftPage();
         if (frameNow) {
             frameNow = false;
             ui.postDelayed(idle, 600);
@@ -350,6 +365,20 @@ public final class Home extends Activity {
         if (sleepTest.isFile() && sleepTest.delete() && Sleep.allowed(this)) {
             Sleep.set(this, 1);
             updateSleepChip();
+        }
+        // first visit (or asked for again from Options): the welcome card
+        // the Home-button watcher on Fire OS 6; a no-op if it runs (or once usage access is new)
+        Keeper.start(this);
+        if (tipsNow || cfg.get(Help.TIPS_SEEN, "").isEmpty()) {
+            tipsNow = false;
+            ui.removeCallbacks(tips);
+            ui.postDelayed(tips, 900);
+        }
+        // developer aid: `adb shell touch .../files/test-rest` goes dark (screen care) after 3 s
+        File restTest = new File(cfg.dir, "test-rest");
+        if (restTest.isFile() && restTest.delete()) {
+            ui.removeCallbacks(restRun);
+            ui.postDelayed(restRun, 3000);
         }
         // developer aid: `adb shell touch .../files/test-input` shows the input card on next return
         File test = new File(cfg.dir, "test-input");
@@ -371,6 +400,12 @@ public final class Home extends Activity {
         if (ticking) unregisterReceiver(time);
         ticking = false;
         ui.removeCallbacks(idle);
+        ui.removeCallbacks(tips);
+        closePop();
+        ui.removeCallbacks(shift);
+        ui.removeCallbacks(restRun);
+        if (rest != null) root.removeView(rest);
+        rest = null;
         stopFrame();
         removeInputCard();
         if (moving != null) stopMoving();
@@ -405,6 +440,7 @@ public final class Home extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        closePop();
         if (moving != null) stopMoving();
         if (resumed) focusFirst();
     }
@@ -421,6 +457,15 @@ public final class Home extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         resetIdle();
+        // any key wakes the dark screen (and the photo frame under it) and does nothing else
+        if (rest != null) {
+            if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                stopRest();
+                if (frame != null) stopFrame();
+                swallowUp = true;
+            }
+            return true;
+        }
         // any key wakes the photo frame and does nothing else
         if (frame != null) {
             if (e.getAction() == KeyEvent.ACTION_DOWN) {
@@ -583,6 +628,7 @@ public final class Home extends Activity {
         // clips the scrolling rows at their own top edge, so they slide under the header
         page.setPadding(0, dp(32), 0, 0);
         root.addView(page, new FrameLayout.LayoutParams(MATCH, MATCH));
+        pageView = page;
 
         // Header, three lines: greeting | top bar; clock + weather | next hours; date, hint | sun line.
         LinearLayout head = new LinearLayout(this);
@@ -1182,6 +1228,7 @@ public final class Home extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(8), dp(10), dp(8), dp(8));
         PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
+        openPop = pop;
         pop.setBackgroundDrawable(Ui.round(0xF5202126, dp(18)));
         pop.setElevation(dp(12));
 
@@ -1427,6 +1474,7 @@ public final class Home extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(8), dp(10), dp(8), dp(8));
         PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
+        openPop = pop;
         pop.setBackgroundDrawable(Ui.round(0xF5202126, dp(18)));
         pop.setElevation(dp(12));
 
@@ -1437,18 +1485,21 @@ public final class Home extends Activity {
         box.addView(head);
         box.addView(menuRule());
 
+        // label, what is inside, action. Amazon locks the rest (Display & Sounds, Account,
+        // Preferences, Accessibility) to its own apps; Search reaches them, and so does the grid.
         String[][] sections = {
-            {"Network & Wi-Fi", Settings.ACTION_WIFI_SETTINGS},
-            {"Device & Software", Settings.ACTION_DEVICE_INFO_SETTINGS},
-            {"Apps", Settings.ACTION_APPLICATION_SETTINGS},
-            {"Remotes & Bluetooth", "com.amazon.device.settings.action.CONTROLLERS"},
+            {"Wi-Fi & network", "Connect, forget a network", Settings.ACTION_WIFI_SETTINGS},
+            {"Device & Software", "Restart, sleep, storage, about", Settings.ACTION_DEVICE_INFO_SETTINGS},
+            {"Apps", "Manage, clear data, uninstall", Settings.ACTION_APPLICATION_SETTINGS},
+            {"Remotes & Bluetooth", "Remotes, headphones, speakers", "com.amazon.device.settings.action.CONTROLLERS"},
+            {"Search all settings", "Picture, sound, account, Alexa\u2026", "com.amazon.tv.device.settings.action.SEARCH_SETTINGS"},
         };
         int accent = cfg.accent();
         TextView first = null;
         for (String[] s : sections) {
-            Intent i = new Intent(s[1]);
+            Intent i = new Intent(s[2]);
             if (i.resolveActivity(getPackageManager()) == null) continue;
-            TextView row = menuRow(s[0], accent, () -> {
+            TextView row = menuRow(s[0], s[1], accent, () -> {
                 pop.dismiss();
                 launch(i, null);
             });
@@ -1456,7 +1507,7 @@ public final class Home extends Activity {
             if (first == null) first = row;
         }
         if (first != null) box.addView(menuRule());
-        TextView all = menuRow("All Fire TV settings", accent, () -> {
+        TextView all = menuRow("All Fire TV settings", "Amazon's full settings grid", accent, () -> {
             pop.dismiss();
             openSettings();
         });
@@ -1477,9 +1528,17 @@ public final class Home extends Activity {
         return rule;
     }
 
-    private TextView menuRow(String label, int accent, Runnable run) {
+    /** A dropdown row; {@code hint}, if any, is a smaller second line saying what is inside. */
+    private TextView menuRow(String label, String hint, int accent, Runnable run) {
         TextView row = Ui.text(this, 17, Ui.TEXT, Ui.MEDIUM);
-        row.setText(label);
+        if (hint == null) {
+            row.setText(label);
+        } else {
+            android.text.SpannableString s = new android.text.SpannableString(label + "\n" + hint);
+            s.setSpan(new android.text.style.RelativeSizeSpan(0.76f), label.length() + 1, s.length(), 0);
+            row.setText(s);
+            row.setLineSpacing(dp(3), 1f);
+        }
         row.setMinWidth(dp(260));
         row.setPadding(dp(16), dp(12), dp(16), dp(12));
         row.setFocusable(true);
@@ -1500,8 +1559,72 @@ public final class Home extends Activity {
         launch(found ? tvSettings : new Intent(Settings.ACTION_SETTINGS), null);
     }
 
+    private void closePop() {
+        if (openPop != null && openPop.isShowing()) openPop.dismiss();
+        openPop = null;
+    }
+
+    private void showTips() {
+        if (!resumed || tipsOpen || isFinishing()) return;
+        if (frame != null) stopFrame();
+        if (rest != null) stopRest();
+        tipsOpen = true;
+        Help.welcome(this, () -> {
+            tipsOpen = false;
+            cfg.set(Help.TIPS_SEEN, "1");
+            resetIdle();
+        });
+    }
+
+    private boolean care() {
+        return "on".equals(cfg.get(Config.CARE));
+    }
+
+    /** Moves the home screen to the next of nine spots, at most 2 dp from its place. */
+    private void shiftPage() {
+        ui.removeCallbacks(shift);
+        if (pageView == null) return;
+        if (!care()) {
+            pageView.setTranslationX(0);
+            pageView.setTranslationY(0);
+            return;
+        }
+        shiftStep = (shiftStep + 1) % SHIFTS.length;
+        pageView.setTranslationX(dp(SHIFTS[shiftStep][0]));
+        pageView.setTranslationY(dp(SHIFTS[shiftStep][1]));
+        if (resumed) ui.postDelayed(shift, SHIFT_MS);
+    }
+
+    /** Idle with screen care on: fade to near black (the TV still sleeps on its own schedule). */
+    private void startRest() {
+        if (rest != null || !resumed || !care()) return;
+        // the photo frame is running, or a dropdown is open: try again later
+        if ((frame != null && root.getKeepScreenOn()) || !hasWindowFocus()) {
+            ui.postDelayed(restRun, 60_000L);
+            return;
+        }
+        rest = new View(this);
+        rest.setBackgroundColor(0xFF000000);
+        rest.setAlpha(0f);
+        root.addView(rest, new FrameLayout.LayoutParams(MATCH, MATCH));
+        View r = rest;
+        Tween.run(2500, t -> r.setAlpha(0.92f * t), null);
+    }
+
+    private void stopRest() {
+        View going = rest;
+        rest = null;
+        if (going == null) return;
+        Tween.run(300, t -> going.setAlpha(0.92f * (1 - t)), () -> root.removeView(going));
+        resetIdle();
+    }
+
     private void resetIdle() {
         ui.removeCallbacks(idle);
+        ui.removeCallbacks(restRun);
+        if (resumed && frame == null && rest == null && care()) {
+            ui.postDelayed(restRun, Integer.parseInt(cfg.get(Config.REST)) * 60_000L);
+        }
         String after = cfg.get(Config.FRAME);
         // no photo frame at night: the TV should be allowed to fall asleep
         if (frame != null || "off".equals(after) || !resumed || isNight()) return;
@@ -1515,7 +1638,10 @@ public final class Home extends Activity {
             resetIdle();
             return;
         }
+        if (rest != null) return;
+        ui.removeCallbacks(restRun);
         frame = new PhotoFrame(this, io, cfg.dir);
+        frame.setDrift(care());
         frame.setAlpha(0f);
         root.addView(frame, new FrameLayout.LayoutParams(MATCH, MATCH));
         PhotoFrame showing = frame;
@@ -1530,6 +1656,8 @@ public final class Home extends Activity {
     private void endFrame() {
         root.setKeepScreenOn(false);
         if (frame != null) frame.pause();
+        // the last picture would otherwise sit still until the TV sleeps
+        if (care()) startRest();
     }
 
     private void stopFrame() {
@@ -1762,6 +1890,7 @@ public final class Home extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(8), dp(8), dp(8), dp(8));
         PopupWindow pop = new PopupWindow(box, WRAP, WRAP, true);
+        openPop = pop;
         pop.setBackgroundDrawable(Ui.round(0xF2202126, dp(16)));
         pop.setElevation(dp(12));
         int accent = cfg.accent();

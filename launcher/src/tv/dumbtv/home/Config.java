@@ -217,8 +217,15 @@ final class Config {
             new String[] {"15", "30", "60", "120"},
             new String[] {"15 min", "30 min", "1 hour", "2 hours"});
 
+    /** OLED burn-in care: the home screen drifts a few pixels and goes near black when idle. */
+    static final Choice CARE = new Choice("care", "Screen care (OLED)", "on",
+            new String[] {"off", "on"}, new String[] {"Off", "On"});
+    static final Choice REST = new Choice("care.rest", "Go dark when idle", "10",
+            new String[] {"5", "10", "20", "30"},
+            new String[] {"After 5 min", "After 10 min", "After 20 min", "After 30 min"});
+
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
-        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT};
+        WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, REST};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";

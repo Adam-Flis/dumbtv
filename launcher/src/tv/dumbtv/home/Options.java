@@ -66,12 +66,13 @@ public final class Options extends Activity {
             showHints(now);
         });
 
-        // Five short groups. Rows that only matter for another setting appear when it is on
+        // Six short groups. Rows that only matter for another setting appear when it is on
         // (the image rows with an image background, the night times with night mode, ...).
         Cond image = () -> "image".equals(cfg.get(Config.BACKGROUND));
         Cond weatherOn = () -> "on".equals(cfg.get(Config.WEATHER));
         Cond frameOn = () -> !"off".equals(cfg.get(Config.FRAME));
         Cond nightOn = () -> "on".equals(cfg.get(Config.NIGHT));
+        Cond careOn = () -> "on".equals(cfg.get(Config.CARE));
 
         section("Apps", Icons.GRID);
         list.addView(action("Favorites", () -> {
@@ -124,6 +125,10 @@ public final class Options extends Activity {
         list.addView(slider(Config.NIGHT_DIM, "Night dim", 10, 90, 5));
         list.addView(note("Dims the screen at night; no photo frame. The moon button in the top bar"
                 + " switches it now."));
+        list.addView(choice(Config.CARE));
+        list.addView(only(choice(Config.REST), careOn));
+        list.addView(note("For OLED TVs: the home screen moves a few pixels now and then and goes dark"
+                + " when nothing happens. Any button brings it back."));
 
         section("More", Icons.DOTS);
         list.addView(action("Reset order, names and hidden tiles", this::reset));
@@ -137,6 +142,26 @@ public final class Options extends Activity {
             Ui.notice(this, "Sleep timer permission removed", Icons.TIMER);
             refresh();
         }), () -> Sleep.allowed(this)));
+
+        section("Help", Icons.HELP);
+        list.addView(status("Home button", () -> Help.homeHeld(this), () -> "Brings you here", "Needs setup",
+                this::fixHome));
+        list.addView(status("Sleep timer", () -> Sleep.allowed(this), () -> "Ready", "Needs setup", () ->
+                Help.explain(this, "Sleep timer needs a one-time setup",
+                        "Fire TV only lets this app turn the TV off after a one-time step from a computer:"
+                        + "\n\nadb shell dpm set-active-admin tv.dumbtv.home/.Admin"
+                        + "\n\nUntil then, Fire TV's own sleep timer works: gear button \u203A All Fire TV settings.")));
+        list.addView(status("Internet", () -> Help.online(this), () -> "Connected", "Not connected", () ->
+                startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS))));
+        list.addView(status("Weather", () -> "on".equals(cfg.get(Config.WEATHER))
+                        && !cfg.get(Weather.LAT, "").isEmpty(),
+                () -> cfg.get(Weather.PLACE, "On"), "Off", () -> openSection(2))); // 2: Weather
+        list.addView(action("Show the welcome tips again", () -> {
+            Home.tipsNow = true;
+            finish();
+        }));
+        list.addView(action("What the remote buttons do", () -> Help.remote(this)));
+        list.addView(note("Something looks wrong? Press Home on the remote to start over from the home screen."));
 
         TextView about = Ui.text(this, 13, Ui.FAINT, Ui.MEDIUM);
         about.setLineSpacing(0, 1.4f);
@@ -459,6 +484,65 @@ public final class Options extends Activity {
                 refresh();
             });
         }).start();
+    }
+
+    interface Label {
+        String text();
+    }
+
+    /**
+     * A check with a green or amber dot: {@code good} decides which text shows. OK on a check
+     * that needs attention explains how to fix it; on a good one it does nothing.
+     */
+    private View status(String title, Cond good, Label okText, String badText, Runnable fix) {
+        LinearLayout row = row();
+        row.addView(label(title), new LinearLayout.LayoutParams(0, WRAP, 1f));
+        TextView value = Ui.text(this, 16, Ui.MUTED, Ui.MEDIUM);
+        value.setCompoundDrawablePadding(dp(10));
+        row.addView(value);
+        row.setOnClickListener(v -> {
+            if (!good.ok()) fix.run();
+        });
+        row.setOnKeyListener(this::leftToNav);
+        refreshers.add(() -> {
+            boolean ok = good.ok();
+            value.setText(ok ? okText.text() : badText + "  \u203A");
+            // a drawable dot: Fire OS "high contrast text" repaints colored text
+            GradientDrawable dot = new GradientDrawable();
+            dot.setShape(GradientDrawable.OVAL);
+            dot.setColor(ok ? 0xFF34C759 : 0xFFFFB020);
+            dot.setBounds(0, 0, dp(12), dp(12));
+            value.setCompoundDrawablesRelative(dot, null, null, null);
+            style(row);
+        });
+        return row;
+    }
+
+    /**
+     * The Home button is not ours. Fire OS 6 holds it with usage access, which its own settings
+     * screen may let you switch on; Fire OS 7/8 need the accessibility hook from a computer.
+     */
+    private void fixHome() {
+        String why = "Right now the Home button may open Amazon's home screen instead of this one.";
+        String computer = "Whoever set up this TV can fix it from their computer by running the"
+                + " install again (launcher/install.sh).";
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            Help.explain(this, "Home button needs a one-time setup", why + "\n\n" + computer);
+            return;
+        }
+        new AlertDialog.Builder(this, Ui.DIALOG)
+                .setTitle("Home button needs a one-time setup")
+                .setMessage(why + "\n\nYou may be able to fix it here: Open the setting, choose"
+                        + " \"dumbtv\" and switch it on, then press Back.\n\nIf that does not work: " + computer)
+                .setPositiveButton("Open the setting", (d, w) -> {
+                    try {
+                        startActivity(new Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS));
+                    } catch (RuntimeException e) {
+                        Ui.notice(this, "This TV does not allow that here", -1);
+                    }
+                })
+                .setNegativeButton("Not now", null)
+                .show();
     }
 
     private boolean step(Config.Choice c, int by) {

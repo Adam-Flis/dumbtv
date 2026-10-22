@@ -2,6 +2,9 @@
 
 A home screen for Fire TV that does one job: show your apps and your HDMI inputs.
 
+**Setting it up for someone else?** Read [SHARING.md](SHARING.md). **Watching a TV that has
+it?** Read [GETTING-STARTED.md](GETTING-STARTED.md).
+
 - **45 KB APK.** Plain Java and Android views: no AndroidX, Kotlin, Compose, Play
   Services or other libraries.
 - **No network.** It has no `INTERNET` permission, so Android blocks it from
@@ -102,11 +105,24 @@ upstream home screen:
   `adb shell dpm set-active-admin tv.dumbtv.home/.Admin`. Without it the button offers Fire TV's
   own sleep timer. Options › More › Remove sleep timer permission, or `install.sh --undo`, takes
   it away (Android needs that before an uninstall).
-- **Settings** (top bar, gear): a short menu of Fire TV sections that open directly (Network &
-  Wi-Fi, Device & Software, Apps, Remotes & Bluetooth) plus **All Fire TV settings**. Amazon's
+- **Settings** (top bar, gear): a short menu of Fire TV sections that open directly, each with
+  a line saying what is inside: Wi-Fi & network, Device & Software, Apps, Remotes & Bluetooth,
+  **Search all settings** (Amazon's settings search, which reaches the locked sections too), and
+  **All Fire TV settings**. Home closes any open dropdown. Amazon's
   settings grid draws its top row (Device & Software, Network, Account) off screen on this TV,
   most likely because it counts on its slide-in animation and animations are off. Fire OS lets
-  other apps open only those four sections (the rest need an Amazon-only permission).
+  other apps open only these sections (the rest need an Amazon-only permission).
+- **Screen care (OLED)** (Options › Night & photos, on by default): the home screen drifts up to
+  2 dp to one of nine spots every 3 minutes, and after 5-30 min with no button pressed (default 10)
+  it fades to near black (any button brings it back; the TV still sleeps on its own schedule). In
+  the photo frame the clock and date switch corners and shift a little with each picture, and when
+  the frame's time is up the screen goes dark instead of holding the last picture. OLED owners
+  should also keep Fire TV's own sleep setting on (not "Never").
+- **Welcome card**: the first visit shows four plain-language tips and a Got it button
+  (Options › Help › Show the welcome tips again).
+- **Options › Help**: green/amber checks for the Home button, sleep timer permission, internet
+  and weather; OK on an amber one explains the fix (on Fire OS 6 it offers the usage-access
+  setting). Also a remote-button guide.
 - **Key hints**: the app grid, Options and Move mode show which remote keys do what.
 - **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
   them to the photo frame (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`

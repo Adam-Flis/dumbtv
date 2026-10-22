@@ -43,6 +43,7 @@ final class PhotoFrame extends FrameLayout {
     private Tween fade;
     private final View info;
     private final View scrim;
+    private boolean drift, left = true;
 
     private final Runnable advance = this::loadNext;
 
@@ -116,6 +117,24 @@ final class PhotoFrame extends FrameLayout {
         hint.setVisibility(tip == null || tip.length() == 0 ? GONE : VISIBLE);
     }
 
+    /** Screen care: the clock and date switch corners and shift a little with each picture. */
+    void setDrift(boolean on) {
+        drift = on;
+    }
+
+    private void moveInfo() {
+        left = !left;
+        LayoutParams lp = (LayoutParams) info.getLayoutParams();
+        lp.gravity = Gravity.BOTTOM | (left ? Gravity.START : Gravity.END);
+        info.setLayoutParams(lp);
+        ((LinearLayout) info).setGravity(left ? Gravity.START : Gravity.END);
+        int d = Ui.dp(getContext(), 16);
+        info.setTranslationX((float) (Math.random() * 2 - 1) * d);
+        info.setTranslationY((float) -Math.random() * d);
+        info.setAlpha(0f);
+        Tween.run(FADE_MS, info::setAlpha, null);
+    }
+
     void start() {
         running = true;
         loadNext();
@@ -158,6 +177,7 @@ final class PhotoFrame extends FrameLayout {
         in.bringToFront();
         scrim.bringToFront();
         info.bringToFront();
+        if (drift) moveInfo();
         // a slow cross-fade, drawn frame by frame so it works with system animations off
         float from = out.getAlpha();
         fade = Tween.run(FADE_MS, t -> {
