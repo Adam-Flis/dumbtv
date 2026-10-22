@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sends a folder of your photos to the TV for the photo frame (Options > Photo frame).
+# Sends a folder of your photos to the TV for the screen saver (Options › Screen saver).
 #   ./launcher/tools/push-photos.sh ~/Pictures/TV            add/refresh these photos
 #   ./launcher/tools/push-photos.sh --replace ~/Pictures/TV  remove what is on the TV first
 #   ./launcher/tools/push-photos.sh --list                   show what is on the TV
@@ -47,4 +47,4 @@ done < <(find "$SRC" -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o
 [[ $replace == 1 ]] && adb_ shell "rm -rf '$DEST'"
 adb_ shell "mkdir -p '$DEST'"
 adb_ push "$WORK"/. "$DEST"/ >/dev/null 2>&1 || { echo "error: could not copy to the TV" >&2; exit 1; }
-echo "sent $n photo(s) to the TV ($(du -sh "$WORK" | awk '{print $1}')). They show from the next photo frame."
+echo "sent $n photo(s) to the TV ($(du -sh "$WORK" | awk '{print $1}')). They show the next time the screen saver starts."

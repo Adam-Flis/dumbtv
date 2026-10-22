@@ -319,6 +319,9 @@ final class Config {
             if (clock != null && clock.length() == 2 && !values.containsKey(FRAME_WEATHER.key)) {
                 values.put(FRAME_WEATHER.key, clock.charAt(0) + (clock.endsWith("l") ? "r" : "l"));
             }
+            // settings older builds had and this one dropped (Black screen after, the welcome card)
+            values.remove("care.rest");
+            values.remove("tips.seen");
             // older builds kept the night start hour in "night" (21, 22, 23)
             String night = values.get(NIGHT.key);
             if (night != null && night.matches("\\d+")) {

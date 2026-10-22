@@ -5,7 +5,7 @@ import android.view.Choreographer;
 /**
  * A small frame-by-frame animation. This TV runs with system animations off (animator duration
  * scale 0), which makes ViewPropertyAnimator and ValueAnimator jump straight to the end. Fades
- * that matter (photo frame, background glow, the input card) use this instead: it reads the
+ * that matter (screen saver, background glow, the input card) use this instead: it reads the
  * frame clock directly, so the scale does not apply.
  */
 final class Tween implements Choreographer.FrameCallback {

@@ -25,7 +25,7 @@ if [[ ! -f $KEYSTORE ]]; then
   echo "created signing key $KEYSTORE (keep it: updates must be signed with the same key)"
 fi
 
-# assets/ (the photo frame's default pictures) is packed as-is when present
+# assets/ (the screen saver's default pictures) is packed as-is when present
 ASSETS=
 [[ -d assets ]] && ASSETS=assets
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/dumbtv-home.XXXXXX")

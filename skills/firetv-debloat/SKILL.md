@@ -5,8 +5,10 @@ description: Debloat an Amazon Fire TV over ADB and lock down its telemetry with
 
 # Fire TV debloat
 
-Repository: this directory. Scripts are self-contained; read `AGENTS.md` at the
-repository root before running anything, and treat its hard rules as binding.
+Repository: this directory. Scripts are self-contained; read `docs/DEBLOAT-AGENTS.md`
+and the root `AGENTS.md` before running anything, and treat their hard rules as binding.
+In this fork, use this skill only when the user asks to debloat in those words: on a Fire TV
+Edition television running Fire OS 6 the package pass disables Live TV and the HDMI inputs.
 
 ## Preconditions
 

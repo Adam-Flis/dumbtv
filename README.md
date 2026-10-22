@@ -1,214 +1,262 @@
-# dumbtv
+# dumbtv home: a calmer home screen for Fire TV
 
-Your TV should do what you paid for: your apps, your HDMI inputs, and nothing
-else. No ads from the TV itself, no watch tracking, no update you did not ask
-for. dumbtv applies that over ADB from another machine — **no root**, nothing
-written to `/system`, every step reversible with one script.
+This replaces Amazon's home screen on a Fire TV with a simple one: your apps, your HDMI inputs,
+the time and the weather. No ads, no "recommended for you" rows, no tracking.
 
-The same idea, told to whichever TV will listen:
+What you get:
 
-| TV | Debloat | Own home screen | On-device DNS filter |
-|---|---|---|---|
-| **Fire OS** (Fire TV sticks, Fire TV Edition TVs) | yes | yes | yes |
-| **Android TV / Google TV** (Sony, TCL, Philips, Hisense, Xiaomi, Shield) | yes | yes, by disabling the stock launcher | yes |
-| **Samsung, LG, Roku, VIDAA, Vizio, Panasonic, Philips Saphi** | no shell, no path | no | no — block it at the router, or boot the TV straight into HDMI |
+- **Your apps and inputs only.** A Favorites row, Recently used, All apps and Inputs, in any order.
+- **A sleep timer** right on the home screen: 15 minutes to 2 hours, or any length.
+- **Night mode:** a warm dim in the evening, on a schedule or with one button.
+- **A screen saver** with photos, the clock and the weather. It also comes on when an app sits
+  paused, then lets the TV go to sleep.
+- **Burn-in care for OLED TVs:** nothing stays still on screen for long.
+- **Weather** (optional): now, the next hours and tomorrow, from your ZIP code.
 
-Tested end to end on a Fire TV Edition television running Fire OS 7.7.1.7
-(Android 9). Fire OS 6 and 8 differ in small ways; Android TV needs a different
-package list and a different launcher trick. Fire OS 6 (Android 7.1, e.g. the 2018
-Fire TV Stick 4K) uses its own lists in `data/fireos6/`, picked up from the device,
-and the launcher holds HOME there with a small foreground service instead of the
-accessibility hook Amazon refuses on 6.7. The ones that cannot be opened, and the
-honest reason for each, are in `docs/OTHER-TVS.md` — along with what we are
-working on to reach them.
+It's a fork of [humblemuzzu/dumbtv](https://github.com/humblemuzzu/dumbtv), built and tested on a
+Toshiba Fire TV Edition television (Fire OS 6.7). Setting it up takes about 30 minutes, a
+computer and a few copy-and-paste commands. Nothing on the TV is permanently changed: one command
+puts Amazon's home screen back.
 
-**What it will not do:** replace the operating system, unlock a bootloader, or
-survive a factory reset. Every current TV has a signed boot chain and a verified
-system partition, so there is no honest way around it. Pretending otherwise is
-how people brick their TVs. See `docs/WHY-NOT-REPLACE-OS.md`.
+> Using an AI assistant (Claude, ChatGPT, Copilot) to set this up? Point it at
+> [AGENTS.md](AGENTS.md). This README is for doing it yourself.
 
-## Add your TV to the catalog
+## Will it work on my TV?
 
-At the end of a session — or any time something surprised you — record it:
+On the TV, open **Settings › My Fire TV › About** (on some models **Settings › Device & Software
+› About**) and look at the software version.
 
-```sh
-./scripts/contribute.sh
-```
-
-It reads the model, OS build and kernel from the TV, then asks only what a robot
-cannot know: how developer mode was enabled, where the IP address was shown,
-which dialogs blocked automation and what dismissed each one. It writes
-`catalog/devices/<id>.yaml`, validates it, and prints the `git` / `gh` commands
-for a pull request. No git? `.github/ISSUE_TEMPLATE/device-report.yml` asks the
-same questions in a browser.
-
-That file is the part this repo cannot generate: per-model knowledge. Code is
-cheap; someone's evening is not.
-
-## It asks what you want to keep
-
-Nothing is decided for you:
-
-```sh
-./scripts/configure.sh
-```
-
-It goes through the apps this repo would remove (`data/fireos/user-apps.txt`,
-with readable names from `data/apps.txt`) and asks, one by one, whether to remove
-each. Answer "no" and that app is never touched. It also asks whether you watch
-Prime Video — Prime stays installed either way, but if you say yes its video CDN
-is left out of the blocklist so playback keeps working — and whether you want the
-launcher replaced and the DNS filter installed.
-
-The answers go into `dumbtv.conf` (git-ignored). Re-run it any time to change
-your mind; the scripts read that file, so nothing has to be edited by hand.
-
-Ads, telemetry, experiments and Alexa are removed regardless. This step is only
-about apps a person might actually watch.
-
-## Reversibility
-
-`scripts/restore.sh` puts back package state, app-ops, network rules and every
-setting the pass touched — using the snapshot `preflight.sh` took first, so the
-values are the ones this TV actually had, not generic defaults. The snapshot is
-taken once: run `preflight.sh` before the first pass, and a later run cannot
-overwrite the originals.
-
-Two things are not reversible:
-
-1. **Apps that live in `/data`.** The streaming apps the pass uninstalls (JioHotstar,
-   Zee5, JioCinema, SonyLIV, Discovery+, Aaj Tak, Twitch, FastScreen, MX Player)
-   have their APKs deleted; they come back from the store, not from a script. The
-   keep-list in `configure.sh` exists so you only lose what you agreed to lose.
-2. **Anything uninstalled after the fact.** `restore.sh` restores the lists in
-   `data/`, so an app removed by hand is still gone.
-
-Everything else — the ~65 disabled packages, the launcher, the DNS filter, the
-settings — is undoable, and a factory reset also undoes it (including this repo's
-work).
-
-## What it changes
-
-| Layer | Result |
+| Your TV | Works? |
 |---|---|
-| Packages | ~65 disabled: ACR (screen fingerprinting), ad-ID service, sponsored rows, watch-time analytics, A/B experiment engines, Alexa/mic app, promo screensaver, OTA helpers. Ad-funded streaming apps uninstalled. YouTube and VLC kept. |
-| Protected packages | The handful Amazon refuses to disable get their background execution and background data removed instead. |
-| Settings | Ad tracking limited, interest-based ads off, app/device usage reporting off, wake word and voice off, promo autoplay off. |
-| DNS | personalDNSfilter runs on the TV: Amazon telemetry, Alexa endpoints and the OTA servers answer `127.0.0.1`. YouTube and the app store still resolve. |
-| Launcher | [dumbtv home](launcher/README.md), this repo's own launcher, replaces Amazon's home screen — no promo tiles, no sponsored rows. 45 KB, open source, no permissions on Fire OS 7/8. |
+| Fire TV Edition TV or Fire TV stick with **Fire OS 6** | Yes. This is what it was built and tested on. |
+| Fire TV with **Fire OS 7** | Should work. Upstream's home screen was built on Fire OS 7, but this fork's extras haven't been tested there. |
+| Fire TV with **Fire OS 8** | No. Fire OS 8 won't hand over the Home button. |
+| Google TV, Android TV, Samsung, LG, Roku, Vizio and others | No. See [docs/OTHER-TVS.md](docs/OTHER-TVS.md) for what is possible on those. |
 
-Every step is reversible with `scripts/restore.sh`.
+## What you need
 
-## The launcher
+- **A computer** on the same Wi-Fi as the TV: a Mac, a Linux PC, or Windows with
+  [WSL](https://learn.microsoft.com/windows/wsl/install) (then follow the Linux steps inside WSL).
+- **The TV remote**, to switch on one developer setting.
+- **About 30 minutes.** Most of it is installing the tools in step 2, which you only do once.
 
-`launcher/` is a home screen written for this repo: your apps, your HDMI inputs,
-a clock, and nothing else. Plain Java with no libraries, and **no internet
-permission** — it cannot phone home even if it wanted to. On Fire OS 7/8 it requests
-no permissions at all; on Fire OS 6 it asks for usage access, boot and task order,
-which its HOME keeper needs there. HOME lands on it in about 0.2 s, with no flash of Amazon's home.
+## Set it up, step by step
 
-It replaced Projectivy, which this repo used to install: Projectivy is closed
-source and asks for the advertising ID, ad attribution, install referrer,
-internet and package install/delete — far more than a home screen needs.
+Commands go in the **Terminal** app on a Mac (or your Linux/WSL terminal). Copy each line,
+paste it and press Return. Lines starting with `#` are notes; you don't need to type them.
 
-Just the launcher, without the rest of the pass:
+### 1. Get this project onto your computer
 
 ```sh
-adb connect <tv-ip>:5555
-./launcher/install.sh            # downloads the release APK, checks it, installs it
+git clone -b my-launcher https://github.com/Adam-Flis/dumbtv.git
+cd dumbtv
 ```
 
-No Java or Android SDK needed: the APK comes from the
-[GitHub release](https://github.com/humblemuzzu/dumbtv/releases/latest), and its
-SHA-256 is pinned in `launcher/install.sh`. `--build` builds it from source instead.
-Details, settings and how the HOME takeover works: `launcher/README.md`.
+No `git`? On the project's GitHub page, switch the branch menu (above the file list) to
+**my-launcher**, then choose **Code › Download ZIP**. Unzip it, type `cd ` (with a space) in
+Terminal, drag the unzipped folder onto the window and press Return.
 
-## Requirements
+Every command below runs from inside this `dumbtv` folder.
 
-- A machine with `adb` (macOS, Linux, Windows via WSL/Git Bash).
-- The TV on the same network, with **Developer Options → ADB debugging** on
-  (Settings → My Fire TV → About → click the device name 7×, then back to
-  My Fire TV → Developer Options).
-- ~10 minutes. The scripts reboot the TV twice.
+### 2. Install the tools (once)
 
-## Quickstart
+The home screen is built on your computer from the source code in this folder, so it needs
+Android's build tools and Java.
+
+**Mac** (with [Homebrew](https://brew.sh); install that first if `brew` isn't found):
 
 ```sh
-adb connect <tv-ip>:5555
-adb devices                      # must show "device", not "unauthorized"
-
-./scripts/preflight.sh           # read-only: device facts + what would change
-./scripts/configure.sh           # asks what to keep, writes dumbtv.conf
-./scripts/all.sh                 # the full pass, asks before touching anything
-./scripts/verify.sh              # proof: blocked vs still-working domains
+brew install android-platform-tools openjdk@17
+brew install --cask android-commandlinetools
+export JAVA_HOME="$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home"
+yes | sdkmanager --licenses
+sdkmanager "platforms;android-25" "platforms;android-28" "build-tools;34.0.0"
 ```
 
-If anything looks wrong later, `scripts/restore.sh` puts it back.
+**Linux / WSL** (Ubuntu or Debian):
 
-## Run one piece at a time
+```sh
+sudo apt install adb openjdk-17-jdk unzip
+# Android command-line tools: download "Command line tools only" for Linux from
+# https://developer.android.com/studio#command-line-tools-only, then:
+mkdir -p ~/android-sdk/cmdline-tools && unzip commandlinetools-linux-*.zip -d ~/android-sdk/cmdline-tools
+mv ~/android-sdk/cmdline-tools/cmdline-tools ~/android-sdk/cmdline-tools/latest
+export ANDROID_HOME=~/android-sdk
+yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-25" "platforms;android-28" "build-tools;34.0.0"
+```
 
-| Script | Does | Reboot needed |
-|---|---|---|
-| `preflight.sh` | Prints device facts, snapshots the current settings, shows the plan. Changes nothing else. | no |
-| `discover.sh` | Read-only inventory for a TV with no verified package list: flags likely ads/analytics packages and writes a commented block for `data/<platform>/packages.txt`. | no |
-| `configure.sh` | Asks what to keep and writes `dumbtv.conf`. | no |
-| `debloat.sh` | Uninstalls/disables packages, applies privacy settings. | yes |
-| `lockdown.sh` | App-ops + data-saver rules for protected packages. | no |
-| `dnsfilter.sh` | Installs and configures the on-device DNS filter. | yes |
-| `youtube.sh` | **Opt-in, never run by `all.sh` unless you answered yes.** Replaces the YouTube app with SmartTube (no ad code) and takes it out of the home screen. Disables the stock app; `--remove` deletes it. | no |
-| `launcher.sh` | Installs dumbtv home and takes over the HOME button. | no |
-| `verify.sh` | Checks what is blocked and what still works. | no |
-| `restore.sh` | Undoes packages, app-ops, network rules and settings. | yes |
-| `all.sh` | Runs the above in order. | yes |
+On Linux, run `export ANDROID_HOME=~/android-sdk` again in any new terminal before step 6.
 
-Every script takes `--dry-run` to print its commands without running them, and
-`-y` to skip confirmation.
+Check it worked: `adb version` and `java -version` should both print a version.
 
-## Safety rules the scripts enforce
+### 3. Turn on ADB debugging on the TV
 
-- A hard-coded **never-disable** list (launcher, settings, TV input/routing,
-  device control, Bluetooth pairing, system UI). Disabling those is how a TV ends
-  up with a black screen and no working remote.
-- Nothing writes to `/system`. No `adb remount`, no `pm uninstall` without
-  `--user 0`, no hosts-file editing — Fire OS verifies `/system` with dm-verity
-  and modifying it is the documented brick path.
-- The DNS filter only runs if the app's VPN consent was pre-granted, and it is
-  verified after a reboot before the script reports success.
+ADB is how the computer talks to the TV. It is off until you switch it on.
 
-## Documentation
+1. On the TV: **Settings › My Fire TV › About**.
+2. Select the TV's name (the first line) and press OK **7 times**. A message says you're now a
+   developer.
+3. Press Back once. **Developer options** is now in the My Fire TV menu. Open it and turn on
+   **ADB debugging**.
 
-- `launcher/README.md` — the launcher: install, remote controls, settings file, HOME takeover
-- `docs/HOW-IT-WORKS.md` — the five mechanisms and why each is needed
-- `docs/GOTCHAS.md` — everything that went wrong while building this
-- `docs/OTHER-TVS.md` — which TVs can be opened, which cannot, and what is being worked on
-- `docs/YOUTUBE.md` — why YouTube ads cannot be blocked at the network, and what to replace the app with
-- `docs/WHY-NOT-REPLACE-OS.md` — the bootloader/verity wall, and the root exploit
-- `docs/FAQ.md` — factory reset, updates, Prime Video, "is this illegal" (it isn't)
-- `catalog/` — per-platform menu paths, prompts and quirks, machine-readable
+### 4. Find the TV's IP address
 
-## For AI agents
+On the TV: **Settings › My Fire TV › About › Network**. Write down the **IP Address**, which looks
+like `192.168.1.23`.
 
-`AGENTS.md` is the machine-readable contract: preconditions, the user interview,
-exact ordering, guardrails, verification and recovery. Point an agent at this
-repository and it can run the whole thing without improvising.
+### 5. Connect the computer to the TV
 
-`llms.txt` is the short index for agents that look for one, and
-`catalog/devices/` holds the part that isn't automatable — developer-mode menu
-path, where the IP is shown, which dialogs block a bot — one YAML per platform or
-model. Adding a TV to the catalog is how this gets better for the next person.
+Put your TV's address in place of `192.168.1.23`:
 
-There is also a skill file at `skills/firetv-debloat/SKILL.md` for agents that
-load skills.
+```sh
+adb connect 192.168.1.23:5555
+```
 
-## Credits and licences
+The TV shows **"Allow USB debugging?"**. Tick **Always allow from this computer** and choose
+**OK**. Then check:
 
-Scripts, docs and the launcher: MIT (`LICENSE`). Device catalog: CC BY-SA 4.0
-(`catalog/LICENSE`).
+```sh
+adb devices
+```
 
-Installed but not bundled: [personalDNSfilter](https://github.com/IngoZenz/personaldnsfilter)
-(GPL), downloaded from its upstream release at run time. The launcher APK is
-built from `launcher/` and published on this repo's releases. The Amazon tracker list
-is fetched from [HaGeZi DNS blocklists](https://github.com/hagezi/dns-blocklists)
-at run time; nothing is vendored, so the blocklist stays current.
+The list should end in `device`. If it says `unauthorized`, look at the TV and accept the
+prompt, then run `adb devices` again.
 
-Nothing in this repository is Amazon code.
+### 6. Install the home screen
+
+```sh
+./launcher/install.sh
+```
+
+It builds the app, installs it, makes the Home button open it, and allows the sleep timer and
+the screen saver in every app. The first run takes a minute or two. It ends like this (on Fire OS
+6):
+
+```
+installed tv.dumbtv.home
+sleep timer: allowed
+screen saver in apps: allowed
+home: dumbtv (Keeper, no accessibility; sdk 25)
+```
+
+The first run also says `created signing key .../launcher/release.keystore`. **Keep a copy of
+that file** somewhere safe: every future update has to be signed with it.
+
+If it stops with an `error:` line instead, see [If something goes wrong](#if-something-goes-wrong).
+
+### 7. Check it
+
+Press **Home** on the remote. The new home screen should appear within a second.
+
+### 8. Make it yours, on the TV
+
+All of this is in **Options** (the sliders button at the top of the home screen):
+
+- **Favorites:** go to the end of the Favorites row and choose **Edit favorites**.
+- **Weather:** Options › Weather. Turn it on and enter your ZIP code.
+- **Screen saver:** Options › Screen saver. Pick when it starts (1 to 15 minutes) and **Sleep
+  after saver** (how long it runs before the TV turns off). **Adjust overlay** moves the clock and
+  weather to any corner.
+- **Night mode:** Options › Night. Set the times and how dim.
+- **Options › Help:** every item should show a green dot. An amber one says what to do.
+
+### 9. Optional: your own photos, and a backup
+
+The screen saver shows 12 built-in landscape photos until you add your own:
+
+```sh
+./launcher/tools/push-photos.sh ~/Pictures/TV
+```
+
+This resizes the photos on your computer and sends them to the TV. `--list` shows what's there and
+`--clear` goes back to the built-in ones.
+
+To save your settings (favorites, order, names, options) to the computer:
+
+```sh
+./launcher/tools/settings.sh backup
+```
+
+`./launcher/tools/settings.sh restore` puts the newest backup back.
+
+### 10. Turn ADB debugging off again
+
+On the TV: **Settings › My Fire TV › Developer options › ADB debugging › Off**. That stops
+anyone else on your network from controlling the TV. Turn it back on only to update.
+
+## Using it day to day
+
+[launcher/GETTING-STARTED.md](launcher/GETTING-STARTED.md) explains the screen and the remote
+for everyone who watches the TV. Print it or send it to them. Lost? **Press Home.**
+
+## Updating
+
+Turn ADB debugging on, then:
+
+```sh
+cd dumbtv
+git pull
+adb connect 192.168.1.23:5555
+./launcher/install.sh
+```
+
+Settings, favorites and photos stay. Use the same computer (or the same `release.keystore`): Android
+refuses an update signed with a different key.
+
+## Undo
+
+```sh
+./launcher/install.sh --undo
+```
+
+Home goes back to Amazon's home screen, Amazon's screensaver comes back, and the sleep timer
+permission is removed. The app stays installed but unused. To remove it completely afterwards:
+
+```sh
+adb uninstall tv.dumbtv.home
+```
+
+## If something goes wrong
+
+| What you see | What to do |
+|---|---|
+| `adb devices` says `unauthorized` | Look at the TV, accept "Allow USB debugging?" and tick Always allow. |
+| `error: no TV connected` | Run `adb connect <ip>:5555` again. Check that ADB debugging is still on, the TV and computer are on the same Wi-Fi, and the IP address hasn't changed (step 4). |
+| `android.jar missing` or `no build-tools` | The Android tools aren't installed or can't be found: repeat step 2. On Linux, `export ANDROID_HOME=~/android-sdk` first. |
+| `no JDK found` | Repeat step 2 (Java 17). |
+| `signed with a different key` | The TV has a copy built on another computer. The error lists three commands: back up the settings, uninstall, run `install.sh` again. |
+| Home opens Amazon's home screen | Run `./launcher/install.sh` again. Right after the TV starts, it can take a few seconds the first time. |
+| Options › Help says Sleep timer or Screen saver in apps "Needs setup" | Run `./launcher/install.sh` again with ADB debugging on. |
+| No weather | Options › Weather: turn it on and enter a ZIP code. Options › Help › Internet should be green. |
+| You need Amazon's own home screen once (to rent a movie, say) | Options › More › Amazon home screen. Press Home to come back. |
+
+## What it changes on the TV
+
+Everything here is undone by `install.sh --undo` (except the two idle timers, which stay at
+their last values; set them in Fire TV's own settings if you like):
+
+- **The Home button:** on Fire OS 6 a small background service (with "usage access") brings this
+  home screen back whenever Amazon's appears. On Fire OS 7 it's an accessibility service and one
+  alarm setting.
+- **Sleep timer:** the app is a device administrator with one power only, "lock the screen",
+  which is how an app turns a TV off.
+- **Screen saver:** the app may change secure settings, so it can make itself Fire TV's
+  screensaver and set when the screen saver starts and when the TV sleeps.
+
+## Privacy
+
+The home screen shows no ads, has no account and collects nothing. It only goes online for the
+weather: it sends your town's coordinates to [Open-Meteo](https://open-meteo.com), which needs
+no account or key. With weather off it never connects to anything.
+
+## More
+
+- [AGENTS.md](AGENTS.md): the same setup for an AI assistant, plus how the code is organized.
+- [launcher/README.md](launcher/README.md): how it works inside, the settings file, building
+  and testing.
+- [docs/DEBLOAT.md](docs/DEBLOAT.md): upstream's separate debloat tool. **Not needed for the home
+  screen, and not safe on a Fire OS 6 television** (it disables the Live TV and HDMI inputs).
+
+MIT licence ([LICENSE](LICENSE)). The built-in photos are public domain
+([credits](launcher/assets/photos/CREDITS.txt)). Nothing here is Amazon code.
