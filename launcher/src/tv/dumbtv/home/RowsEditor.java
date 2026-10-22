@@ -8,7 +8,6 @@ import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +25,7 @@ final class RowsEditor {
     private final Config cfg;
     private final List<String> order;
     private final Map<String, LinearLayout> views = new HashMap<>();
-    private final Map<String, TextView> states = new HashMap<>(), names = new HashMap<>();
+    private final Map<String, ValueRow> rows = new HashMap<>();
     private final LinearLayout list, hints;
     private String moving;
 
@@ -47,14 +46,8 @@ final class RowsEditor {
     private void open(Runnable done) {
         Dialog d = Panel.dialog(a);
         LinearLayout panel = Panel.box(a);
-        TextView head = Ui.text(a, 24, Ui.TEXT, Ui.LIGHT);
-        head.setText("Home screen layout");
-        head.setPadding(dp(16), 0, 0, dp(4));
-        panel.addView(head);
-        TextView sub = Ui.text(a, 15, Ui.MUTED, Ui.MEDIUM);
-        sub.setText("Top to bottom");
-        sub.setPadding(dp(16), 0, 0, dp(16));
-        panel.addView(sub);
+        Popup.title(panel, "Home screen layout");
+        Popup.subtitle(panel, "Top to bottom");
         panel.addView(list, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
         hints.setPadding(0, dp(20), 0, 0);
         panel.addView(hints, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP));
@@ -69,29 +62,11 @@ final class RowsEditor {
     }
 
     private LinearLayout row(String kind) {
-        LinearLayout row = new LinearLayout(a);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setFocusable(true);
-        row.setClickable(true);
-        row.setPadding(dp(16), dp(14), dp(16), dp(14));
-        View art = new View(a);
-        art.setBackground(Icons.of(Catalog.rowIcon(kind), dp(22), 0xD9FFFFFF));
-        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(22), dp(22));
-        alp.rightMargin = dp(16);
-        row.addView(art, alp);
-        TextView name = Ui.text(a, 18, Ui.TEXT, Ui.MEDIUM);
-        name.setText(Catalog.rowTitle(kind));
-        row.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1f));
-        TextView state = Ui.text(a, 16, Ui.MUTED, Ui.MEDIUM);
-        row.addView(state);
-        names.put(kind, name);
-        states.put(kind, state);
-        row.setOnFocusChangeListener((v, has) -> update());
-        row.setOnKeyListener((v, code, e) -> key(kind, v, code, e));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP);
-        lp.bottomMargin = dp(4);
-        row.setLayoutParams(lp);
-        return row;
+        ValueRow row = new ValueRow(a, Catalog.rowTitle(kind), Catalog.rowIcon(kind));
+        rows.put(kind, row);
+        row.view.setOnFocusChangeListener((v, has) -> update());
+        row.view.setOnKeyListener((v, code, e) -> key(kind, v, code, e));
+        return row.view;
     }
 
     private boolean key(String kind, View v, int code, KeyEvent e) {
@@ -142,22 +117,18 @@ final class RowsEditor {
     }
 
     private void update() {
-        int accent = cfg.accent();
         boolean anyFocused = false;
         for (String kind : order) {
-            LinearLayout row = views.get(kind);
-            boolean focused = row.isFocused(), picked = kind.equals(moving);
-            anyFocused |= focused;
+            ValueRow row = rows.get(kind);
+            boolean picked = kind.equals(moving);
+            anyFocused |= row.view.isFocused();
             Config.Choice c = Catalog.rowSwitch(kind);
             boolean shown = c == null || cfg.on(c);
-            String text = picked ? "▲ ▼" : c == null ? "Always shown" : shown ? "Shown" : "Hidden";
-            states.get(kind).setText(focused && !picked && c != null ? "‹  " + text + "  ›" : text);
-            states.get(kind).setTextColor(picked || focused ? Ui.TEXT : Ui.MUTED);
-            names.get(kind).setAlpha(shown ? 1f : 0.5f);
-            row.setBackground(Ui.rowFocus(accent, dp(12), picked));
+            row.show(picked ? "\u25B2 \u25BC" : c == null ? "Always shown" : shown ? "Shown" : "Hidden", shown, c != null);
+            row.strong(picked);
         }
-        if (moving != null) Ui.hints(hints, "▲ ▼", "Move the row", "OK", "Put it down");
-        else if (anyFocused) Ui.hints(hints, "OK", "Reorder", "◀ ▶", "Show or hide", "Back", "Done");
+        if (moving != null) Ui.hints(hints, "\u25B2 \u25BC", "Move the row", "OK", "Put it down");
+        else if (anyFocused) Ui.hints(hints, "OK", "Reorder", "\u25C0 \u25B6", "Show or hide", "Back", "Done");
     }
 
     private int dp(float v) {

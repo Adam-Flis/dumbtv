@@ -32,6 +32,8 @@ import java.util.TimeZone;
  */
 final class Config {
     static final String FILE = "home.conf";
+    /** The stored value of every choice that is switched off or hidden. */
+    static final String OFF = "off";
 
     static final class Choice {
         final String key, title;
@@ -223,7 +225,8 @@ final class Config {
     private static final String[] CORNER_NAMES = {"Top left", "Top right", "Bottom left", "Bottom right", "Hidden"};
     static final Choice FRAME_CLOCK = new Choice("frame.clock", "Clock", "bl", CORNERS, CORNER_NAMES);
     static final Choice FRAME_WEATHER = new Choice("frame.weather", "Weather", "br", CORNERS, CORNER_NAMES);
-    static final Choice FRAME_FOR = new Choice("frame.for", "Screen saver lasts", "30",
+    /** How long the screen saver runs before it stops (and the TV may sleep, or goes dark). */
+    static final Choice FRAME_FOR = new Choice("frame.for", "Stop after", "30",
             new String[] {"15", "30", "60", "120"},
             new String[] {"15 min", "30 min", "1 hour", "2 hours"});
 
@@ -252,9 +255,9 @@ final class Config {
     /** OLED burn-in care: the home screen drifts a few pixels and goes near black when idle. */
     static final Choice CARE = new Choice("care", "Screen care (OLED)", "on",
             new String[] {"off", "on"}, new String[] {"Off", "On"});
-    static final Choice REST = new Choice("care.rest", "Go dark when idle", "10",
+    static final Choice REST = new Choice("care.rest", "Black screen after", "10",
             new String[] {"5", "10", "20", "30"},
-            new String[] {"After 5 min", "After 10 min", "After 20 min", "After 30 min"});
+            new String[] {"5 min", "10 min", "20 min", "30 min"});
 
     static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
         WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, REST, FAVS, FRAME_CLOCK, FRAME_WEATHER};
@@ -363,7 +366,7 @@ final class Config {
 
     /** Whether the screen saver comes on by itself (Screen saver is "off" or a delay in minutes). */
     boolean frameOn() {
-        return !"off".equals(get(FRAME));
+        return !OFF.equals(get(FRAME));
     }
 
     void setOn(Choice c, boolean on) {

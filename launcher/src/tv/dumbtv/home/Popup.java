@@ -98,8 +98,8 @@ final class Popup {
         View first = null;
         for (int i = 0; i < items.size(); i++) {
             int index = i;
-            ValueRow row = new ValueRow(a, items.get(i));
-            Runnable show = () -> row.show(on[index] ? "Shown" : "Hidden", on[index]);
+            ValueRow row = new ValueRow(a, items.get(i), -1);
+            Runnable show = () -> row.show(on[index] ? "Shown" : "Hidden", on[index], true);
             Runnable flip = () -> {
                 on[index] = !on[index];
                 toggle.set(index, on[index]);
@@ -107,7 +107,7 @@ final class Popup {
             };
             row.onChange(by -> flip.run());
             show.run();
-            list.addView(row.view, rowParams(a));
+            list.addView(row.view);
             if (first == null) first = row.view;
         }
         buttons(d, box, new Action("Done", null));
@@ -124,8 +124,9 @@ final class Popup {
         LinearLayout list = list(box);
         View first = null;
         for (Config.Choice c : cs) {
-            ValueRow row = new ValueRow(a, c.title);
-            Runnable show = () -> row.show(c.name(cfg.get(c)), true);
+            ValueRow row = new ValueRow(a, c.title, -1);
+            // an "off" value (Hidden) dims the name, as everywhere else
+            Runnable show = () -> row.show(c.name(cfg.get(c)), !Config.OFF.equals(cfg.get(c)), true);
             row.onChange(by -> {
                 List<String> values = java.util.Arrays.asList(c.values);
                 int n = values.size(), i = values.indexOf(cfg.get(c));
@@ -134,62 +135,12 @@ final class Popup {
                 if (changed != null) changed.run();
             });
             show.run();
-            list.addView(row.view, rowParams(a));
+            list.addView(row.view);
             if (first == null) first = row.view;
         }
         buttons(d, box, new Action("Done", null));
         Panel.show(a, d, box, 600);
         if (first != null) first.requestFocus();
-    }
-
-    interface Step {
-        void by(int step);
-    }
-
-    /** A name on the left, its value on the right; ‹ › around the value while focused. */
-    private static final class ValueRow {
-        final LinearLayout view;
-        private final TextView name, value;
-        private String text = "";
-        private boolean bright = true;
-
-        ValueRow(Activity a, String label) {
-            view = new LinearLayout(a);
-            view.setGravity(Gravity.CENTER_VERTICAL);
-            view.setFocusable(true);
-            view.setClickable(true);
-            view.setPadding(Ui.dp(a, 16), Ui.dp(a, 13), Ui.dp(a, 16), Ui.dp(a, 13));
-            view.setBackground(Ui.rowFocus(Config.get(a).accent(), Ui.dp(a, 10), false));
-            name = Ui.text(a, 18, Ui.TEXT, Ui.MEDIUM);
-            name.setText(label);
-            view.addView(name, new LinearLayout.LayoutParams(0, WRAP, 1f));
-            value = Ui.text(a, 16, Ui.MUTED, Ui.MEDIUM);
-            view.addView(value);
-            view.setOnFocusChangeListener((v, has) -> show(text, bright));
-        }
-
-        void show(String text, boolean bright) {
-            this.text = text;
-            this.bright = bright;
-            boolean focused = view.isFocused();
-            value.setText(focused ? "\u2039  " + text + "  \u203A" : text);
-            value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
-            name.setAlpha(bright ? 1f : 0.5f);
-        }
-
-        /** OK steps forward; left/right step back and forward, with the navigation tick. */
-        void onChange(Step step) {
-            view.setOnClickListener(v -> step.by(1));
-            view.setOnKeyListener((v, code, e) -> {
-                if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
-                int by = code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 0;
-                if (by == 0) return false;
-                v.playSoundEffect(by < 0 ? android.view.SoundEffectConstants.NAVIGATION_LEFT
-                        : android.view.SoundEffectConstants.NAVIGATION_RIGHT);
-                step.by(by);
-                return true;
-            });
-        }
     }
 
     /**
@@ -261,7 +212,8 @@ final class Popup {
 
     // ---- the shared pieces ----
 
-    private static void subtitle(LinearLayout box, String text) {
+    /** The small line under a pop-up's title; null adds nothing. */
+    static void subtitle(LinearLayout box, String text) {
         if (text == null) return;
         TextView t = Ui.text(box.getContext(), 15, Ui.MUTED, Ui.MEDIUM);
         t.setLineSpacing(0, 1.25f);
@@ -273,7 +225,8 @@ final class Popup {
         box.addView(t, lp);
     }
 
-    private static void title(LinearLayout box, String text) {
+    /** Every pop-up's title: one size, one weight, one gap below. */
+    static void title(LinearLayout box, String text) {
         TextView t = Ui.text(box.getContext(), 26, Ui.TEXT, Ui.LIGHT);
         t.setText(text);
         t.setPadding(0, 0, 0, Ui.dp(box.getContext(), 18));

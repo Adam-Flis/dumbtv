@@ -113,9 +113,9 @@ upstream home screen:
   most likely because it counts on its slide-in animation and animations are off. Fire OS lets
   other apps open only these sections (the rest need an Amazon-only permission).
 - **Screen care (OLED)** (Options › Screen saver, on by default): the home screen drifts up to
-  2 dp to one of nine spots every 3 minutes, and after 5-30 min with no button pressed (default 10)
-  it fades to near black (any button brings it back; the TV still sleeps on its own schedule). The
-  screen saver's clock and weather drift the same way, and when the screen saver's time is up the screen goes dark instead of holding the last picture. OLED owners
+  2 dp to one of nine spots every 3 minutes, and after 5-30 min with no button pressed (Black screen after; default
+  10) it fades to near black (any button brings it back; the TV still sleeps on its own schedule). The
+  screen saver's clock and weather drift the same way and are drawn at 85 % brightness, and when the screen saver's time is up the screen goes dark instead of holding the last picture. OLED owners
   should also keep Fire TV's own sleep setting on (not "Never").
 - **Options › Help**: green/amber checks for the sleep timer permission, internet and weather
   (OK on an amber one explains the fix), a Home button row that only appears when Home opens
@@ -124,7 +124,9 @@ upstream home screen:
   any order (OK picks a row up to reorder, ▲▼ moves it, OK puts it down); ◀▶ shows or hides a row.
   All apps always shows, so every app stays reachable. The page lands on the top row.
 - **Pop-ups** (app menu, rename, ZIP code, inputs, confirmations, help) all use one style
-  (`Popup.java` on `Panel.java`): the dark card, accent-focused rows, pill buttons.
+  (`Popup.java` on `Panel.java`): the dark card, accent-focused rows, pill buttons. Rows with a
+  value (layout, visible inputs, overlay) are all `ValueRow`: ‹ › while focused, a Hidden row's
+  name dimmed.
 - **Key hints**: the app grid, Options and Move mode show which remote keys do what.
 - **Mac tools** (`launcher/tools/`): `push-photos.sh <folder>` resizes photos to 1080p and sends
   them to the screen saver (`--replace`, `--list`, `--clear`); `settings.sh backup|restore|list`
@@ -284,7 +286,8 @@ until another app is opened.
 | `src/.../Ui.java` | shared look: color tokens (GOOD, WARN, ACTIVE, PANEL, MENU, RULE), text, pills, dots, rules, focus backgrounds, notices |
 | `src/.../Dropdown.java` | the top-bar dropdowns (Inputs, Sleep timer, Settings) |
 | `src/.../Panel.java` | the centered card every custom dialog uses |
-| `src/.../Popup.java` | every pop-up on that card: message, pick-one list, checklist, text/ZIP entry |
+| `src/.../Popup.java` | every pop-up on that card: message, pick-one list, checklist, choices, text/ZIP entry |
+| `src/.../ValueRow.java` | the one name-and-value row every pop-up list uses |
 | `src/.../FireSettings.java` | the Fire TV settings screens other apps may open, and the full grid |
 | `src/.../ScreenCare.java` | OLED care: drift and go dark when idle |
 | `src/.../Help.java`, `RowsEditor.java`, `TimeChooser.java` | Help checks and remote guide, row order, time picker |

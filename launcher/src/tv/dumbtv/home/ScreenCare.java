@@ -17,6 +17,8 @@ final class ScreenCare {
 
     private static final long SHIFT_MS = 3 * 60_000L, RETRY_MS = 60_000L;
     private static final float DARK = 0.92f;
+    /** Layers that stay put for a long time (the screen saver's clock and weather) run a little dimmer. */
+    private static final float STATIC_ALPHA = 0.85f;
     /** Nine spots, at most 2 dp from the home screen's own place. */
     private static final int[][] SHIFTS = {{0, 0}, {2, 0}, {2, 2}, {0, 2}, {-2, 2}, {-2, 0}, {-2, -2}, {0, -2}, {2, -2}};
 
@@ -44,9 +46,13 @@ final class ScreenCare {
         return cfg.on(Config.CARE);
     }
 
-    /** {@code v} drifts with the home screen until {@link #unfollow}. */
+    /**
+     * {@code v} drifts with the home screen until {@link #unfollow}, and is drawn slightly dimmer
+     * while screen care is on: the two burn-in rules for anything that stays on screen.
+     */
     void follow(View v) {
         followers.add(v);
+        v.setAlpha(on() ? STATIC_ALPHA : 1f);
         place(v);
     }
 

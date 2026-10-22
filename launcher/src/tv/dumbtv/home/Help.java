@@ -52,10 +52,7 @@ final class Help {
     static void remote(Activity a) {
         Dialog d = Panel.dialog(a);
         LinearLayout panel = Panel.box(a);
-        TextView head = Ui.text(a, 24, Ui.TEXT, Ui.LIGHT);
-        head.setText("Your remote");
-        head.setPadding(0, 0, 0, dp(a, 14));
-        panel.addView(head);
+        Popup.title(panel, "Your remote");
         LinearLayout keys = new LinearLayout(a);
         keys.setOrientation(LinearLayout.VERTICAL);
         Ui.hintLines(keys,
