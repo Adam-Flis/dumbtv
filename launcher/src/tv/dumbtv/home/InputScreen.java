@@ -43,6 +43,8 @@ public final class InputScreen extends Activity {
     private static final String LISTINGS = "android.permission.READ_TV_LISTINGS";
     /** home.conf: the antenna channel watched last (a TV listings channel id). */
     private static final String LAST_CHANNEL = "antenna.channel", CAPTIONS = "antenna.captions";
+    /** Amazon's home screen, on its Live tab (guide, channels, recordings). */
+    private static final String AMAZON_LIVE = "amzn://com.amazon.tv.launcher/menuNavigation?locationID=l_live";
 
     /** One antenna channel: its listings id, and "5.1  WEWS" to show. */
     private static final class Channel {
@@ -111,7 +113,7 @@ public final class InputScreen extends Activity {
                 if (tuner && !channels.isEmpty()) {
                     String now = onNow(channels.get(at));
                     showNote(showing() + (now == null ? "" : "   ·   " + now)
-                            + (hinted ? "" : "\nOK: channels   ·   \u2630: captions and audio"), 4000);
+                            + (hinted ? "" : "\nOK: channels   ·   \u2630: options and Amazon's guide"), 4000);
                     hinted = true;
                 } else {
                     showNote(showing(), 2500);
@@ -219,17 +221,40 @@ public final class InputScreen extends Activity {
         }
     }
 
+    /**
+     * Amazon's own Live TV: its guide with logos and previews, its options, caption styles and
+     * recordings. Other apps may not open Live TV itself, but Amazon's home screen has an open way
+     * to its Live tab (MenuNavigationHelperActivity, location "l_live"). Home comes back here.
+     */
+    private void amazonGuide() {
+        Guard.pause(); // Amazon's home stays until another app opens (a channel, say)
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(AMAZON_LIVE))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            finish();
+        } catch (RuntimeException e) {
+            showNote("Amazon's guide did not open. Hold Home or use the remote's guide button.", 4000);
+        }
+    }
+
     /** OK on the antenna: every channel with what is on now; picking one tunes to it. */
     private void channelList() {
         List<Channel> list = new ArrayList<>(channels);
         new Thread(() -> {
             List<String> rows = new ArrayList<>();
+            // the first row hands over to Amazon's full guide
+            rows.add("Amazon's full guide  \u203A");
             for (Channel ch : list) {
                 String now = onNow(ch);
                 rows.add(now == null ? ch.title : ch.title + "   ·   " + now);
             }
             runOnUiThread(() -> {
-                if (!isFinishing()) Popup.choose(this, "Channels", rows, at, this::tuneChannel);
+                if (!isFinishing()) {
+                    Popup.choose(this, "Channels", rows, at + 1, i -> {
+                        if (i == 0) amazonGuide();
+                        else tuneChannel(i - 1);
+                    });
+                }
             });
         }).start();
     }
@@ -240,6 +265,8 @@ public final class InputScreen extends Activity {
         List<Runnable> picks = new ArrayList<>();
         rows.add("Channel list");
         picks.add(this::channelList);
+        rows.add("Amazon's full guide");
+        picks.add(this::amazonGuide);
         rows.add(captions() ? "Captions: On" : "Captions: Off");
         picks.add(() -> {
             Config.get(this).set(CAPTIONS, captions() ? null : "on");

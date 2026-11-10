@@ -63,8 +63,11 @@ The technical reference for the home screen in this folder. To set it up, read t
 - **Antenna:** the TV's own tuner is an input too. Live TV's channel scan stores the channels in
   Android's TV listings; `InputScreen` reads them (READ_TV_LISTINGS, granted by `install.sh`),
   tunes the one watched last, and Channel up / down or ▲ ▼ change channel. OK lists the channels
-  with what is on now (TV listings programs); ☰ has the channel list, captions on / off and the
-  audio language. Amazon's Live TV app itself (guide, tune) cannot be opened by other apps
+  with what is on now (TV listings programs); ☰ has the channel list, captions on / off, the
+  audio language and **Amazon's full guide**: Amazon's home screen on its Live tab, through the
+  one open door to it (`amzn://com.amazon.tv.launcher/menuNavigation?locationID=l_live`), for the
+  guide with logos and previews, caption styles and recordings. The input service starts at
+  volume 0, so the screen takes the audio focus and sets the volume (as Live TV does). Amazon's Live TV app itself (guide, tune) cannot be opened by other apps
   (`com.amazon.tv.livetv.permission.*` are Amazon-only), but the remote's guide key still opens
   Amazon's guide on top of this screen. The first channel takes a second or so to lock on.
 - **New apps show up:** an app installed while the home screen runs appears in All apps even
