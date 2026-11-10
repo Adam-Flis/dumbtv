@@ -389,8 +389,9 @@ public final class Options extends Activity {
             boolean focused = row.isFocused();
             String text = c.name(cfg.get(c));
             value.setText(focused ? "‹  " + text + "  ›" : text);
-            if (c == Config.ACCENT) {
-                value.setCompoundDrawablesRelative(Ui.dot(cfg.accent(), dp(14)), null, null, null);
+            if (c == Config.ACCENT || c == Config.TITLE_COLOR) {
+                int dot = c == Config.ACCENT ? cfg.accent() : cfg.titleColor();
+                value.setCompoundDrawablesRelative(Ui.dot(dot, dp(14)), null, null, null);
                 value.setCompoundDrawablePadding(dp(10));
             }
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
@@ -517,13 +518,14 @@ public final class Options extends Activity {
         int i = Arrays.asList(c.values).indexOf(cfg.get(c));
         int n = c.values.length;
         cfg.set(c.key, c.values[((i + by) % n + n) % n]);
-        // Regency looks best in gilt: switching to it brings the gold accent, unless one was chosen
-        if (c == Config.STYLE && "regency".equals(cfg.get(c)) && "blue".equals(cfg.get(Config.ACCENT))) {
-            cfg.set(Config.ACCENT.key, "gold");
-        }
-        // ...and gilt titles to go with it, unless the title color was already chosen
-        if (c == Config.STYLE && "regency".equals(cfg.get(c)) && cfg.get(Config.TITLE_COLOR.key, "").isEmpty()) {
-            cfg.set(Config.TITLE_COLOR.key, "accent");
+        // A decorated Style comes with colors that suit it, but only where none was chosen yet:
+        // the default blue accent, and row titles never set.
+        if (c == Config.STYLE && !"modern".equals(cfg.get(c))) {
+            boolean storybook = "storybook".equals(cfg.get(c));
+            if ("blue".equals(cfg.get(Config.ACCENT))) cfg.set(Config.ACCENT.key, storybook ? "pink" : "gold");
+            if (cfg.get(Config.TITLE_COLOR.key, "").isEmpty()) {
+                cfg.set(Config.TITLE_COLOR.key, storybook ? "blush" : "gold");
+            }
         }
         if (c == Config.TEXT || c == Config.STYLE) {
             recreate();

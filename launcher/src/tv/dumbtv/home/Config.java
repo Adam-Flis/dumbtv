@@ -59,8 +59,8 @@ final class Config {
             new String[] {"White", "Blue", "Cyan", "Green", "Amber", "Red", "Pink", "Violet", "Gold"});
     /** The look of every screen: Modern (sans-serif) or Regency (serif, gilt flourishes; Ui.setup). */
     static final Choice STYLE = new Choice("style", "Style", "modern",
-            new String[] {"modern", "regency"},
-            new String[] {"Modern", "Regency"});
+            new String[] {"modern", "regency", "deco", "storybook"},
+            new String[] {"Modern", "Regency", "Art Deco", "Storybook"});
     static final Choice TILES = new Choice("tiles", "Tile size", "medium",
             new String[] {"small", "medium", "large"},
             new String[] {"Small", "Medium", "Large"});
@@ -73,14 +73,23 @@ final class Config {
             new String[] {"Small", "Medium", "Large", "Extra large"});
     private static final float[] TITLE_SCALES = {0.85f, 1f, 1.3f, 1.6f};
 
-    /** Row titles in white (default) or the accent color; Regency's flourish takes the accent too. */
+    /** Row titles and the flourish after them (always one color); Accent follows Accent color. */
     static final Choice TITLE_COLOR = new Choice("titles.color", "Row title color", "white",
-            new String[] {"white", "accent"},
-            new String[] {"White", "Accent"});
-    /** The selected tile: Lively (a spring and a sweep of light) or Simple (it just lifts). */
+            new String[] {"white", "gold", "ivory", "rose", "blush", "sage", "lavender", "powder", "accent"},
+            new String[] {"White", "Gold", "Ivory", "Rose", "Blush", "Sage", "Lavender", "Powder blue", "Accent"});
+    private static final int[] TITLE_COLORS = {
+        0xE6FFFFFF, 0xFFD9B872, 0xFFF3E9D2, 0xFFE59AA8, 0xFFF5C6CF, 0xFFB5CDA3, 0xFFC7B6EA, 0xFFB3CDE8,
+    };
+    /** How the selected tile moves (Tile.java says what each one does). */
     static final Choice MOTION = new Choice("motion", "Tile motion", "lively",
-            new String[] {"lively", "simple"},
-            new String[] {"Lively", "Simple"});
+            new String[] {"lively", "bounce", "glow", "shine", "simple"},
+            new String[] {"Lively", "Bounce", "Glow", "Shine", "Simple"});
+
+    /** The row titles' color, and their flourish's. */
+    int titleColor() {
+        int i = Arrays.asList(TITLE_COLOR.values).indexOf(get(TITLE_COLOR));
+        return i < TITLE_COLORS.length ? TITLE_COLORS[i] : accent();
+    }
 
     float titleScale() {
         return TITLE_SCALES[Arrays.asList(TITLES.values).indexOf(get(TITLES))];

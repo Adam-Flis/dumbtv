@@ -116,6 +116,16 @@ public final class LogicTest {
         for (int i = 0; i <= 100; i++) max = Math.max(max, Tween.springOut(i / 100f));
         // overshoots a little, never a lot
         eq(true, max > 1.03f && max < 1.12f);
+        // Tile motion › Bounce: a springier spring, still settling exactly at the end
+        float bounce = 0;
+        for (int i = 0; i <= 100; i++) bounce = Math.max(bounce, Tween.springOut(i / 100f, 3f));
+        eq(true, bounce > 1.15f && bounce < 1.35f);
+        eq(true, Math.abs(Tween.springOut(1f, 3f) - 1f) < 1e-5f);
+        // every title color but Accent has its own color; Accent comes last
+        eq("accent", Config.TITLE_COLOR.values[Config.TITLE_COLOR.values.length - 1]);
+        eq(Config.TITLE_COLOR.values.length, Config.TITLE_COLOR.names.length);
+        eq(Config.STYLE.values.length, Config.STYLE.names.length);
+        eq(Config.MOTION.values.length, Config.MOTION.names.length);
     }
 
     private static void screenSaverTimers() {

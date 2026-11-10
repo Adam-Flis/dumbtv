@@ -40,13 +40,13 @@ final class Ui {
     /** Everything else: names, values, buttons. */
     static final Typeface MEDIUM = SANS_MEDIUM;
     /**
-     * Style › Regency: the large text (clock, greeting, row titles, temperatures) in Playfair
-     * Display, with gilt flourishes. Small text stays sans-serif: a thin serif is hard to read
-     * across a room, worse with Fire OS's high-contrast text outline.
+     * Options › Style: "modern", or a decorated one ("regency", "deco", "storybook") whose large
+     * text (clock, greeting, row titles) has its own typeface and whose row titles carry a
+     * flourish. Small text stays sans-serif in every Style, so it reads across a room.
      */
-    static boolean regency;
-    /** Options › Tile motion: Lively, or Simple (no spring, no sweep of light). */
-    static boolean lively = true;
+    static String style = "modern";
+    /** Options › Tile motion: lively, bounce, glow, shine or simple (Tile.java). */
+    static String motion = "lively";
 
     /** Options > Text size; set before building a screen. */
     static float scale = 1f;
@@ -55,10 +55,27 @@ final class Ui {
      * Reads Options › Text size and Style; every screen calls this before building its views.
      */
     static void setup(Context c, Config cfg) {
-        regency = "regency".equals(cfg.get(Config.STYLE));
-        lively = "lively".equals(cfg.get(Config.MOTION));
+        style = cfg.get(Config.STYLE);
+        motion = cfg.get(Config.MOTION);
         scale = cfg.textScale();
-        LIGHT = regency ? font(c, "fonts/PlayfairDisplay.ttf", SANS_LIGHT) : SANS_LIGHT;
+        switch (style) {
+            case "regency":
+                LIGHT = font(c, "fonts/PlayfairDisplay.ttf", SANS_LIGHT);
+                break;
+            case "deco":
+                LIGHT = font(c, "fonts/deco-sans.ttf", SANS_LIGHT);
+                break;
+            case "storybook":
+                LIGHT = font(c, "fonts/fraunces-soft.ttf", SANS_LIGHT);
+                break;
+            default:
+                LIGHT = SANS_LIGHT;
+        }
+    }
+
+    /** A decorated Style: titles as written (Art Deco: spaced capitals) with a flourish. */
+    static boolean styled() {
+        return !"modern".equals(style);
     }
 
     private static final java.util.Map<String, Typeface> FONTS = new java.util.HashMap<>();

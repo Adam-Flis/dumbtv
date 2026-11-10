@@ -22,7 +22,8 @@ import android.view.ViewOutlineProvider;
 final class Tile extends View {
     private static final float FOCUS_SCALE = 1.1f;
     /** The lift: a spring that overshoots a little on the way up; a quick settle on the way down. */
-    private static final long LIFT_MS = 420, DROP_MS = 160, SHEEN_MS = 750;
+    private static final long LIFT_MS = 420, BOUNCE_MS = 600, RISE_MS = 220, DROP_MS = 160, SHEEN_MS = 750,
+            GLOW_MS = 1600;
 
     final Item item;
     final String kind;
@@ -49,7 +50,10 @@ final class Tile extends View {
     private final Matrix sheenAt = new Matrix();
     /** Where the sweep is, 0 to 1; below 0 when none is running. */
     private float sweep = -1;
-    private Tween lift, sweepTween;
+    private Tween lift, sweepTween, glowTween;
+    /** Tile motion › Glow: how bright the halo is, 0 (none) to 1. */
+    private float glow;
+    private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     Tile(Context c, Item item, String kind, CharSequence title, int cardW, int cardH,
             String labels, int accent) {
@@ -154,13 +158,16 @@ final class Tile extends View {
         // Lift: grow, rise a little and cast a soft shadow, like Apple TV's focus. Drawn frame by
         // frame (Tween): this TV runs with system animations off, which would make it a jump.
         if (lift != null) lift.cancel();
+        if (sweepTween != null) sweepTween.cancel();
+        if (glowTween != null) glowTween.cancel();
+        sweep = -1;
+        glow = 0;
         float s0 = getScaleX(), y0 = getTranslationY(), z0 = getTranslationZ();
         float s1 = focused ? FOCUS_SCALE : 1f, y1 = focused ? -Ui.dp(getContext(), 4) : 0;
         float z1 = focused ? Ui.dp(getContext(), 16) : 0;
-        if (sweepTween != null) sweepTween.cancel();
-        sweep = -1;
-        if (!Ui.lively) {
-            // Options › Tile motion › Simple: lifted at once, no spring and no sweep
+        String motion = Ui.motion;
+        if ("simple".equals(motion)) {
+            // lifted at once: no spring, no light
             setScaleX(s1);
             setScaleY(s1);
             setTranslationY(y1);
@@ -168,20 +175,37 @@ final class Tile extends View {
             invalidate();
             return;
         }
-        lift = Tween.linear(focused ? LIFT_MS : DROP_MS, t -> {
-            float e = focused ? Tween.springOut(t) : 1 - (1 - t) * (1 - t);
+        // Lively: a light spring. Bounce: a springier one. Glow and Shine: a smooth rise.
+        float give = "bounce".equals(motion) ? 3f : "lively".equals(motion) ? 1.4f : 0f;
+        long ms = !focused ? DROP_MS : "bounce".equals(motion) ? BOUNCE_MS : give > 0 ? LIFT_MS : RISE_MS;
+        lift = Tween.linear(ms, t -> {
+            float e = focused && give > 0 ? Tween.springOut(t, give) : 1 - (1 - t) * (1 - t);
             float s = s0 + (s1 - s0) * e;
             setScaleX(s);
             setScaleY(s);
             setTranslationY(y0 + (y1 - y0) * e);
             setTranslationZ(z0 + (z1 - z0) * Math.min(1f, e));
         }, null);
-        if (focused && !moving) {
+        if (!focused || moving) {
+            invalidate();
+            return;
+        }
+        if ("lively".equals(motion) || "shine".equals(motion)) {
+            // a band of light sweeps across the card once
             sweepTween = Tween.run(SHEEN_MS, t -> {
                 sweep = t;
                 invalidate();
             }, () -> {
                 sweep = -1;
+                invalidate();
+            });
+        } else if ("glow".equals(motion)) {
+            // a halo in the ring's color breathes out twice, then settles faint
+            glowTween = Tween.linear(GLOW_MS, t -> {
+                glow = 0.35f + 0.65f * (float) Math.sin(Math.PI * ((t * 2) % 1f));
+                invalidate();
+            }, () -> {
+                glow = 0.35f;
                 invalidate();
             });
         }
@@ -222,17 +246,12 @@ final class Tile extends View {
             float r = Ui.dp(getContext(), 3.5f);
             canvas.drawCircle(cardW - r * 3, r * 3, r, dot);
         }
+        if (isFocused() && glow > 0) drawHalo(canvas);
         if (isFocused() || moving) {
             float half = stroke / 2;
             ring.setPathEffect(moving ? new DashPathEffect(new float[] {stroke * 3, stroke * 2}, 0) : null);
             canvas.drawRoundRect(half, half, cardW - half, cardH - half, radius - half, radius - half, ring);
-            if (Ui.regency && !moving) {
-                // a gilt frame: a second, finer line just inside the first
-                float in = stroke * 2.2f;
-                ring.setStrokeWidth(stroke * 0.45f);
-                canvas.drawRoundRect(in, in, cardW - in, cardH - in, radius - in, radius - in, ring);
-                ring.setStrokeWidth(stroke);
-            }
+            if (!moving) drawFrame(canvas);
         }
         if (moving) drawArrows(canvas);
         if (badge != null) drawBadge(canvas);
@@ -240,6 +259,61 @@ final class Tile extends View {
         boolean label = banner != null && labelAlways && isFocused();
         if (labelH > 0 && label) {
             drawLine(canvas, under, cardW / 2f, cardH + labelH - Ui.dp(getContext(), 6));
+        }
+    }
+
+    /**
+     * The decorated Styles frame the selected tile inside its ring: Regency a second, finer line;
+     * Art Deco stepped brackets in the corners; Storybook a dotted line.
+     */
+    private void drawFrame(Canvas canvas) {
+        float in = stroke * 2.2f;
+        switch (Ui.style) {
+            case "regency":
+                ring.setStrokeWidth(stroke * 0.45f);
+                canvas.drawRoundRect(in, in, cardW - in, cardH - in, radius - in, radius - in, ring);
+                break;
+            case "deco": {
+                float len = cardH * 0.22f, step = stroke * 1.6f, x0 = in + stroke, y0 = in + stroke;
+                float x1 = cardW - x0, y1 = cardH - y0;
+                ring.setStrokeWidth(stroke * 0.6f);
+                for (int k = 0; k < 2; k++) {
+                    float d = k * step, l = len - k * step * 1.5f;
+                    canvas.drawLine(x0 + d, y0 + d, x0 + d + l, y0 + d, ring);
+                    canvas.drawLine(x0 + d, y0 + d, x0 + d, y0 + d + l, ring);
+                    canvas.drawLine(x1 - d, y0 + d, x1 - d - l, y0 + d, ring);
+                    canvas.drawLine(x1 - d, y0 + d, x1 - d, y0 + d + l, ring);
+                    canvas.drawLine(x0 + d, y1 - d, x0 + d + l, y1 - d, ring);
+                    canvas.drawLine(x0 + d, y1 - d, x0 + d, y1 - d - l, ring);
+                    canvas.drawLine(x1 - d, y1 - d, x1 - d - l, y1 - d, ring);
+                    canvas.drawLine(x1 - d, y1 - d, x1 - d, y1 - d - l, ring);
+                }
+                break;
+            }
+            case "storybook":
+                ring.setStrokeWidth(stroke * 0.8f);
+                ring.setStrokeCap(Paint.Cap.ROUND);
+                ring.setPathEffect(new DashPathEffect(new float[] {0.1f, stroke * 2.6f}, 0));
+                canvas.drawRoundRect(in, in, cardW - in, cardH - in, radius - in, radius - in, ring);
+                ring.setPathEffect(null);
+                ring.setStrokeCap(Paint.Cap.BUTT);
+                break;
+            default:
+                return;
+        }
+        ring.setStrokeWidth(stroke);
+    }
+
+    /** Tile motion › Glow: soft rings in the ring's color just outside the card. */
+    private void drawHalo(Canvas canvas) {
+        halo.setStyle(Paint.Style.STROKE);
+        halo.setStrokeWidth(stroke * 1.6f);
+        int rgb = accent & 0x00FFFFFF;
+        for (int k = 1; k <= 4; k++) {
+            float out = stroke * 1.4f * k;
+            int alpha = Math.round(glow * 110 / (k * 1.6f));
+            halo.setColor(rgb | (alpha << 24));
+            canvas.drawRoundRect(-out, -out, cardW + out, cardH + out, radius + out, radius + out, halo);
         }
     }
 

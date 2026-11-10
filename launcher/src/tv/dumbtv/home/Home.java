@@ -177,16 +177,18 @@ public final class Home extends Activity {
         int icon;
 
         /**
-         * Options > Row title size and color: text and icon grow together. Regency: a larger serif
-         * title with a flourish in the same color after it, instead of the icon.
+         * Options > Row title size and color: text and icon grow together. A decorated Style: the
+         * title in its typeface with a flourish in the same color after it, instead of the icon.
          */
         void styleTitle(float s) {
-            int color = "accent".equals(cfg.get(Config.TITLE_COLOR)) ? cfg.accent() : 0xD9FFFFFF;
+            int color = cfg.titleColor();
             title.setTextColor(color);
-            if (Ui.regency) {
+            if (Ui.styled()) {
                 // the flourish always matches the title it follows
-                title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 23 * Ui.scale * s);
-                title.setCompoundDrawablesRelative(null, null, new Ornament(dp(220 * s), dp(16 * s), color), null);
+                float size = "deco".equals(Ui.style) ? 19 : 23;
+                title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, size * Ui.scale * s);
+                title.setCompoundDrawablesRelative(null, null,
+                        new Ornament(Ui.style, dp(220 * s), dp(16 * s), color), null);
                 title.setCompoundDrawablePadding(dp(16 * s));
                 return;
             }
@@ -206,10 +208,11 @@ public final class Home extends Activity {
         Row(String kind, String name, int icon, LinearLayout parent, boolean grid) {
             this.kind = kind;
             int edge = dp(56), bleed = dp(14);
-            // spaced capitals, like the group headings in Options; Regency: serif, as written
-            title = Ui.text(Home.this, 17, 0xD9FFFFFF, Ui.regency ? Ui.LIGHT : Ui.MEDIUM);
-            title.setText(Ui.regency ? name : name.toUpperCase(Locale.ROOT));
-            title.setLetterSpacing(Ui.regency ? 0.02f : 0.12f);
+            // spaced capitals, like the group headings in Options; decorated Styles: their face
+            boolean caps = !Ui.styled() || "deco".equals(Ui.style);
+            title = Ui.text(Home.this, 17, 0xD9FFFFFF, Ui.styled() ? Ui.LIGHT : Ui.MEDIUM);
+            title.setText(caps ? name.toUpperCase(Locale.ROOT) : name);
+            title.setLetterSpacing("deco".equals(Ui.style) ? 0.2f : caps ? 0.12f : 0.02f);
             title.setGravity(Gravity.CENTER_VERTICAL);
             this.icon = icon;
             title.setCompoundDrawablePadding(dp(12));
@@ -271,7 +274,7 @@ public final class Home extends Activity {
 
         /** Full width; Regency: as wide as the words, so the flourish follows them. */
         private LinearLayout.LayoutParams titleParams() {
-            return new LinearLayout.LayoutParams(Ui.regency ? WRAP : MATCH, WRAP);
+            return new LinearLayout.LayoutParams(Ui.styled() ? WRAP : MATCH, WRAP);
         }
 
         void setVisible(boolean on) {
@@ -658,9 +661,15 @@ public final class Home extends Activity {
         top.setGravity(Gravity.BOTTOM);
         top.setClipChildren(false);
         top.setClipToPadding(false);
-        // Regency: the greeting in an italic serif, like a calling card
-        greeting = Ui.text(this, 30, 0xE6FFFFFF, Ui.regency ? android.graphics.Typeface.create(Ui.LIGHT,
-                android.graphics.Typeface.ITALIC) : Ui.MEDIUM);
+        // the greeting in the Style's face: Regency in italics like a calling card, Art Deco in
+        // spaced capitals like a marquee
+        greeting = Ui.text(this, 30, 0xE6FFFFFF, !Ui.styled() ? Ui.MEDIUM : "regency".equals(Ui.style)
+                ? android.graphics.Typeface.create(Ui.LIGHT, android.graphics.Typeface.ITALIC) : Ui.LIGHT);
+        if ("deco".equals(Ui.style)) {
+            greeting.setAllCaps(true);
+            greeting.setLetterSpacing(0.15f);
+            greeting.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 24 * Ui.scale);
+        }
         greeting.setPadding(dp(3), 0, 0, 0);
         top.addView(greeting, new LinearLayout.LayoutParams(0, WRAP, 1f));
         bar = new LinearLayout(this);
@@ -932,7 +941,7 @@ public final class Home extends Activity {
             chipIcon(c);
         }
         float ts = cfg.titleScale();
-        Ui.lively = "lively".equals(cfg.get(Config.MOTION));
+        Ui.motion = cfg.get(Config.MOTION);
         for (Row row : rows) row.styleTitle(ts);
         render(favs);
         loadRecent();

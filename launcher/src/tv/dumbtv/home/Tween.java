@@ -47,8 +47,13 @@ final class Tween implements Choreographer.FrameCallback {
 
     /** Eases out past the end and back (about 8 % over), like a light spring. */
     static float springOut(float t) {
-        float c1 = 1.4f, c3 = c1 + 1, u = t - 1;
-        return 1 + c3 * u * u * u + c1 * u * u;
+        return springOut(t, 1.4f);
+    }
+
+    /** The same with {@code give}: about 8 % over at 1.4, about 25 % at 3. */
+    static float springOut(float t, float give) {
+        float c3 = give + 1, u = t - 1;
+        return 1 + c3 * u * u * u + give * u * u;
     }
 
     void cancel() {

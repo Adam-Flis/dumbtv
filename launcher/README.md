@@ -32,19 +32,28 @@ The technical reference for the home screen in this folder. To set it up, read t
   time of day from night blue through a rose sunrise, clear blues, golden hour and a pink sunset
   (`Sky.java`, blended minute by minute); black, graphite, midnight; or your own images with a
   dim level and a rotation (each return, hourly, daily, by time of day).
-- **Style** (Options › Appearance): **Modern** or **Regency**, after Bridgerton and Jane Eyre:
-  the large text (clock, italic greeting, row titles, screen titles) in Playfair Display
-  (`assets/fonts/`, SIL Open Font License), a flourish in the accent color after each row title
-  (`Ornament.java`), a double frame on the selected tile, and the gold accent. Small text and
-  temperatures stay sans-serif so they read across the room. Switching to Regency also picks the
-  gold accent and gold titles, unless those were chosen already.
-- **Row title color:** White (default) or the accent color; the flourish follows it. **Tile
-  motion:** Lively or Simple.
-  Every look setting is in Options › Appearance, so Style Modern, Background App color and
-  Tile motion Simple give back the original look.
-- **Tiles come alive** (Tile motion › Lively): the selected tile lifts on a light spring and a
-  band of light sweeps across it once, drawn frame by frame (`Tween`) since this TV runs with
-  animations off.
+- **Style** (Options › Appearance) sets the large text's typeface (clock, greeting, row titles),
+  the flourish after each row title (`Ornament.java`) and the frame inside the selected tile's
+  ring (`Tile.drawFrame`); small text and temperatures stay sans-serif in every Style. Fonts in
+  `assets/fonts/` (SIL Open Font License, `LICENSES.txt`).
+
+  | Style | Large text | Flourish | Selected tile |
+  |---|---|---|---|
+  | Modern | sans-serif, titles in spaced capitals with an icon | none | ring |
+  | Regency (Bridgerton, Jane Eyre) | Playfair Display, italic greeting | two lozenges and a rule | ring and a fine inner line |
+  | Art Deco (Gatsby) | Deco Sans (Josefin Sans), spaced capitals | sunburst fan over a double line | ring and stepped corner brackets |
+  | Storybook | Fraunces, soft and a little wonky | a sparkle and a dotted line | ring and a dotted inner line |
+
+  Picking a decorated Style also picks a suiting accent and title color, but only where none was
+  chosen yet (the default blue accent, a title color never set).
+- **Row title color:** White, Gold, Ivory, Rose, Blush, Sage, Lavender, Powder blue or Accent
+  (follows Accent color). The title and its flourish are always the same color.
+- **Tile motion:** Lively (a light spring and a band of light), Bounce (a springier spring),
+  Glow (a halo in the accent color breathes twice, then stays faint), Shine (a smooth rise and the
+  band of light) or Simple (lifts at once). All drawn frame by frame (`Tween`), since this TV runs
+  with animations off; nothing keeps moving once it settles.
+- Every look setting is in Options › Appearance: Style Modern, Background App color and Tile
+  motion Simple give back the original look.
 - **The next hours** show as many as fit beside the weather (fewer with a large Text size).
 - **Inputs open on our own screen** (`InputScreen`): Android's standard "show this input" request
   goes to Live TV, which on Fire TV refuses it or opens its own screen, and Amazon keeps its input
