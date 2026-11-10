@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.media.AudioManager;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputManager;
 import android.media.tv.TvTrackInfo;
@@ -142,6 +143,7 @@ public final class InputScreen extends Activity {
         if (!tuner) {
             showNote("Switching to " + name + "…", 0);
             tv.tune(id, TvContract.buildChannelUriForPassthroughInput(id));
+            sound();
         } else if (checkSelfPermission(LISTINGS) == PackageManager.PERMISSION_GRANTED) {
             startAntenna();
         } else {
@@ -197,6 +199,7 @@ public final class InputScreen extends Activity {
         Channel ch = channels.get(at);
         showNote("Tuning " + ch.title + "…", 0);
         tv.tune(inputId, TvContract.buildChannelUri(ch.id));
+        sound();
         tv.setCaptionEnabled(captions());
         Config.get(this).set(LAST_CHANNEL, String.valueOf(ch.id));
     }
@@ -315,11 +318,34 @@ public final class InputScreen extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
+    /**
+     * The sound. The TV's input service plays at volume 0 until the app showing it says
+     * otherwise, the way Live TV does: take the audio focus and set the input's volume.
+     */
+    private void sound() {
+        AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (am != null) am.requestAudioFocus(focus, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+        tv.setStreamVolume(1f);
+    }
+
+    /** Another app took the sound (Alexa, say): quiet while it talks, back when it is done. */
+    private final AudioManager.OnAudioFocusChangeListener focus = change -> {
+        if (tv == null) return;
+        if (change == AudioManager.AUDIOFOCUS_LOSS) tv.setStreamVolume(0f);
+        else if (change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+            tv.setStreamVolume(change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ? 0f : 0.3f);
+        } else if (change == AudioManager.AUDIOFOCUS_GAIN) {
+            tv.setStreamVolume(1f);
+        }
+    };
+
     @Override
     protected void onStop() {
         super.onStop();
         // left for Home or another app: close, so pressing Home never brings the input back
         if (tv != null) tv.reset();
+        AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (am != null) am.abandonAudioFocus(focus);
         finish();
     }
 
