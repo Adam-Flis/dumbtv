@@ -2,6 +2,8 @@ package tv.dumbtv.home;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputManager;
 import android.media.tv.TvView;
@@ -14,6 +16,10 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * An HDMI (or other) input, full screen. Fire OS keeps its own input switch for Amazon-signed
  * apps (com.amazon.tv.inputpreference.service, permission TUNE_INPUT), and Android's standard
@@ -21,10 +27,34 @@ import android.widget.TextView;
  * screen shows the input itself with TvView, the public Android TV API: it asks the input's
  * service for a session and gives it this window to draw in. No permission needed.
  *
+ * The antenna works the same way, on a channel: the channels Live TV found in its scan are read
+ * from Android's TV listings (READ_TV_LISTINGS, allowed by install.sh or asked for here), and
+ * Channel up / down or the up / down arrows change channel. The last one watched is remembered.
+ *
  * Back, Home or opening anything else closes it, so the home screen is what comes back.
  */
 public final class InputScreen extends Activity {
-    private static final String EXTRA_INPUT = "input", EXTRA_NAME = "name";
+    private static final String EXTRA_INPUT = "input", EXTRA_NAME = "name", EXTRA_TUNER = "tuner";
+    private static final String LISTINGS = "android.permission.READ_TV_LISTINGS";
+    /** home.conf: the antenna channel watched last (a TV listings channel id). */
+    private static final String LAST_CHANNEL = "antenna.channel";
+
+    /** One antenna channel: its listings id, and "5.1  WEWS" to show. */
+    private static final class Channel {
+        final long id;
+        final String number, title;
+
+        Channel(long id, String number, String name) {
+            this.id = id;
+            this.number = number;
+            this.title = name == null || name.isEmpty() ? number : number + "  " + name;
+        }
+    }
+
+    private final List<Channel> channels = new ArrayList<>();
+    private int at;
+    private String inputId;
+    private boolean tuner;
     private static final int MATCH = FrameLayout.LayoutParams.MATCH_PARENT, WRAP = FrameLayout.LayoutParams.WRAP_CONTENT;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -37,8 +67,8 @@ public final class InputScreen extends Activity {
     /** Shows {@code input} (a TV input id), titled {@code name}. */
     static void open(Activity from, Item input, CharSequence name) {
         // started plainly: NEW_TASK on our own task, which is already in front, would do nothing
-        from.startActivity(new Intent(from, InputScreen.class)
-                .putExtra(EXTRA_INPUT, input.id).putExtra(EXTRA_NAME, name.toString()));
+        from.startActivity(new Intent(from, InputScreen.class).putExtra(EXTRA_INPUT, input.id)
+                .putExtra(EXTRA_NAME, name.toString()).putExtra(EXTRA_TUNER, input.tuner));
     }
 
     @Override
@@ -46,6 +76,8 @@ public final class InputScreen extends Activity {
         super.onCreate(state);
         String id = getIntent().getStringExtra(EXTRA_INPUT);
         name = getIntent().getStringExtra(EXTRA_NAME);
+        tuner = getIntent().getBooleanExtra(EXTRA_TUNER, false);
+        inputId = id;
         if (id == null) {
             finish();
             return;
@@ -69,14 +101,19 @@ public final class InputScreen extends Activity {
             public void onVideoAvailable(String inputId) {
                 // a picture: the TV stays on while it plays, like Amazon's own input screen
                 root.setKeepScreenOn(true);
-                showNote(name, 2500);
+                showNote(showing(), 2500);
             }
 
             @Override
             public void onVideoUnavailable(String inputId, int reason) {
                 root.setKeepScreenOn(false);
                 boolean tuning = reason == TvInputManager.VIDEO_UNAVAILABLE_REASON_TUNING;
-                showNote(tuning ? "Switching to " + name + "…" : "No signal on " + name + ". Is it turned on?", 0);
+                if (tuner) {
+                    showNote(tuning ? "Tuning " + showing() + "…"
+                            : "No signal on " + showing() + ". Try another channel, or check the antenna.", 0);
+                } else {
+                    showNote(tuning ? "Switching to " + name + "…" : "No signal on " + name + ". Is it turned on?", 0);
+                }
             }
 
             @Override
@@ -89,8 +126,65 @@ public final class InputScreen extends Activity {
                 failed();
             }
         });
-        showNote("Switching to " + name + "…", 0);
-        tv.tune(id, TvContract.buildChannelUriForPassthroughInput(id));
+        if (!tuner) {
+            showNote("Switching to " + name + "…", 0);
+            tv.tune(id, TvContract.buildChannelUriForPassthroughInput(id));
+        } else if (checkSelfPermission(LISTINGS) == PackageManager.PERMISSION_GRANTED) {
+            startAntenna();
+        } else {
+            showNote("Allow the home screen to see your channels.", 0);
+            requestPermissions(new String[] {LISTINGS}, 1);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+            startAntenna();
+        } else {
+            showNote("Without that the home screen cannot list your channels. Amazon's home screen"
+                    + " can: Options › More › Amazon home screen.", 0);
+        }
+    }
+
+    /** What is on screen: the channel on the antenna, else the input's name. */
+    private String showing() {
+        return tuner && !channels.isEmpty() ? channels.get(at).title : name;
+    }
+
+    /** Reads the antenna's channels and tunes to the one watched last (or the first). */
+    private void startAntenna() {
+        // Amazon's Live TV leaves every channel's "browsable" flag at 0, so it is no filter here
+        String[] columns = {TvContract.Channels._ID, TvContract.Channels.COLUMN_DISPLAY_NUMBER,
+            TvContract.Channels.COLUMN_DISPLAY_NAME};
+        try (Cursor c = getContentResolver().query(TvContract.buildChannelsUriForInput(inputId),
+                columns, null, null, null)) {
+            while (c != null && c.moveToNext()) {
+                channels.add(new Channel(c.getLong(0), c.isNull(1) ? "" : c.getString(1), c.getString(2)));
+            }
+        } catch (RuntimeException e) {
+            android.util.Log.w("dumbtv", "antenna channels: " + e);
+        }
+        if (channels.isEmpty()) {
+            showNote("No channels yet. Fire TV finds them: Settings › Live TV › Channel Scan.", 0);
+            return;
+        }
+        Collections.sort(channels, (a, b) -> Catalog.compareChannelNumbers(a.number, b.number));
+        String last = Config.get(this).get(LAST_CHANNEL, "");
+        for (int i = 0; i < channels.size(); i++) {
+            if (String.valueOf(channels.get(i).id).equals(last)) at = i;
+        }
+        tuneChannel(at);
+    }
+
+    /** Tunes to channel number {@code i} of the list, wrapping at either end. */
+    private void tuneChannel(int i) {
+        int n = channels.size();
+        at = ((i % n) + n) % n;
+        Channel ch = channels.get(at);
+        showNote("Tuning " + ch.title + "…", 0);
+        tv.tune(inputId, TvContract.buildChannelUri(ch.id));
+        Config.get(this).set(LAST_CHANNEL, String.valueOf(ch.id));
     }
 
     /** The input's service would not show it here: say where it still works. */
@@ -119,8 +213,16 @@ public final class InputScreen extends Activity {
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+        int code = e.getKeyCode();
+        if (code == KeyEvent.KEYCODE_BACK) {
             if (e.getAction() == KeyEvent.ACTION_UP) finish();
+            return true;
+        }
+        // the antenna: Channel up / down, or the up / down arrows on remotes without channel keys
+        int step = code == KeyEvent.KEYCODE_CHANNEL_UP || code == KeyEvent.KEYCODE_DPAD_UP ? 1
+                : code == KeyEvent.KEYCODE_CHANNEL_DOWN || code == KeyEvent.KEYCODE_DPAD_DOWN ? -1 : 0;
+        if (tuner && step != 0 && !channels.isEmpty()) {
+            if (e.getAction() == KeyEvent.ACTION_DOWN) tuneChannel(at + step);
             return true;
         }
         return super.dispatchKeyEvent(e);

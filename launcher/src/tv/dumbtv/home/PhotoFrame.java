@@ -91,7 +91,7 @@ final class PhotoFrame extends FrameLayout {
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(Ui.dp(c, 52), Ui.dp(c, 52));
         ilp.rightMargin = Ui.dp(c, 14);
         now.addView(icon, ilp);
-        temp = Ui.text(c, 48, Ui.TEXT, Ui.LIGHT);
+        temp = Ui.text(c, 48, Ui.TEXT, Ui.PLAIN_LIGHT);
         temp.setShadowLayer(Ui.dp(c, 6), 0, 0, 0x99000000);
         now.addView(temp);
         weather.addView(now);

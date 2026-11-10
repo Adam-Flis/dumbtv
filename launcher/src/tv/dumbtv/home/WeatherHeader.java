@@ -34,7 +34,7 @@ final class WeatherHeader {
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(40), dp(40));
         ilp.rightMargin = dp(10);
         now.addView(icon, ilp);
-        temp = Ui.text(c, 40, Ui.TEXT, Ui.LIGHT);
+        temp = Ui.text(c, 40, Ui.TEXT, Ui.PLAIN_LIGHT);
         now.addView(temp);
         LinearLayout details = new LinearLayout(c);
         details.setOrientation(LinearLayout.VERTICAL);

@@ -136,26 +136,51 @@ final class Catalog {
         return out;
     }
 
-    /** HDMI, AV and other passthrough inputs; HDMI first in port order. */
+    /**
+     * HDMI, the antenna and other inputs: HDMI first in port order, then the antenna, then the rest.
+     * Apps such as Peacock or Hulu also register TV inputs for their channels; those are left out.
+     */
     static List<Item> inputs(Context c, TvInputManager tv) {
         List<Item> out = new ArrayList<>();
         if (tv == null) return out;
-        List<Item> other = new ArrayList<>();
+        List<Item> antenna = new ArrayList<>(), other = new ArrayList<>();
         for (TvInputInfo in : tv.getTvInputList()) {
-            if (!in.isPassthroughInput() || in.isHidden(c)) continue;
+            boolean tuner = isAntenna(in.getId(), in.isPassthroughInput(), in.getType());
+            if ((!in.isPassthroughInput() && !tuner) || in.isHidden(c)) continue;
             CharSequence label = in.loadCustomLabel(c);
-            if (TextUtils.isEmpty(label)) label = in.loadLabel(c);
-            Intent view = new Intent(Intent.ACTION_VIEW,
-                    TvContract.buildChannelUriForPassthroughInput(in.getId()));
+            if (TextUtils.isEmpty(label)) label = tuner ? "Antenna" : in.loadLabel(c);
+            Intent view = new Intent(Intent.ACTION_VIEW, tuner ? TvContract.buildChannelsUriForInput(in.getId())
+                    : TvContract.buildChannelUriForPassthroughInput(in.getId()));
             Item it = new Item(in.getId(), label, view);
+            it.tuner = tuner;
             it.state = tv.getInputState(in.getId());
-            (in.getType() == TvInputInfo.TYPE_HDMI ? out : other).add(it);
+            (in.getType() == TvInputInfo.TYPE_HDMI ? out : tuner ? antenna : other).add(it);
         }
         Collator collator = Collator.getInstance();
         Collections.sort(out, (a, b) -> collator.compare(a.label.toString(), b.label.toString()));
         Collections.sort(other, (a, b) -> collator.compare(a.label.toString(), b.label.toString()));
+        out.addAll(antenna);
         out.addAll(other);
         return out;
+    }
+
+    /**
+     * The TV's own antenna tuner: a tuner input that belongs to the TV's hardware. Android gives
+     * hardware inputs an id ending in "/HW" and a number; an app's channels input has none.
+     */
+    static boolean isAntenna(String id, boolean passthrough, int type) {
+        return !passthrough && type == TvInputInfo.TYPE_TUNER && id.matches(".*/HW\\d+$");
+    }
+
+    /** Channel numbers in order: "2.1" before "5.1" before "19.1", "7" before "7.2". */
+    static int compareChannelNumbers(String a, String b) {
+        String[] x = a.split("\\D+"), y = b.split("\\D+");
+        for (int i = 0; i < Math.max(x.length, y.length); i++) {
+            long p = i < x.length && !x[i].isEmpty() ? Long.parseLong(x[i]) : -1;
+            long q = i < y.length && !y[i].isEmpty() ? Long.parseLong(y[i]) : -1;
+            if (p != q) return Long.compare(p, q);
+        }
+        return a.compareTo(b);
     }
 
     static CharSequence label(Config cfg, Item it) {

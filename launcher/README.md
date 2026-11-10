@@ -32,10 +32,11 @@ The technical reference for the home screen in this folder. To set it up, read t
   time of day from night blue through a rose sunrise, clear blues, golden hour and a pink sunset
   (`Sky.java`, blended minute by minute); black, graphite, midnight; or your own images with a
   dim level and a rotation (each return, hourly, daily, by time of day).
-- **Style** (Options › Appearance): **Modern** (sans-serif) or **Regency**, after Bridgerton and
-  Jane Eyre: Playfair Display and Cormorant Garamond (`assets/fonts/`, SIL Open Font License), an
-  italic greeting, row titles with a gilt flourish (`Ornament.java`), a double gilt frame on the
-  selected tile, and the gold accent. It applies to every screen.
+- **Style** (Options › Appearance): **Modern** or **Regency**, after Bridgerton and Jane Eyre:
+  the large text (clock, italic greeting, row titles, screen titles) in Playfair Display
+  (`assets/fonts/`, SIL Open Font License), row titles in gilt with a flourish (`Ornament.java`),
+  a double gilt frame on the selected tile, and the gold accent. Small text and temperatures stay
+  sans-serif so they read across the room.
 - **Tiles come alive:** the selected tile lifts on a light spring and a band of light sweeps
   across it once, drawn frame by frame (`Tween`) since this TV runs with animations off.
 - **Inputs open on our own screen** (`InputScreen`): Android's standard "show this input" request
@@ -43,6 +44,10 @@ The technical reference for the home screen in this folder. To set it up, read t
   switch (`com.amazon.tv.inputpreference.service`, permission `TUNE_INPUT`) for its own apps. So
   the input is drawn full screen with `TvView`, the public Android TV API, which needs no
   permission. A note says "No signal" when the device is off. Back, Home or any app closes it.
+- **Antenna:** the TV's own tuner is an input too. Live TV's channel scan stores the channels in
+  Android's TV listings; `InputScreen` reads them (READ_TV_LISTINGS, granted by `install.sh`),
+  tunes the one watched last, and Channel up / down or ▲ ▼ change channel. Amazon's Live TV app
+  itself (guide, tune) is locked to Amazon-signed apps (`com.amazon.tv.livetv.permission.*`).
 - **New apps show up:** an app installed while the home screen runs appears in All apps even
   without a TV banner (phone apps from outside the Appstore otherwise start hidden).
 - **"Switch input?" card:** when a device on an HDMI input turns on while the home screen shows

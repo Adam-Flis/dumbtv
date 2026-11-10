@@ -5,7 +5,8 @@ the time and the weather. No ads, no "recommended for you" rows, no tracking.
 
 What you get:
 
-- **Your apps and inputs only.** A Favorites row, Recently used, All apps and Inputs, in any order.
+- **Your apps and inputs only.** A Favorites row, Recently used, All apps and Inputs (HDMI and the
+  antenna, with channel up and down), in any order.
 - **A sleep timer** right on the home screen: 15 minutes to 2 hours, or any length.
 - **Night mode:** a warm dim in the evening, on a schedule or with one button.
 - **A screen saver** with photos, the clock and the weather. It also comes on when an app sits
@@ -13,7 +14,7 @@ What you get:
 - **Burn-in care for OLED TVs:** nothing stays still on screen for long.
 - **Weather** (optional): now, the next hours and tomorrow, from your ZIP code.
 - **Your style:** a sky background that follows the time of day, and a Regency look (serif
-  lettering and gilt flourishes, in the spirit of Bridgerton) next to the modern one.
+  titles and gilt flourishes, in the spirit of Bridgerton) next to the modern one.
 
 It's a fork of [humblemuzzu/dumbtv](https://github.com/humblemuzzu/dumbtv), built and tested on a
 Toshiba Fire TV Edition television (Fire OS 6.7). Setting it up takes about 30 minutes, a
@@ -261,5 +262,5 @@ no account or key. With weather off it never connects to anything.
   screen, and not safe on a Fire OS 6 television** (it disables the Live TV and HDMI inputs).
 
 MIT licence ([LICENSE](LICENSE)). The built-in photos are public domain
-([credits](launcher/assets/photos/CREDITS.txt)); the Regency fonts are under the SIL Open Font
+([credits](launcher/assets/photos/CREDITS.txt)); the Regency font is under the SIL Open Font
 License ([licences](launcher/assets/fonts/LICENSES.txt)). Nothing here is Amazon code.

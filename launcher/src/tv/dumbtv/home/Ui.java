@@ -28,6 +28,8 @@ final class Ui {
     /** Thin dividers. */
     static final int RULE = 0x24FFFFFF;
     private static final Typeface SANS_LIGHT = Typeface.create("sans-serif-light", Typeface.NORMAL);
+    /** Large sans-serif in every Style: temperatures (Playfair's degree sign sits apart). */
+    static final Typeface PLAIN_LIGHT = SANS_LIGHT;
     private static final Typeface SANS_MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
     /** Gilt, for Style › Regency's flourishes and titles. */
     static final int GOLD = 0xFFD9B872;
@@ -36,8 +38,12 @@ final class Ui {
     /** Large, light text: the clock, temperatures, screen titles. */
     static Typeface LIGHT = SANS_LIGHT;
     /** Everything else: names, values, buttons. */
-    static Typeface MEDIUM = SANS_MEDIUM;
-    /** Style › Regency: Playfair Display and Cormorant Garamond with gilt flourishes. */
+    static final Typeface MEDIUM = SANS_MEDIUM;
+    /**
+     * Style › Regency: the large text (clock, greeting, row titles, temperatures) in Playfair
+     * Display, with gilt flourishes. Small text stays sans-serif: a thin serif is hard to read
+     * across a room, worse with Fire OS's high-contrast text outline.
+     */
     static boolean regency;
 
     /** Options > Text size; set before building a screen. */
@@ -50,7 +56,6 @@ final class Ui {
         regency = "regency".equals(cfg.get(Config.STYLE));
         scale = cfg.textScale();
         LIGHT = regency ? font(c, "fonts/PlayfairDisplay.ttf", SANS_LIGHT) : SANS_LIGHT;
-        MEDIUM = regency ? font(c, "fonts/cormorant-semibold.ttf", SANS_MEDIUM) : SANS_MEDIUM;
     }
 
     private static final java.util.Map<String, Typeface> FONTS = new java.util.HashMap<>();

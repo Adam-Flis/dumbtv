@@ -151,6 +151,8 @@ if [[ $mode == build ]]; then
   else
     echo "note: the sleep timer could not be allowed; it uses Fire TV's own sleep timer instead"
   fi
+  # the antenna's channel list (TV listings); without it the antenna asks on screen
+  sh_ pm grant $PKG android.permission.READ_TV_LISTINGS >/dev/null 2>&1 || true
   if sh_ pm grant $PKG android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1; then
     echo "screen saver in apps: allowed"
   else

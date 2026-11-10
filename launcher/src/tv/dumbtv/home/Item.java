@@ -11,6 +11,8 @@ final class Item {
     final Intent intent;
     ActivityInfo info;
     boolean leanback;
+    /** A TV input that is the TV's own antenna tuner (channels), not a plug like HDMI. */
+    boolean tuner;
     int state = -1;
     volatile boolean artRequested;
     volatile Drawable banner, icon;

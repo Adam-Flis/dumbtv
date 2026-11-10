@@ -19,6 +19,7 @@ public final class LogicTest {
         pictures();
         distinctNames();
         sky();
+        antenna();
         spring();
         screenSaverTimers();
         screenSaverChoices();
@@ -96,6 +97,16 @@ public final class LogicTest {
         eq(Sky.colors(1439)[0], Sky.colors(-1)[0]);
         eq(true, (Sky.colors(780)[2] & 0xFF) < (Sky.colors(780)[0] & 0xFF));
         eq(0xFF808080, Sky.mix(0xFF000000, 0xFFFFFFFF, 0.5f));
+    }
+
+    private static void antenna() {
+        // the TV's own tuner has a hardware id; an app's channels input does not
+        eq(true, Catalog.isAntenna("com.mstar.android.tv.inputservice/com.amazon.android.tv.inputservice.TunerInputService/HW1", false, 0));
+        eq(false, Catalog.isAntenna("com.hulu.plus/dev.cobalt.epg.TvInputService", false, 0));
+        eq(false, Catalog.isAntenna("com.mstar.android.tv.inputservice/.Hdmi1InputService/HW23", true, 1007));
+        List<String> numbers = new java.util.ArrayList<>(Arrays.asList("19.1", "5.2", "5.1", "43", "8.10", "8.2", "3"));
+        java.util.Collections.sort(numbers, Catalog::compareChannelNumbers);
+        eq(Arrays.asList("3", "5.1", "5.2", "8.2", "8.10", "19.1", "43"), numbers);
     }
 
     private static void spring() {
