@@ -705,7 +705,8 @@ public final class Home extends Activity {
         timeCol.addView(clock, clp);
         date = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
         date.setPadding(dp(3), dp(10), 0, 0);
-        timeCol.addView(date);
+        // its own width: a vertical LinearLayout would otherwise clip it to the clock's width
+        timeCol.addView(date, new LinearLayout.LayoutParams(WRAP, WRAP));
         middle.addView(timeCol);
         // time on the left; all the weather together on the right, ending where the top bar ends
         middle.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
