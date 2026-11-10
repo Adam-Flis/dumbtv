@@ -36,15 +36,16 @@ The technical reference for the home screen in this folder. To set it up, read t
   the large text (clock, italic greeting, row titles, screen titles) in Playfair Display
   (`assets/fonts/`, SIL Open Font License), a flourish in the accent color after each row title
   (`Ornament.java`), a double frame on the selected tile, and the gold accent. Small text and
-  temperatures stay sans-serif so they read across the room.
-- **Row title color:** White (default) or the accent color. **Tile motion:** Lively or Simple.
+  temperatures stay sans-serif so they read across the room. Switching to Regency also picks the
+  gold accent and gold titles, unless those were chosen already.
+- **Row title color:** White (default) or the accent color; the flourish follows it. **Tile
+  motion:** Lively or Simple.
   Every look setting is in Options › Appearance, so Style Modern, Background App color and
   Tile motion Simple give back the original look.
 - **Tiles come alive** (Tile motion › Lively): the selected tile lifts on a light spring and a
   band of light sweeps across it once, drawn frame by frame (`Tween`) since this TV runs with
   animations off.
-- **Readable header:** the date, weather details, sunrise/sunset and tomorrow, and the next hours
-  are sized to read across a room; the next hours show as many as fit beside the weather.
+- **The next hours** show as many as fit beside the weather (fewer with a large Text size).
 - **Inputs open on our own screen** (`InputScreen`): Android's standard "show this input" request
   goes to Live TV, which on Fire TV refuses it or opens its own screen, and Amazon keeps its input
   switch (`com.amazon.tv.inputpreference.service`, permission `TUNE_INPUT`) for its own apps. So
@@ -52,8 +53,11 @@ The technical reference for the home screen in this folder. To set it up, read t
   permission. A note says "No signal" when the device is off. Back, Home or any app closes it.
 - **Antenna:** the TV's own tuner is an input too. Live TV's channel scan stores the channels in
   Android's TV listings; `InputScreen` reads them (READ_TV_LISTINGS, granted by `install.sh`),
-  tunes the one watched last, and Channel up / down or ▲ ▼ change channel. Amazon's Live TV app
-  itself (guide, tune) is locked to Amazon-signed apps (`com.amazon.tv.livetv.permission.*`).
+  tunes the one watched last, and Channel up / down or ▲ ▼ change channel. OK lists the channels
+  with what is on now (TV listings programs); ☰ has the channel list, captions on / off and the
+  audio language. Amazon's Live TV app itself (guide, tune) cannot be opened by other apps
+  (`com.amazon.tv.livetv.permission.*` are Amazon-only), but the remote's guide key still opens
+  Amazon's guide on top of this screen. The first channel takes a second or so to lock on.
 - **New apps show up:** an app installed while the home screen runs appears in All apps even
   without a TV banner (phone apps from outside the Appstore otherwise start hidden).
 - **"Switch input?" card:** when a device on an HDMI input turns on while the home screen shows

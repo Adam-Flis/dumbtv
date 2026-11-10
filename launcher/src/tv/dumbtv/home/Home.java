@@ -178,15 +178,15 @@ public final class Home extends Activity {
 
         /**
          * Options > Row title size and color: text and icon grow together. Regency: a larger serif
-         * title with a flourish in the accent color after it, instead of the icon.
+         * title with a flourish in the same color after it, instead of the icon.
          */
         void styleTitle(float s) {
-            int accent = cfg.accent();
-            int color = "accent".equals(cfg.get(Config.TITLE_COLOR)) ? accent : 0xD9FFFFFF;
+            int color = "accent".equals(cfg.get(Config.TITLE_COLOR)) ? cfg.accent() : 0xD9FFFFFF;
             title.setTextColor(color);
             if (Ui.regency) {
+                // the flourish always matches the title it follows
                 title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 23 * Ui.scale * s);
-                title.setCompoundDrawablesRelative(null, null, new Ornament(dp(220 * s), dp(16 * s), accent), null);
+                title.setCompoundDrawablesRelative(null, null, new Ornament(dp(220 * s), dp(16 * s), color), null);
                 title.setCompoundDrawablePadding(dp(16 * s));
                 return;
             }
@@ -728,7 +728,7 @@ public final class Home extends Activity {
         timeCol.setClipChildren(false);
         timeCol.setClipToPadding(false);
         timeCol.addView(clock, clp);
-        date = Ui.text(this, 21, 0xB3FFFFFF, Ui.MEDIUM);
+        date = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
         date.setPadding(dp(3), dp(10), 0, 0);
         // its own width: a vertical LinearLayout would otherwise clip it to the clock's width
         timeCol.addView(date, new LinearLayout.LayoutParams(WRAP, WRAP));

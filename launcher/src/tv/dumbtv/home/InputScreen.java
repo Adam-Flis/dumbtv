@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputManager;
+import android.media.tv.TvTrackInfo;
 import android.media.tv.TvView;
 import android.os.Bundle;
 import android.os.Handler;
@@ -29,7 +30,10 @@ import java.util.List;
  *
  * The antenna works the same way, on a channel: the channels Live TV found in its scan are read
  * from Android's TV listings (READ_TV_LISTINGS, allowed by install.sh or asked for here), and
- * Channel up / down or the up / down arrows change channel. The last one watched is remembered.
+ * Channel up / down or the up / down arrows change channel; OK lists the channels with what is on
+ * now, and ☰ has captions and the audio language. The last channel and the captions setting are
+ * remembered. Amazon's own guide (the remote's guide key) still works on top of this screen.
+ * Amazon's Live TV app cannot be opened by other apps (TUNE_CHANNEL, SHOW_EPG are Amazon-only).
  *
  * Back, Home or opening anything else closes it, so the home screen is what comes back.
  */
@@ -37,7 +41,7 @@ public final class InputScreen extends Activity {
     private static final String EXTRA_INPUT = "input", EXTRA_NAME = "name", EXTRA_TUNER = "tuner";
     private static final String LISTINGS = "android.permission.READ_TV_LISTINGS";
     /** home.conf: the antenna channel watched last (a TV listings channel id). */
-    private static final String LAST_CHANNEL = "antenna.channel";
+    private static final String LAST_CHANNEL = "antenna.channel", CAPTIONS = "antenna.captions";
 
     /** One antenna channel: its listings id, and "5.1  WEWS" to show. */
     private static final class Channel {
@@ -55,6 +59,8 @@ public final class InputScreen extends Activity {
     private int at;
     private String inputId;
     private boolean tuner;
+    /** The key hint shows with the first channel only. */
+    private boolean hinted;
     private static final int MATCH = FrameLayout.LayoutParams.MATCH_PARENT, WRAP = FrameLayout.LayoutParams.WRAP_CONTENT;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -101,7 +107,14 @@ public final class InputScreen extends Activity {
             public void onVideoAvailable(String inputId) {
                 // a picture: the TV stays on while it plays, like Amazon's own input screen
                 root.setKeepScreenOn(true);
-                showNote(showing(), 2500);
+                if (tuner && !channels.isEmpty()) {
+                    String now = onNow(channels.get(at));
+                    showNote(showing() + (now == null ? "" : "   ·   " + now)
+                            + (hinted ? "" : "\nOK: channels   ·   \u2630: captions and audio"), 4000);
+                    hinted = true;
+                } else {
+                    showNote(showing(), 2500);
+                }
             }
 
             @Override
@@ -184,7 +197,73 @@ public final class InputScreen extends Activity {
         Channel ch = channels.get(at);
         showNote("Tuning " + ch.title + "…", 0);
         tv.tune(inputId, TvContract.buildChannelUri(ch.id));
+        tv.setCaptionEnabled(captions());
         Config.get(this).set(LAST_CHANNEL, String.valueOf(ch.id));
+    }
+
+    private boolean captions() {
+        return "on".equals(Config.get(this).get(CAPTIONS, "off"));
+    }
+
+    /** The program on {@code ch} now, from the TV listings; null when the listings have none. */
+    private String onNow(Channel ch) {
+        long now = System.currentTimeMillis();
+        try (Cursor c = getContentResolver().query(TvContract.buildProgramsUriForChannel(ch.id, now, now + 1),
+                new String[] {TvContract.Programs.COLUMN_TITLE}, null, null, null)) {
+            return c != null && c.moveToFirst() ? c.getString(0) : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** OK on the antenna: every channel with what is on now; picking one tunes to it. */
+    private void channelList() {
+        List<Channel> list = new ArrayList<>(channels);
+        new Thread(() -> {
+            List<String> rows = new ArrayList<>();
+            for (Channel ch : list) {
+                String now = onNow(ch);
+                rows.add(now == null ? ch.title : ch.title + "   ·   " + now);
+            }
+            runOnUiThread(() -> {
+                if (!isFinishing()) Popup.choose(this, "Channels", rows, at, this::tuneChannel);
+            });
+        }).start();
+    }
+
+    /** ☰ on the antenna: captions on or off, and the audio language when there is a choice. */
+    private void options() {
+        List<String> rows = new ArrayList<>();
+        List<Runnable> picks = new ArrayList<>();
+        rows.add("Channel list");
+        picks.add(this::channelList);
+        rows.add(captions() ? "Captions: On" : "Captions: Off");
+        picks.add(() -> {
+            Config.get(this).set(CAPTIONS, captions() ? null : "on");
+            tv.setCaptionEnabled(captions());
+            showNote(captions() ? "Captions on" : "Captions off", 2000);
+        });
+        List<TvTrackInfo> audio = tv.getTracks(TvTrackInfo.TYPE_AUDIO);
+        if (audio != null && audio.size() > 1) {
+            rows.add("Audio: " + trackName(audio, tv.getSelectedTrack(TvTrackInfo.TYPE_AUDIO)));
+            picks.add(() -> {
+                List<String> names = new ArrayList<>();
+                for (TvTrackInfo t : audio) names.add(trackName(audio, t.getId()));
+                Popup.choose(this, "Audio", names, i -> tv.selectTrack(TvTrackInfo.TYPE_AUDIO, audio.get(i).getId()));
+            });
+        }
+        Popup.choose(this, showing(), rows, i -> picks.get(i).run());
+    }
+
+    /** "English", or "Track 2" when a track names no language. */
+    private static String trackName(List<TvTrackInfo> tracks, String id) {
+        for (int i = 0; i < tracks.size(); i++) {
+            TvTrackInfo t = tracks.get(i);
+            if (!t.getId().equals(id)) continue;
+            String lang = t.getLanguage();
+            return lang == null || lang.isEmpty() ? "Track " + (i + 1) : new java.util.Locale(lang).getDisplayLanguage();
+        }
+        return "Automatic";
     }
 
     /** The input's service would not show it here: say where it still works. */
@@ -223,6 +302,14 @@ public final class InputScreen extends Activity {
                 : code == KeyEvent.KEYCODE_CHANNEL_DOWN || code == KeyEvent.KEYCODE_DPAD_DOWN ? -1 : 0;
         if (tuner && step != 0 && !channels.isEmpty()) {
             if (e.getAction() == KeyEvent.ACTION_DOWN) tuneChannel(at + step);
+            return true;
+        }
+        boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
+        if (tuner && !channels.isEmpty() && (ok || code == KeyEvent.KEYCODE_MENU)) {
+            if (e.getAction() == KeyEvent.ACTION_UP) {
+                if (ok) channelList();
+                else options();
+            }
             return true;
         }
         return super.dispatchKeyEvent(e);

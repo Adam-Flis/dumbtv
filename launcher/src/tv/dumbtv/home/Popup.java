@@ -66,6 +66,11 @@ final class Popup {
 
     /** A list to choose one from (an app's menu, matching places). Back cancels. */
     static void choose(Activity a, String title, List<String> items, Pick pick) {
+        choose(a, title, items, 0, pick);
+    }
+
+    /** The same, with row {@code selected} focused first (the channel on now, say). */
+    static void choose(Activity a, String title, List<String> items, int selected, Pick pick) {
         Dialog d = Panel.dialog(a);
         LinearLayout box = Panel.box(a);
         title(box, title);
@@ -79,7 +84,7 @@ final class Popup {
                 pick.at(index);
             });
             list.addView(row, rowParams(a));
-            if (first == null) first = row;
+            if (first == null || i == selected) first = row;
         }
         Panel.show(a, d, box, 600);
         if (first != null) first.requestFocus();

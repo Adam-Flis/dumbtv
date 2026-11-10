@@ -18,7 +18,7 @@ final class WeatherHeader {
 
     private final Context c;
     /** One forecast hour's width; the row shows as many hours as fit beside the weather. */
-    private static final int CELL_DP = 60;
+    private static final int CELL_DP = 58;
 
     private final LinearLayout now, hours, column;
     private final View icon, rule;
@@ -42,9 +42,9 @@ final class WeatherHeader {
         LinearLayout details = new LinearLayout(c);
         details.setOrientation(LinearLayout.VERTICAL);
         details.setPadding(dp(14), 0, 0, 0);
-        sky = Ui.text(c, 19, Ui.TEXT, Ui.MEDIUM);
+        sky = Ui.text(c, 15, Ui.TEXT, Ui.MEDIUM);
         sky.setSingleLine();
-        feels = Ui.text(c, 18, 0xB3FFFFFF, Ui.MEDIUM);
+        feels = Ui.text(c, 14, Ui.MUTED, Ui.MEDIUM);
         feels.setSingleLine();
         feels.setPadding(0, dp(5), 0, 0);
         details.addView(sky);
@@ -57,10 +57,8 @@ final class WeatherHeader {
         column.setPadding(dp(24), 0, 0, 0);
         // its own width (a vertical LinearLayout would give it the widest sibling's and clip it)
         column.addView(now, new LinearLayout.LayoutParams(WRAP, WRAP));
-        // two short lines (the next sunrise or sunset, then tomorrow) rather than one long one
-        sunLine = Ui.text(c, 18, 0xB3FFFFFF, Ui.MEDIUM);
-        sunLine.setMaxLines(2);
-        sunLine.setLineSpacing(Ui.dp(c, 4), 1f);
+        sunLine = Ui.text(c, 14, Ui.MUTED, Ui.MEDIUM);
+        sunLine.setSingleLine();
         sunLine.setPadding(dp(2), dp(10), 0, 0);
         sunLine.setVisibility(View.GONE);
         column.addView(sunLine, new LinearLayout.LayoutParams(WRAP, WRAP));
@@ -81,8 +79,8 @@ final class WeatherHeader {
     void addTo(LinearLayout line) {
         line.addView(column);
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(Math.max(1, dp(1)), dp(56));
-        rlp.leftMargin = dp(20);
-        rlp.rightMargin = dp(8);
+        rlp.leftMargin = dp(28);
+        rlp.rightMargin = dp(12);
         rlp.topMargin = dp(16);
         line.addView(rule, rlp);
         line.addView(forecast, new LinearLayout.LayoutParams(WRAP, WRAP));
@@ -107,8 +105,8 @@ final class WeatherHeader {
         // for a bigger temperature with the conditions and today's high/low beside it.
         float big = full ? 1f : 1.4f;
         temp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40 * big * Ui.scale);
-        sky.setTextSize(TypedValue.COMPLEX_UNIT_SP, (full ? 19 : 22) * Ui.scale);
-        feels.setTextSize(TypedValue.COMPLEX_UNIT_SP, (full ? 18 : 22) * Ui.scale);
+        sky.setTextSize(TypedValue.COMPLEX_UNIT_SP, (full ? 15 : 20) * Ui.scale);
+        feels.setTextSize(TypedValue.COMPLEX_UNIT_SP, (full ? 14 : 20) * Ui.scale);
         int iconSize = dp(40 * big);
         ViewGroup.LayoutParams ip = icon.getLayoutParams();
         if (ip.width != iconSize) {
@@ -132,7 +130,7 @@ final class WeatherHeader {
         showHours(w, detail);
         if (full && w.sun != null) {
             String t = Weather.describe(w.tomorrowCode, true);
-            sunLine.setText(w.sun + "\nTomorrow " + w.tomorrowHi + "° / "
+            sunLine.setText(w.sun + "  ·  Tomorrow " + w.tomorrowHi + "° / "
                     + w.tomorrowLo + "°" + (t.isEmpty() ? "" : "  " + t)
                     + (w.tomorrowRain >= 30 ? "  " + w.tomorrowRain + "%" : ""));
             sunLine.setVisibility(View.VISIBLE);
@@ -156,16 +154,16 @@ final class WeatherHeader {
             LinearLayout cell = new LinearLayout(c);
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER_HORIZONTAL);
-            TextView at = Ui.text(c, 17, 0xB3FFFFFF, Ui.MEDIUM);
+            TextView at = Ui.text(c, 13, Ui.MUTED, Ui.MEDIUM);
             at.setText(h.at);
             View hourIcon = new View(c);
-            hourIcon.setBackground(Icons.of(Icons.forCode(h.code, h.day), dp(28), 0));
-            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(28), dp(28));
+            hourIcon.setBackground(Icons.of(Icons.forCode(h.code, h.day), dp(24), 0));
+            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(24), dp(24));
             ilp.topMargin = dp(4);
             ilp.bottomMargin = dp(4);
-            TextView t = Ui.text(c, 20, Ui.TEXT, Ui.MEDIUM);
+            TextView t = Ui.text(c, 16, Ui.TEXT, Ui.MEDIUM);
             t.setText(h.temp + "°");
-            TextView rain = Ui.text(c, 15, 0xB3FFFFFF, Ui.MEDIUM);
+            TextView rain = Ui.text(c, 12, Ui.MUTED, Ui.MEDIUM);
             rain.setPadding(0, dp(2), 0, 0);
             rain.setText(h.rain >= 20 ? h.rain + "%" : "");
             rain.setVisibility(anyRain ? View.VISIBLE : View.GONE);

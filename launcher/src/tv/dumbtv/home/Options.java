@@ -521,6 +521,10 @@ public final class Options extends Activity {
         if (c == Config.STYLE && "regency".equals(cfg.get(c)) && "blue".equals(cfg.get(Config.ACCENT))) {
             cfg.set(Config.ACCENT.key, "gold");
         }
+        // ...and gilt titles to go with it, unless the title color was already chosen
+        if (c == Config.STYLE && "regency".equals(cfg.get(c)) && cfg.get(Config.TITLE_COLOR.key, "").isEmpty()) {
+            cfg.set(Config.TITLE_COLOR.key, "accent");
+        }
         if (c == Config.TEXT || c == Config.STYLE) {
             recreate();
             return true;
