@@ -45,6 +45,8 @@ final class Ui {
      * across a room, worse with Fire OS's high-contrast text outline.
      */
     static boolean regency;
+    /** Options › Tile motion: Lively, or Simple (no spring, no sweep of light). */
+    static boolean lively = true;
 
     /** Options > Text size; set before building a screen. */
     static float scale = 1f;
@@ -54,6 +56,7 @@ final class Ui {
      */
     static void setup(Context c, Config cfg) {
         regency = "regency".equals(cfg.get(Config.STYLE));
+        lively = "lively".equals(cfg.get(Config.MOTION));
         scale = cfg.textScale();
         LIGHT = regency ? font(c, "fonts/PlayfairDisplay.ttf", SANS_LIGHT) : SANS_LIGHT;
     }

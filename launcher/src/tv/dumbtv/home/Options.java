@@ -97,6 +97,8 @@ public final class Options extends Activity {
         list.addView(choice(Config.TILES));
         list.addView(choice(Config.TEXT));
         list.addView(choice(Config.TITLES));
+        list.addView(choice(Config.TITLE_COLOR));
+        list.addView(choice(Config.MOTION));
         list.addView(choice(Config.LABELS));
         list.addView(choice(Config.CLOCK));
 

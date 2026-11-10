@@ -73,6 +73,15 @@ final class Config {
             new String[] {"Small", "Medium", "Large", "Extra large"});
     private static final float[] TITLE_SCALES = {0.85f, 1f, 1.3f, 1.6f};
 
+    /** Row titles in white (default) or the accent color; Regency's flourish takes the accent too. */
+    static final Choice TITLE_COLOR = new Choice("titles.color", "Row title color", "white",
+            new String[] {"white", "accent"},
+            new String[] {"White", "Accent"});
+    /** The selected tile: Lively (a spring and a sweep of light) or Simple (it just lifts). */
+    static final Choice MOTION = new Choice("motion", "Tile motion", "lively",
+            new String[] {"lively", "simple"},
+            new String[] {"Lively", "Simple"});
+
     float titleScale() {
         return TITLE_SCALES[Arrays.asList(TITLES.values).indexOf(get(TITLES))];
     }
@@ -260,7 +269,7 @@ final class Config {
     static final Choice CARE = new Choice("care", "Screen care (OLED)", "on",
             new String[] {"off", "on"}, new String[] {"Off", "On"});
 
-    static final Choice[] CHOICES = {ACCENT, STYLE, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
+    static final Choice[] CHOICES = {ACCENT, STYLE, TILES, TEXT, TITLES, TITLE_COLOR, MOTION, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
         WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, FAVS, FRAME_CLOCK, FRAME_WEATHER};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */

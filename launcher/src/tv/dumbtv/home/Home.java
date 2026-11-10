@@ -177,18 +177,21 @@ public final class Home extends Activity {
         int icon;
 
         /**
-         * Options > Row title size: text and icon grow together. Regency: a larger serif title in
-         * gilt, with a flourish after it instead of the icon.
+         * Options > Row title size and color: text and icon grow together. Regency: a larger serif
+         * title with a flourish in the accent color after it, instead of the icon.
          */
-        void sizeTitle(float s) {
+        void styleTitle(float s) {
+            int accent = cfg.accent();
+            int color = "accent".equals(cfg.get(Config.TITLE_COLOR)) ? accent : 0xD9FFFFFF;
+            title.setTextColor(color);
             if (Ui.regency) {
                 title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 23 * Ui.scale * s);
-                title.setCompoundDrawablesRelative(null, null, new Ornament(dp(220 * s), dp(16 * s), Ui.GOLD), null);
+                title.setCompoundDrawablesRelative(null, null, new Ornament(dp(220 * s), dp(16 * s), accent), null);
                 title.setCompoundDrawablePadding(dp(16 * s));
                 return;
             }
             title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 17 * Ui.scale * s);
-            title.setCompoundDrawablesRelative(Icons.of(icon, dp(20 * s), 0xD9FFFFFF), null, null, null);
+            title.setCompoundDrawablesRelative(Icons.of(icon, dp(20 * s), color), null, null, null);
             title.setCompoundDrawablePadding(dp(12 * s));
         }
         /** The row's box: a sideways scroller for one line, a plain frame around a grid. */
@@ -203,8 +206,8 @@ public final class Home extends Activity {
         Row(String kind, String name, int icon, LinearLayout parent, boolean grid) {
             this.kind = kind;
             int edge = dp(56), bleed = dp(14);
-            // spaced capitals, like the group headings in Options; Regency: gilt serif, as written
-            title = Ui.text(Home.this, 17, Ui.regency ? Ui.GOLD : 0xD9FFFFFF, Ui.regency ? Ui.LIGHT : Ui.MEDIUM);
+            // spaced capitals, like the group headings in Options; Regency: serif, as written
+            title = Ui.text(Home.this, 17, 0xD9FFFFFF, Ui.regency ? Ui.LIGHT : Ui.MEDIUM);
             title.setText(Ui.regency ? name : name.toUpperCase(Locale.ROOT));
             title.setLetterSpacing(Ui.regency ? 0.02f : 0.12f);
             title.setGravity(Gravity.CENTER_VERTICAL);
@@ -679,7 +682,29 @@ public final class Home extends Activity {
         head.addView(top, new LinearLayout.LayoutParams(MATCH, WRAP));
 
         // clock, current weather and the next hours share one line, centered on each other
-        LinearLayout middle = new LinearLayout(this);
+        LinearLayout middle = new LinearLayout(this) {
+            /** The next hours drop off the end when the line is too narrow (large text sizes). */
+            @Override
+            protected void onMeasure(int widthSpec, int heightSpec) {
+                super.onMeasure(widthSpec, heightSpec);
+                // a couple of rounds: dropping hours can change how the rest measures
+                for (int round = 0; round < 3 && fit(widthSpec); round++) super.onMeasure(widthSpec, heightSpec);
+            }
+
+            /** Fits the next hours to the room left; true when it changed them. */
+            private boolean fit(int widthSpec) {
+                int used = 0;
+                for (int i = 0; i < getChildCount(); i++) {
+                    View v = getChildAt(i);
+                    LinearLayout.LayoutParams p = (LinearLayout.LayoutParams) v.getLayoutParams();
+                    // the stretchy gap between the clock and the weather is room, not content
+                    if (v.getVisibility() == View.GONE || p.weight > 0) continue;
+                    used += v.getMeasuredWidth() + p.leftMargin + p.rightMargin;
+                }
+                int room = MeasureSpec.getSize(widthSpec) - getPaddingLeft() - getPaddingRight();
+                return weatherView != null && weatherView.fitHours(room - used);
+            }
+        };
         middle.setGravity(Gravity.CENTER_VERTICAL);
         // baseline alignment would push the columns around and cut the forecast's last line
         middle.setBaselineAligned(false);
@@ -703,7 +728,7 @@ public final class Home extends Activity {
         timeCol.setClipChildren(false);
         timeCol.setClipToPadding(false);
         timeCol.addView(clock, clp);
-        date = Ui.text(this, 17, Ui.MUTED, Ui.MEDIUM);
+        date = Ui.text(this, 21, 0xB3FFFFFF, Ui.MEDIUM);
         date.setPadding(dp(3), dp(10), 0, 0);
         // its own width: a vertical LinearLayout would otherwise clip it to the clock's width
         timeCol.addView(date, new LinearLayout.LayoutParams(WRAP, WRAP));
@@ -907,7 +932,8 @@ public final class Home extends Activity {
             chipIcon(c);
         }
         float ts = cfg.titleScale();
-        for (Row row : rows) row.sizeTitle(ts);
+        Ui.lively = "lively".equals(cfg.get(Config.MOTION));
+        for (Row row : rows) row.styleTitle(ts);
         render(favs);
         loadRecent();
         render(apps);

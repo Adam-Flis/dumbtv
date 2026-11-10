@@ -150,7 +150,9 @@ adb push home.conf /sdcard/Android/data/tv.dumbtv.home/files/home.conf
 | `frame.for` | Sleep after saver: `30`, `15`, `45`, `60`, `90`, `120` (minutes) |
 | `frame.clock`, `frame.weather` | corner: `bl` / `br`, `tl`, `tr`, `off` |
 | `care` | OLED screen care: `on`, `off` |
-| `style` | `modern`, `regency` (serif fonts, gilt flourishes) |
+| `style` | `modern`, `regency` (serif titles, flourishes) |
+| `titles.color` | row titles: `white`, `accent` |
+| `motion` | tile motion: `lively`, `simple` |
 | `background` | `app`, `sky` (time of day), `black`, `graphite`, `midnight`, `image` |
 | `accent` | `blue`, `white`, `cyan`, `green`, `amber`, `red`, `pink`, `violet`, `gold`, or `#RRGGBB` |
 | `weather` | `off`, `on`; also needs `weather.lat`, `weather.lon`, `weather.place` (display name), `weather.city` (the ZIP) |

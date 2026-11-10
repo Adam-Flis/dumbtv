@@ -34,11 +34,17 @@ The technical reference for the home screen in this folder. To set it up, read t
   dim level and a rotation (each return, hourly, daily, by time of day).
 - **Style** (Options › Appearance): **Modern** or **Regency**, after Bridgerton and Jane Eyre:
   the large text (clock, italic greeting, row titles, screen titles) in Playfair Display
-  (`assets/fonts/`, SIL Open Font License), row titles in gilt with a flourish (`Ornament.java`),
-  a double gilt frame on the selected tile, and the gold accent. Small text and temperatures stay
-  sans-serif so they read across the room.
-- **Tiles come alive:** the selected tile lifts on a light spring and a band of light sweeps
-  across it once, drawn frame by frame (`Tween`) since this TV runs with animations off.
+  (`assets/fonts/`, SIL Open Font License), a flourish in the accent color after each row title
+  (`Ornament.java`), a double frame on the selected tile, and the gold accent. Small text and
+  temperatures stay sans-serif so they read across the room.
+- **Row title color:** White (default) or the accent color. **Tile motion:** Lively or Simple.
+  Every look setting is in Options › Appearance, so Style Modern, Background App color and
+  Tile motion Simple give back the original look.
+- **Tiles come alive** (Tile motion › Lively): the selected tile lifts on a light spring and a
+  band of light sweeps across it once, drawn frame by frame (`Tween`) since this TV runs with
+  animations off.
+- **Readable header:** the date, weather details, sunrise/sunset and tomorrow, and the next hours
+  are sized to read across a room; the next hours show as many as fit beside the weather.
 - **Inputs open on our own screen** (`InputScreen`): Android's standard "show this input" request
   goes to Live TV, which on Fire TV refuses it or opens its own screen, and Amazon keeps its input
   switch (`com.amazon.tv.inputpreference.service`, permission `TUNE_INPUT`) for its own apps. So

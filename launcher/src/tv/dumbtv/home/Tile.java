@@ -157,6 +157,17 @@ final class Tile extends View {
         float s0 = getScaleX(), y0 = getTranslationY(), z0 = getTranslationZ();
         float s1 = focused ? FOCUS_SCALE : 1f, y1 = focused ? -Ui.dp(getContext(), 4) : 0;
         float z1 = focused ? Ui.dp(getContext(), 16) : 0;
+        if (sweepTween != null) sweepTween.cancel();
+        sweep = -1;
+        if (!Ui.lively) {
+            // Options › Tile motion › Simple: lifted at once, no spring and no sweep
+            setScaleX(s1);
+            setScaleY(s1);
+            setTranslationY(y1);
+            setTranslationZ(z1);
+            invalidate();
+            return;
+        }
         lift = Tween.linear(focused ? LIFT_MS : DROP_MS, t -> {
             float e = focused ? Tween.springOut(t) : 1 - (1 - t) * (1 - t);
             float s = s0 + (s1 - s0) * e;
@@ -165,8 +176,6 @@ final class Tile extends View {
             setTranslationY(y0 + (y1 - y0) * e);
             setTranslationZ(z0 + (z1 - z0) * Math.min(1f, e));
         }, null);
-        if (sweepTween != null) sweepTween.cancel();
-        sweep = -1;
         if (focused && !moving) {
             sweepTween = Tween.run(SHEEN_MS, t -> {
                 sweep = t;
