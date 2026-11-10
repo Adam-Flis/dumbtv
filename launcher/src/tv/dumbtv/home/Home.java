@@ -56,6 +56,7 @@ public final class Home extends Activity {
     private TvInputManager tv;
     private int applied = -1, appsGeneration;
     private float builtScale;
+    private String builtStyle;
     /** Set by Options › Screen saver › Start screen saver. */
     static boolean frameNow;
     /** The open top-bar dropdown, closed when Home is pressed or the screen is left. */
@@ -118,6 +119,8 @@ public final class Home extends Activity {
     private final java.util.Map<String, Integer> tints = new java.util.HashMap<>();
     private Tile moving;
     private String wallKey;
+    /** The glow layer is showing Background › Sky rather than the selected app's color. */
+    private boolean skyShown;
 
     private final BroadcastReceiver packages = new BroadcastReceiver() {
         @Override
@@ -173,8 +176,17 @@ public final class Home extends Activity {
         final TextView title;
         int icon;
 
-        /** Options > Row title size: text and icon grow together. */
+        /**
+         * Options > Row title size: text and icon grow together. Regency: a larger serif title in
+         * gilt, with a flourish after it instead of the icon.
+         */
         void sizeTitle(float s) {
+            if (Ui.regency) {
+                title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 23 * Ui.scale * s);
+                title.setCompoundDrawablesRelative(null, null, new Ornament(dp(220 * s), dp(16 * s), Ui.GOLD), null);
+                title.setCompoundDrawablePadding(dp(16 * s));
+                return;
+            }
             title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 17 * Ui.scale * s);
             title.setCompoundDrawablesRelative(Icons.of(icon, dp(20 * s), 0xD9FFFFFF), null, null, null);
             title.setCompoundDrawablePadding(dp(12 * s));
@@ -191,10 +203,10 @@ public final class Home extends Activity {
         Row(String kind, String name, int icon, LinearLayout parent, boolean grid) {
             this.kind = kind;
             int edge = dp(56), bleed = dp(14);
-            // spaced capitals, like the group headings in Options
-            title = Ui.text(Home.this, 17, 0xD9FFFFFF, Ui.MEDIUM);
-            title.setText(name.toUpperCase(Locale.ROOT));
-            title.setLetterSpacing(0.12f);
+            // spaced capitals, like the group headings in Options; Regency: gilt serif, as written
+            title = Ui.text(Home.this, 17, Ui.regency ? Ui.GOLD : 0xD9FFFFFF, Ui.regency ? Ui.LIGHT : Ui.MEDIUM);
+            title.setText(Ui.regency ? name : name.toUpperCase(Locale.ROOT));
+            title.setLetterSpacing(Ui.regency ? 0.02f : 0.12f);
             title.setGravity(Gravity.CENTER_VERTICAL);
             this.icon = icon;
             title.setCompoundDrawablePadding(dp(12));
@@ -207,7 +219,7 @@ public final class Home extends Activity {
                 scroll.setClipChildren(false);
                 scroll.setClipToPadding(false);
                 scroll.addView(strip, new FrameLayout.LayoutParams(MATCH, WRAP));
-                parent.addView(title, new LinearLayout.LayoutParams(MATCH, WRAP));
+                parent.addView(title, titleParams());
                 parent.addView(scroll, new LinearLayout.LayoutParams(MATCH, WRAP));
                 return;
             }
@@ -250,8 +262,13 @@ public final class Home extends Activity {
             scroll.setClipToPadding(false);
             scroll.setPadding(edge - bleed, 0, edge - bleed, 0);
             scroll.addView(strip, new FrameLayout.LayoutParams(WRAP, WRAP));
-            parent.addView(title, new LinearLayout.LayoutParams(MATCH, WRAP));
+            parent.addView(title, titleParams());
             parent.addView(scroll, new LinearLayout.LayoutParams(MATCH, WRAP));
+        }
+
+        /** Full width; Regency: as wide as the words, so the flourish follows them. */
+        private LinearLayout.LayoutParams titleParams() {
+            return new LinearLayout.LayoutParams(Ui.regency ? WRAP : MATCH, WRAP);
         }
 
         void setVisible(boolean on) {
@@ -267,7 +284,9 @@ public final class Home extends Activity {
         Future<List<Item>> catalog = io.submit(() -> Catalog.apps(this));
         cfg = Config.get(this);
         tv = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
-        builtScale = Ui.scale = cfg.textScale();
+        Ui.setup(this, cfg);
+        builtScale = cfg.textScale();
+        builtStyle = cfg.get(Config.STYLE);
         setContentView(build());
         // going dark waits while the screen saver runs or a menu or dialog has the focus
         care = new ScreenCare(cfg, ui, root, pageView,
@@ -333,7 +352,7 @@ public final class Home extends Activity {
         cfg.visited();
         // Fire TV's idle timers follow Options › Screen saver (after a change there, or a reset)
         SystemSaver.apply(this, cfg);
-        if (cfg.textScale() != builtScale || "grid".equals(cfg.get(Config.APPS_LAYOUT)) != builtGrid
+        if (cfg.textScale() != builtScale || !cfg.get(Config.STYLE).equals(builtStyle) || "grid".equals(cfg.get(Config.APPS_LAYOUT)) != builtGrid
                 || !cfg.rowOrder().equals(builtOrder)) {
             // text sizes and the All apps layout are set at build time; rebuilding is simplest
             recreate();
@@ -636,7 +655,9 @@ public final class Home extends Activity {
         top.setGravity(Gravity.BOTTOM);
         top.setClipChildren(false);
         top.setClipToPadding(false);
-        greeting = Ui.text(this, 30, 0xE6FFFFFF, Ui.MEDIUM);
+        // Regency: the greeting in an italic serif, like a calling card
+        greeting = Ui.text(this, 30, 0xE6FFFFFF, Ui.regency ? android.graphics.Typeface.create(Ui.LIGHT,
+                android.graphics.Typeface.ITALIC) : Ui.MEDIUM);
         greeting.setPadding(dp(3), 0, 0, 0);
         top.addView(greeting, new LinearLayout.LayoutParams(0, WRAP, 1f));
         bar = new LinearLayout(this);
@@ -1014,7 +1035,7 @@ public final class Home extends Activity {
 
     /** Fades the glow toward {@code it}'s color; keeps the last one when its art is not loaded yet. */
     private void tintFor(Item it) {
-        if (glow.getVisibility() != View.VISIBLE) return;
+        if (!"app".equals(cfg.get(Config.BACKGROUND))) return;
         Integer target = Catalog.special(it) ? Integer.valueOf(GLOW_DEFAULT) : tints.get(it.id);
         if (target == null) {
             Drawable art = it.banner != null ? it.banner : it.icon;
@@ -1236,7 +1257,22 @@ public final class Home extends Activity {
         boolean image = "image".equals(cfg.get(Config.BACKGROUND));
         File file = image ? cfg.wallpaper() : null;
         root.setBackgroundColor(cfg.background());
-        glow.setVisibility("app".equals(cfg.get(Config.BACKGROUND)) ? View.VISIBLE : View.GONE);
+        String mode = cfg.get(Config.BACKGROUND);
+        boolean sky = "sky".equals(mode);
+        glow.setVisibility("app".equals(mode) || sky ? View.VISIBLE : View.GONE);
+        if (sky) {
+            // Background › Sky: the glow layer becomes the sky, top to bottom, updated each minute
+            if (glowTween != null) glowTween.cancel();
+            java.util.Calendar now = java.util.Calendar.getInstance();
+            glowBg.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+            glowBg.setColors(Sky.colors(now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE)));
+            skyShown = true;
+        } else if (skyShown) {
+            // back to App color (or another background): the app glow starts from its last color
+            skyShown = false;
+            glowBg.setOrientation(GradientDrawable.Orientation.TL_BR);
+            glowBg.setColors(glowColors(glowColor));
+        }
         int dim = Integer.parseInt(cfg.get(Config.DIM));
         shade.setBackgroundColor(file == null ? Color.TRANSPARENT : Color.argb(dim * 255 / 100, 0, 0, 0));
         String key = file == null ? null : file.getPath() + ":" + file.lastModified();

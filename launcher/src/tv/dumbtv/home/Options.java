@@ -33,7 +33,7 @@ public final class Options extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         cfg = Config.get(this);
-        Ui.scale = cfg.textScale();
+        Ui.setup(this, cfg);
 
         // Left: the groups, so the bottom ones are one press away. Right: the settings, scrolling.
         LinearLayout screen = new LinearLayout(this);
@@ -85,6 +85,7 @@ public final class Options extends Activity {
         list.addView(choice(Config.SWITCH));
 
         section("Appearance", Icons.CONTRAST);
+        list.addView(choice(Config.STYLE));
         list.addView(choice(Config.ACCENT));
         list.addView(choice(Config.BACKGROUND));
         list.addView(only(choice(Config.DIM), image));
@@ -514,7 +515,11 @@ public final class Options extends Activity {
         int i = Arrays.asList(c.values).indexOf(cfg.get(c));
         int n = c.values.length;
         cfg.set(c.key, c.values[((i + by) % n + n) % n]);
-        if (c == Config.TEXT) {
+        // Regency looks best in gilt: switching to it brings the gold accent, unless one was chosen
+        if (c == Config.STYLE && "regency".equals(cfg.get(c)) && "blue".equals(cfg.get(Config.ACCENT))) {
+            cfg.set(Config.ACCENT.key, "gold");
+        }
+        if (c == Config.TEXT || c == Config.STYLE) {
             recreate();
             return true;
         }

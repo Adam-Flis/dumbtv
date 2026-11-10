@@ -55,8 +55,12 @@ final class Config {
     }
 
     static final Choice ACCENT = new Choice("accent", "Accent color", "blue",
-            new String[] {"white", "blue", "cyan", "green", "amber", "red", "pink", "violet"},
-            new String[] {"White", "Blue", "Cyan", "Green", "Amber", "Red", "Pink", "Violet"});
+            new String[] {"white", "blue", "cyan", "green", "amber", "red", "pink", "violet", "gold"},
+            new String[] {"White", "Blue", "Cyan", "Green", "Amber", "Red", "Pink", "Violet", "Gold"});
+    /** The look of every screen: Modern (sans-serif) or Regency (serif, gilt flourishes; Ui.setup). */
+    static final Choice STYLE = new Choice("style", "Style", "modern",
+            new String[] {"modern", "regency"},
+            new String[] {"Modern", "Regency"});
     static final Choice TILES = new Choice("tiles", "Tile size", "medium",
             new String[] {"small", "medium", "large"},
             new String[] {"Small", "Medium", "Large"});
@@ -82,8 +86,8 @@ final class Config {
             new String[] {"on", "off"},
             new String[] {"Shown", "Hidden"});
     static final Choice BACKGROUND = new Choice("background", "Background", "app",
-            new String[] {"app", "black", "graphite", "midnight", "image"},
-            new String[] {"App color", "Black", "Graphite", "Midnight", "Image"});
+            new String[] {"app", "sky", "black", "graphite", "midnight", "image"},
+            new String[] {"App color", "Sky", "Black", "Graphite", "Midnight", "Image"});
     static final Choice DIM = new Choice("dim", "Image dim", "40",
             new String[] {"0", "20", "40", "60", "80"},
             new String[] {"0%", "20%", "40%", "60%", "80%"});
@@ -256,7 +260,7 @@ final class Config {
     static final Choice CARE = new Choice("care", "Screen care (OLED)", "on",
             new String[] {"off", "on"}, new String[] {"Off", "On"});
 
-    static final Choice[] CHOICES = {ACCENT, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
+    static final Choice[] CHOICES = {ACCENT, STYLE, TILES, TEXT, TITLES, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
         WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, FAVS, FRAME_CLOCK, FRAME_WEATHER};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
@@ -264,11 +268,11 @@ final class Config {
     private static final String OFFSET = "wallpaper.offset";
 
     private static final int[] ACCENTS = {
-        0xFFFFFFFF, 0xFF3D8BFF, 0xFF2BC4E8, 0xFF34C759, 0xFFFFB340, 0xFFFF5147, 0xFFFF5C9D, 0xFFA07CFF,
+        0xFFFFFFFF, 0xFF3D8BFF, 0xFF2BC4E8, 0xFF34C759, 0xFFFFB340, 0xFFFF5147, 0xFFFF5C9D, 0xFFA07CFF, Ui.GOLD,
     };
     /** The base under each background; "app" lays a color glow over its near-black. */
     static final int APP_BASE = 0xFF08090C;
-    private static final int[] BACKGROUNDS = {APP_BASE, 0xFF000000, 0xFF141518, 0xFF0B1220, 0xFF000000};
+    private static final int[] BACKGROUNDS = {APP_BASE, APP_BASE, 0xFF000000, 0xFF141518, 0xFF0B1220, 0xFF000000};
 
     private static Config instance;
 

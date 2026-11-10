@@ -30,6 +30,7 @@ public final class FrameDream extends DreamService {
         setFullscreen(true);
         cfg = Config.get(this);
         cfg.refresh();
+        Ui.setup(this, cfg);
         // off, or the home screen's screen saver just ran its course: let the TV sleep now
         boolean justRan = System.currentTimeMillis() - PhotoFrame.endedAt < 2 * 60_000L;
         if (!cfg.frameOn() || justRan) {

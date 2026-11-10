@@ -18,6 +18,8 @@ public final class LogicTest {
         rowSwitches();
         pictures();
         distinctNames();
+        sky();
+        spring();
         screenSaverTimers();
         screenSaverChoices();
         System.out.println(passed + " passed, " + failed + " failed");
@@ -82,6 +84,27 @@ public final class LogicTest {
         List<String> names = Arrays.asList("Prime Video", "Netflix", "prime video ", "YouTube", "Hulu", "Max", "Plex");
         eq(Arrays.asList("Prime Video", "Netflix", "YouTube", "Hulu", "Max"), Catalog.distinct(names, s -> s, 5));
         eq(Arrays.asList("Prime Video"), Catalog.distinct(names, s -> s, 1));
+    }
+
+    private static void sky() {
+        // the moments themselves, then a blend halfway between midday and golden hour
+        eq(0xFF0B1026, Sky.colors(0)[0]);
+        eq(0xFF5890BC, Sky.colors(780)[1]);
+        eq(Sky.mix(0xFF1A527F, 0xFF2D4472, 0.5f), Sky.colors(915)[0]);
+        // wraps around midnight, and the ground under the rows is darker than the sky
+        eq(Sky.colors(0)[0], Sky.colors(1440)[0]);
+        eq(Sky.colors(1439)[0], Sky.colors(-1)[0]);
+        eq(true, (Sky.colors(780)[2] & 0xFF) < (Sky.colors(780)[0] & 0xFF));
+        eq(0xFF808080, Sky.mix(0xFF000000, 0xFFFFFFFF, 0.5f));
+    }
+
+    private static void spring() {
+        eq(true, Math.abs(Tween.springOut(0f)) < 1e-5f);
+        eq(true, Math.abs(Tween.springOut(1f) - 1f) < 1e-5f);
+        float max = 0;
+        for (int i = 0; i <= 100; i++) max = Math.max(max, Tween.springOut(i / 100f));
+        // overshoots a little, never a lot
+        eq(true, max > 1.03f && max < 1.12f);
     }
 
     private static void screenSaverTimers() {

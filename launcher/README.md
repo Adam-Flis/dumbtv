@@ -28,8 +28,16 @@ The technical reference for the home screen in this folder. To set it up, read t
 - **Top bar:** Inputs (a dropdown; a green dot means something is plugged in and on), Wi-Fi (name
   and a green / amber / red status), Night mode, Sleep timer, Options, and Settings (a dropdown
   of the Fire TV settings screens other apps are allowed to open, plus All Fire TV settings).
-- **Background:** the focused app's color as a soft glow (default), black, graphite, midnight, or
-  your own images with a dim level and a rotation (each return, hourly, daily, by time of day).
+- **Background:** the focused app's color as a soft glow (default); **Sky**, which follows the
+  time of day from night blue through a rose sunrise, clear blues, golden hour and a pink sunset
+  (`Sky.java`, blended minute by minute); black, graphite, midnight; or your own images with a
+  dim level and a rotation (each return, hourly, daily, by time of day).
+- **Style** (Options › Appearance): **Modern** (sans-serif) or **Regency**, after Bridgerton and
+  Jane Eyre: Playfair Display and Cormorant Garamond (`assets/fonts/`, SIL Open Font License), an
+  italic greeting, row titles with a gilt flourish (`Ornament.java`), a double gilt frame on the
+  selected tile, and the gold accent. It applies to every screen.
+- **Tiles come alive:** the selected tile lifts on a light spring and a band of light sweeps
+  across it once, drawn frame by frame (`Tween`) since this TV runs with animations off.
 - **Inputs open on our own screen** (`InputScreen`): Android's standard "show this input" request
   goes to Live TV, which on Fire TV refuses it or opens its own screen, and Amazon keeps its input
   switch (`com.amazon.tv.inputpreference.service`, permission `TUNE_INPUT`) for its own apps. So
@@ -171,7 +179,8 @@ The home screen and the screen saver run for weeks without a restart, so:
 | `src/.../Config.java` | the `home.conf` reader and writer, and every setting's values |
 | `src/.../Options.java` | the Options screen |
 | `src/.../RowsEditor.java`, `TimeChooser.java`, `Picker.java` | row order, time picker, app picker |
-| `src/.../Ui.java`, `Icons.java`, `Tween.java` | shared look (color tokens, text, pills, dots, focus), drawn icons, frame-by-frame fades |
+| `src/.../Ui.java`, `Icons.java`, `Tween.java` | shared look (color tokens, fonts and Style, text, pills, dots, focus), drawn icons, frame-by-frame animation |
+| `src/.../Sky.java`, `Ornament.java` | Background › Sky's colors by time of day; Regency's gilt flourish |
 | `src/.../Panel.java`, `Popup.java`, `ValueRow.java`, `Dropdown.java` | every dialog (one card style), its rows, and the top-bar menus |
 | `src/.../PhotoFrame.java` | the screen saver view: photos, clock, weather |
 | `src/.../FrameDream.java` | the screen saver as Fire TV's screensaver, for idle apps |

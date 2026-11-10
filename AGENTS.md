@@ -150,6 +150,9 @@ adb push home.conf /sdcard/Android/data/tv.dumbtv.home/files/home.conf
 | `frame.for` | Sleep after saver: `30`, `15`, `45`, `60`, `90`, `120` (minutes) |
 | `frame.clock`, `frame.weather` | corner: `bl` / `br`, `tl`, `tr`, `off` |
 | `care` | OLED screen care: `on`, `off` |
+| `style` | `modern`, `regency` (serif fonts, gilt flourishes) |
+| `background` | `app`, `sky` (time of day), `black`, `graphite`, `midnight`, `image` |
+| `accent` | `blue`, `white`, `cyan`, `green`, `amber`, `red`, `pink`, `violet`, `gold`, or `#RRGGBB` |
 | `weather` | `off`, `on`; also needs `weather.lat`, `weather.lon`, `weather.place` (display name), `weather.city` (the ZIP) |
 | `units` | `f`, `c` |
 | `night` | schedule: `off`, `on`; `night.start` / `night.end` as `HH:MM`, `night.dim` 10-90 |
@@ -224,7 +227,8 @@ MIN_SDK=25 ./launcher/build.sh                  # → launcher/build/dumbtv-home
 | `Home.java` | the home screen activity: header, top bar, rows, tile menu, move mode, screen saver timer |
 | `WeatherHeader.java`, `InputCard.java` | the weather beside the clock; the "switch input?" card |
 | `InputScreen.java` | an HDMI input full screen with TvView (Fire TV refuses other apps' input switching) |
-| `Tile.java`, `Grid.java`, `Icons.java`, `Ui.java`, `Tween.java` | drawing: tiles, wrapping grid, vector icons, shared look, animations |
+| `Tile.java`, `Grid.java`, `Icons.java`, `Ui.java`, `Tween.java` | drawing: tiles (spring lift, light sweep), wrapping grid, vector icons, shared look and Style fonts, animations |
+| `Sky.java`, `Ornament.java` | Background › Sky by time of day; Style › Regency's gilt flourish |
 | `Catalog.java`, `Item.java` | which apps and inputs exist, which show, in what order |
 | `Config.java` | `home.conf`: every setting, its values and defaults |
 | `Options.java`, `RowsEditor.java`, `TimeChooser.java`, `Picker.java` | the Options screen and its editors; the app picker |

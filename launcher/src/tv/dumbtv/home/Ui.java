@@ -27,11 +27,46 @@ final class Ui {
     static final int MENU = 0xF5202126;
     /** Thin dividers. */
     static final int RULE = 0x24FFFFFF;
-    static final Typeface LIGHT = Typeface.create("sans-serif-light", Typeface.NORMAL);
-    static final Typeface MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+    private static final Typeface SANS_LIGHT = Typeface.create("sans-serif-light", Typeface.NORMAL);
+    private static final Typeface SANS_MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+    /** Gilt, for Style › Regency's flourishes and titles. */
+    static final int GOLD = 0xFFD9B872;
+
+    // Set by setup() from Options › Style before a screen is built.
+    /** Large, light text: the clock, temperatures, screen titles. */
+    static Typeface LIGHT = SANS_LIGHT;
+    /** Everything else: names, values, buttons. */
+    static Typeface MEDIUM = SANS_MEDIUM;
+    /** Style › Regency: Playfair Display and Cormorant Garamond with gilt flourishes. */
+    static boolean regency;
 
     /** Options > Text size; set before building a screen. */
     static float scale = 1f;
+
+    /**
+     * Reads Options › Text size and Style; every screen calls this before building its views.
+     */
+    static void setup(Context c, Config cfg) {
+        regency = "regency".equals(cfg.get(Config.STYLE));
+        scale = cfg.textScale();
+        LIGHT = regency ? font(c, "fonts/PlayfairDisplay.ttf", SANS_LIGHT) : SANS_LIGHT;
+        MEDIUM = regency ? font(c, "fonts/cormorant-semibold.ttf", SANS_MEDIUM) : SANS_MEDIUM;
+    }
+
+    private static final java.util.Map<String, Typeface> FONTS = new java.util.HashMap<>();
+
+    /** A font from the APK's assets, loaded once; {@code fallback} if it cannot be read. */
+    private static Typeface font(Context c, String path, Typeface fallback) {
+        Typeface t = FONTS.get(path);
+        if (t != null) return t;
+        try {
+            t = Typeface.createFromAsset(c.getAssets(), path);
+        } catch (RuntimeException e) {
+            return fallback;
+        }
+        FONTS.put(path, t);
+        return t;
+    }
 
     private Ui() {}
 

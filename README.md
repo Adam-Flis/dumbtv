@@ -12,6 +12,8 @@ What you get:
   paused, then lets the TV go to sleep.
 - **Burn-in care for OLED TVs:** nothing stays still on screen for long.
 - **Weather** (optional): now, the next hours and tomorrow, from your ZIP code.
+- **Your style:** a sky background that follows the time of day, and a Regency look (serif
+  lettering and gilt flourishes, in the spirit of Bridgerton) next to the modern one.
 
 It's a fork of [humblemuzzu/dumbtv](https://github.com/humblemuzzu/dumbtv), built and tested on a
 Toshiba Fire TV Edition television (Fire OS 6.7). Setting it up takes about 30 minutes, a
@@ -259,4 +261,5 @@ no account or key. With weather off it never connects to anything.
   screen, and not safe on a Fire OS 6 television** (it disables the Live TV and HDMI inputs).
 
 MIT licence ([LICENSE](LICENSE)). The built-in photos are public domain
-([credits](launcher/assets/photos/CREDITS.txt)). Nothing here is Amazon code.
+([credits](launcher/assets/photos/CREDITS.txt)); the Regency fonts are under the SIL Open Font
+License ([licences](launcher/assets/fonts/LICENSES.txt)). Nothing here is Amazon code.

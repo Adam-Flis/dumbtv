@@ -3,11 +3,14 @@ package tv.dumbtv.home;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.DashPathEffect;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.media.tv.TvInputManager;
 import android.text.TextPaint;
@@ -18,6 +21,8 @@ import android.view.ViewOutlineProvider;
 /** A card drawn in one pass: banner, or icon plus name, or an input name; focus ring on top. */
 final class Tile extends View {
     private static final float FOCUS_SCALE = 1.1f;
+    /** The lift: a spring that overshoots a little on the way up; a quick settle on the way down. */
+    private static final long LIFT_MS = 420, DROP_MS = 160, SHEEN_MS = 750;
 
     final Item item;
     final String kind;
@@ -39,6 +44,12 @@ final class Tile extends View {
     private final int accent;
     private final Paint badgeFill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint badgeMark = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** A band of light that sweeps across the card once when it is selected. */
+    private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Matrix sheenAt = new Matrix();
+    /** Where the sweep is, 0 to 1; below 0 when none is running. */
+    private float sweep = -1;
+    private Tween lift, sweepTween;
 
     Tile(Context c, Item item, String kind, CharSequence title, int cardW, int cardH,
             String labels, int accent) {
@@ -69,6 +80,9 @@ final class Tile extends View {
         badgeMark.setStrokeCap(Paint.Cap.ROUND);
         badgeMark.setStrokeJoin(Paint.Join.ROUND);
         dot.setColor(Ui.GOOD);
+        float band = cardW * 0.45f;
+        sheen.setShader(new LinearGradient(0, 0, band, 0, new int[] {0x00FFFFFF, 0x38FFFFFF, 0x00FFFFFF},
+                null, Shader.TileMode.CLAMP));
         inner.setColor(Ui.TEXT);
         inner.setTypeface(Ui.MEDIUM);
         inner.setTextAlign(Paint.Align.CENTER);
@@ -137,12 +151,31 @@ final class Tile extends View {
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previous) {
         super.onFocusChanged(focused, direction, previous);
-        // Lift: grow, rise a little and cast a soft shadow, like Apple TV's focus.
-        float s = focused ? FOCUS_SCALE : 1f;
-        animate().scaleX(s).scaleY(s)
-                .translationY(focused ? -Ui.dp(getContext(), 4) : 0)
-                .translationZ(focused ? Ui.dp(getContext(), 16) : 0)
-                .setDuration(140).start();
+        // Lift: grow, rise a little and cast a soft shadow, like Apple TV's focus. Drawn frame by
+        // frame (Tween): this TV runs with system animations off, which would make it a jump.
+        if (lift != null) lift.cancel();
+        float s0 = getScaleX(), y0 = getTranslationY(), z0 = getTranslationZ();
+        float s1 = focused ? FOCUS_SCALE : 1f, y1 = focused ? -Ui.dp(getContext(), 4) : 0;
+        float z1 = focused ? Ui.dp(getContext(), 16) : 0;
+        lift = Tween.linear(focused ? LIFT_MS : DROP_MS, t -> {
+            float e = focused ? Tween.springOut(t) : 1 - (1 - t) * (1 - t);
+            float s = s0 + (s1 - s0) * e;
+            setScaleX(s);
+            setScaleY(s);
+            setTranslationY(y0 + (y1 - y0) * e);
+            setTranslationZ(z0 + (z1 - z0) * Math.min(1f, e));
+        }, null);
+        if (sweepTween != null) sweepTween.cancel();
+        sweep = -1;
+        if (focused && !moving) {
+            sweepTween = Tween.run(SHEEN_MS, t -> {
+                sweep = t;
+                invalidate();
+            }, () -> {
+                sweep = -1;
+                invalidate();
+            });
+        }
         invalidate();
     }
 
@@ -166,6 +199,14 @@ final class Tile extends View {
             drawLine(canvas, inner, cardW / 2f, cardH / 2f - (inner.ascent() + inner.descent()) / 2);
         }
         if (moving) canvas.drawColor(0x99000000);
+        if (sweep >= 0) {
+            // from just off the left edge to just off the right, slanted like light on glass
+            float band = cardW * 0.45f, x = -band + (cardW + band * 2) * sweep - band / 2;
+            sheenAt.setRotate(20);
+            sheenAt.postTranslate(x, 0);
+            sheen.getShader().setLocalMatrix(sheenAt);
+            canvas.drawRect(card, sheen);
+        }
         canvas.restore();
 
         if (item.state == TvInputManager.INPUT_STATE_CONNECTED) {
@@ -176,6 +217,13 @@ final class Tile extends View {
             float half = stroke / 2;
             ring.setPathEffect(moving ? new DashPathEffect(new float[] {stroke * 3, stroke * 2}, 0) : null);
             canvas.drawRoundRect(half, half, cardW - half, cardH - half, radius - half, radius - half, ring);
+            if (Ui.regency && !moving) {
+                // a gilt frame: a second, finer line just inside the first
+                float in = stroke * 2.2f;
+                ring.setStrokeWidth(stroke * 0.45f);
+                canvas.drawRoundRect(in, in, cardW - in, cardH - in, radius - in, radius - in, ring);
+                ring.setStrokeWidth(stroke);
+            }
         }
         if (moving) drawArrows(canvas);
         if (badge != null) drawBadge(canvas);

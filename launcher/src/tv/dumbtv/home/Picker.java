@@ -44,7 +44,7 @@ public final class Picker extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         cfg = Config.get(this);
-        Ui.scale = cfg.textScale();
+        Ui.setup(this, cfg);
         favs = FAVS.equals(getIntent().getStringExtra(MODE));
         int accent = cfg.accent();
         List<Item> all = Catalog.apps(this);
