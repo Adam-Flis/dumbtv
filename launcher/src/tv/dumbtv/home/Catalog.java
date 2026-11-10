@@ -13,9 +13,13 @@ import android.text.TextUtils;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
 /** Where tiles come from, and which of them the user wants on the home screen. */
 final class Catalog {
@@ -115,6 +119,21 @@ final class Catalog {
         if (it.info == null) return;
         it.banner = it.info.loadBanner(pm);
         if (it.banner == null) it.icon = it.info.loadIcon(pm);
+    }
+
+    /**
+     * The first {@code max} of {@code items} whose {@code key} has not been seen yet. Some apps
+     * come as two packages with one name (Fire OS has two Prime Video packages, and opening one
+     * records both), and a row should show each name once.
+     */
+    static <T> List<T> distinct(List<T> items, Function<T, String> key, int max) {
+        List<T> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (T it : items) {
+            if (out.size() >= max) break;
+            if (seen.add(key.apply(it).trim().toLowerCase(Locale.ROOT))) out.add(it);
+        }
+        return out;
     }
 
     /** HDMI, AV and other passthrough inputs; HDMI first in port order. */

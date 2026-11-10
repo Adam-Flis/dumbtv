@@ -123,7 +123,13 @@ public final class Home extends Activity {
         @Override
         public void onReceive(Context c, Intent i) {
             Uri data = i.getData();
-            loadApps(data == null ? null : data.getSchemeSpecificPart());
+            String pkg = data == null ? null : data.getSchemeSpecificPart();
+            // A newly installed app shows in All apps even without a TV banner: most apps
+            // installed from outside the Appstore are phone apps, which would otherwise start
+            // hidden in App library.
+            boolean fresh = Intent.ACTION_PACKAGE_ADDED.equals(i.getAction())
+                    && !i.getBooleanExtra(Intent.EXTRA_REPLACING, false);
+            loadApps(pkg, fresh);
         }
     };
 
@@ -295,11 +301,11 @@ public final class Home extends Activity {
         try {
             apps.all = catalog.get();
         } catch (ExecutionException e) {
-            loadApps(null);
+            loadApps(null, false);
             return;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            loadApps(null);
+            loadApps(null, false);
             return;
         }
         int fit = getResources().getDisplayMetrics().widthPixels / (cardSize()[0] + dp(18)) + 1;
@@ -889,8 +895,11 @@ public final class Home extends Activity {
         tick();
     }
 
-    /** Rebuilds the app list, keeping loaded art for every package except {@code changed}. */
-    private void loadApps(String changed) {
+    /**
+     * Rebuilds the app list, keeping loaded art for every package except {@code changed};
+     * {@code installed}: it was just installed, so it is shown in All apps.
+     */
+    private void loadApps(String changed, boolean installed) {
         int generation = ++appsGeneration;
         io.execute(() -> {
             List<Item> list = Catalog.apps(this);
@@ -908,6 +917,13 @@ public final class Home extends Activity {
                     }
                 }
                 apps.all = list;
+                if (installed) {
+                    for (Item it : list) {
+                        if (it.id.equals(changed) && !Catalog.shown(cfg, Catalog.APPS, it)) {
+                            Catalog.setShown(cfg, Catalog.APPS, it, true);
+                        }
+                    }
+                }
                 render(favs);
                 render(apps);
                 loadRecent();
@@ -1028,6 +1044,8 @@ public final class Home extends Activity {
             return;
         }
         List<Item> all = apps.all;
+        // an app hidden from All apps stays out of Recently used too
+        List<String> hidden = cfg.list(Catalog.APPS + ".hide");
         io.execute(() -> {
             List<Item> found = new ArrayList<>();
             try {
@@ -1046,11 +1064,14 @@ public final class Home extends Activity {
                     }
                 }
                 for (Item it : all) {
-                    if (last.containsKey(it.id) && !it.id.equals(Guard.AMAZON) && !it.id.contains("settings")) found.add(it);
+                    if (last.containsKey(it.id) && !hidden.contains(it.id) && !it.id.equals(Guard.AMAZON)
+                            && !it.id.contains("settings")) {
+                        found.add(it);
+                    }
                 }
                 java.util.Collections.sort(found, (a, b) -> Long.compare(last.get(b.id), last.get(a.id)));
-                // five, one line of the All apps grid
-                if (found.size() > 5) found = new ArrayList<>(found.subList(0, 5));
+                // five, one line of the All apps grid, each name once
+                found = Catalog.distinct(found, it -> it.label.toString(), 5);
             } catch (RuntimeException e) {
                 android.util.Log.w("dumbtv", "recent apps: " + e);
             }
@@ -1208,7 +1229,7 @@ public final class Home extends Activity {
         if (it == null || !Catalog.shown(cfg, Catalog.INPUTS, it)) return;
         if (frame != null) stopFrame();
         Item input = it;
-        inputCard.show(Catalog.label(cfg, input), cfg.accent(), () -> launch(new Intent(input.intent), null));
+        inputCard.show(Catalog.label(cfg, input), cfg.accent(), () -> openInput(input));
     }
 
     private void background() {
@@ -1421,7 +1442,7 @@ public final class Home extends Activity {
         for (Item it : list) {
             boolean live = it.state == TvInputManager.INPUT_STATE_CONNECTED;
             menu.item(Catalog.label(cfg, it).toString(), live ? Ui.dot(Ui.GOOD, dp(10)) : null,
-                    () -> launch(new Intent(it.intent), null));
+                    () -> openInput(it));
         }
         menu.show(anchor);
     }
@@ -1441,7 +1462,13 @@ public final class Home extends Activity {
             else launch(store, Catalog.APPSTORE);
             return;
         }
-        launch(new Intent(t.item.intent), Catalog.INPUTS.equals(t.kind) ? null : t.item.id);
+        if (Catalog.INPUTS.equals(t.kind)) openInput(t.item);
+        else launch(new Intent(t.item.intent), t.item.id);
+    }
+
+    /** An HDMI or other input, on our own full-screen input screen (InputScreen says why). */
+    private void openInput(Item input) {
+        InputScreen.open(this, input, Catalog.label(cfg, input));
     }
 
     private void launch(Intent i, String pkg) {

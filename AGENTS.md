@@ -223,6 +223,7 @@ MIN_SDK=25 ./launcher/build.sh                  # → launcher/build/dumbtv-home
 |---|---|
 | `Home.java` | the home screen activity: header, top bar, rows, tile menu, move mode, screen saver timer |
 | `WeatherHeader.java`, `InputCard.java` | the weather beside the clock; the "switch input?" card |
+| `InputScreen.java` | an HDMI input full screen with TvView (Fire TV refuses other apps' input switching) |
 | `Tile.java`, `Grid.java`, `Icons.java`, `Ui.java`, `Tween.java` | drawing: tiles, wrapping grid, vector icons, shared look, animations |
 | `Catalog.java`, `Item.java` | which apps and inputs exist, which show, in what order |
 | `Config.java` | `home.conf`: every setting, its values and defaults |

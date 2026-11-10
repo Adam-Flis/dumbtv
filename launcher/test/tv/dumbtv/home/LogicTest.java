@@ -17,6 +17,7 @@ public final class LogicTest {
         minuteSteps();
         rowSwitches();
         pictures();
+        distinctNames();
         screenSaverTimers();
         screenSaverChoices();
         System.out.println(passed + " passed, " + failed + " failed");
@@ -75,6 +76,12 @@ public final class LogicTest {
         eq(2, Images.sampleSize(4000, 3000, 1920, 1080));
         // a panorama shrinks by its long side too, instead of decoding 20000 px wide
         eq(8, Images.sampleSize(20000, 1000, 1920, 1080));
+    }
+
+    private static void distinctNames() {
+        List<String> names = Arrays.asList("Prime Video", "Netflix", "prime video ", "YouTube", "Hulu", "Max", "Plex");
+        eq(Arrays.asList("Prime Video", "Netflix", "YouTube", "Hulu", "Max"), Catalog.distinct(names, s -> s, 5));
+        eq(Arrays.asList("Prime Video"), Catalog.distinct(names, s -> s, 1));
     }
 
     private static void screenSaverTimers() {

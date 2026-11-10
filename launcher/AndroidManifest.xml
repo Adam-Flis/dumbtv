@@ -59,6 +59,14 @@
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
 
+        <!-- an HDMI input, full screen (TvView): Fire OS keeps its own input switch to itself -->
+        <activity
+            android:name=".InputScreen"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
+
         <activity
             android:name=".Picker"
             android:exported="false"

@@ -18,7 +18,7 @@ The technical reference for the home screen in this folder. To set it up, read t
 ## Features
 
 - **Rows:** Favorites (with an Edit favorites tile at the end), Recently used (the last 5 apps,
-  from UsageStats), All apps (Grid or Scroll) and Inputs, in any order; every row but All apps can
+  from UsageStats, each name once and none hidden from All apps), All apps (Grid or Scroll) and Inputs, in any order; every row but All apps can
   be hidden (Options › Home screen › Home screen layout). Hold OK or press ☰ on a tile: Add to /
   Remove from Favorites, Move, Rename, Hide, App info. All apps ends with Get more apps (the
   Appstore) and App library (every installed app, to show or hide).
@@ -30,6 +30,13 @@ The technical reference for the home screen in this folder. To set it up, read t
   of the Fire TV settings screens other apps are allowed to open, plus All Fire TV settings).
 - **Background:** the focused app's color as a soft glow (default), black, graphite, midnight, or
   your own images with a dim level and a rotation (each return, hourly, daily, by time of day).
+- **Inputs open on our own screen** (`InputScreen`): Android's standard "show this input" request
+  goes to Live TV, which on Fire TV refuses it or opens its own screen, and Amazon keeps its input
+  switch (`com.amazon.tv.inputpreference.service`, permission `TUNE_INPUT`) for its own apps. So
+  the input is drawn full screen with `TvView`, the public Android TV API, which needs no
+  permission. A note says "No signal" when the device is off. Back, Home or any app closes it.
+- **New apps show up:** an app installed while the home screen runs appears in All apps even
+  without a TV banner (phone apps from outside the Appstore otherwise start hidden).
 - **"Switch input?" card:** when a device on an HDMI input turns on while the home screen shows
   (Options › Home screen › Detect input). It goes away after 15 s.
 - **Sleep timer:** 15 min to 2 h, or Custom (up to 9 h 55). While it runs the button shows the
@@ -158,6 +165,7 @@ The home screen and the screen saver run for weeks without a restart, so:
 | `src/.../Home.java` | the home screen: header, top bar, rows, tile menu, move mode, screen saver timer |
 | `src/.../WeatherHeader.java` | the weather beside the clock |
 | `src/.../InputCard.java` | the "switch input?" card |
+| `src/.../InputScreen.java` | an HDMI input full screen (TvView) |
 | `src/.../Tile.java`, `Grid.java` | one tile drawn in a single `onDraw`; the wrapping All apps grid |
 | `src/.../Catalog.java`, `Item.java` | which apps and inputs exist, and which are shown in what order |
 | `src/.../Config.java` | the `home.conf` reader and writer, and every setting's values |
