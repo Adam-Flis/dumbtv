@@ -26,11 +26,21 @@ Lost? **Press Home on the remote.** It always brings you back here.
 |---|---|
 | ▲ ▼ ◀ ▶ | Move around the screen |
 | OK (the middle button) | Open the app or button you're on |
-| ☰ Menu, or hold OK | Move, rename or hide the app you're on |
-| Back | Go back one step, or close a menu |
+| Hold OK, or ☰ Menu on an app | Move, rename or hide it, or add it to Favorites |
+| ☰ Menu anywhere else | Options |
+| Back | Go back one step or close a menu; on this screen, back to the first app |
 | Home | Come back to this home screen |
+| Hold Home | Fire TV's quick menu (sleep, settings, apps) |
+| TV | Amazon's channel guide for the antenna |
+| ⏯ Play | Pause or play in most apps |
 
 The TV also shows these in **Options › Help › Remote guide**.
+
+**Watching TV from the antenna:** choose **Antenna** in the Inputs button or the Inputs row. It
+opens in Amazon's Live TV on the last channel you watched, with Amazon's guide, options and
+captions; press the **TV** button for the guide. (Options › Home screen › Antenna opens can switch
+this to the quick screen instead: ▲ ▼ change channel, OK lists the channels with what's on now,
+☰ has captions and audio, and the TV button still opens Amazon's guide.)
 
 ## Everyday things
 

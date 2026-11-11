@@ -83,6 +83,7 @@ public final class Options extends Activity {
         list.addView(action("Home screen layout", () -> RowsEditor.show(this, this::refresh)));
         list.addView(action("Visible inputs", () -> pick(Catalog.INPUTS)));
         list.addView(choice(Config.SWITCH));
+        list.addView(choice(Config.ANTENNA));
 
         section("Appearance", Icons.CONTRAST);
         list.addView(choice(Config.STYLE));

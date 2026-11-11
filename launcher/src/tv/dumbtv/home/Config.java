@@ -131,6 +131,10 @@ final class Config {
     static final Choice FAVS = new Choice("favs", "Favorites row", "on",
             new String[] {"on", "off"},
             new String[] {"Shown", "Hidden"});
+    /** The Antenna tile: Amazon's Live TV (AmazonLiveTv) or our own quick screen (InputScreen). */
+    static final Choice ANTENNA = new Choice("antenna", "Antenna opens", "amazon",
+            new String[] {"amazon", "quick"},
+            new String[] {"Amazon Live TV", "Quick screen"});
     /** When a device on an HDMI input turns on, offer to switch to it. */
     static final Choice SWITCH = new Choice("switch", "Detect input", "on",
             new String[] {"on", "off"},
@@ -278,7 +282,7 @@ final class Config {
     static final Choice CARE = new Choice("care", "Screen care (OLED)", "on",
             new String[] {"off", "on"}, new String[] {"Off", "On"});
 
-    static final Choice[] CHOICES = {ACCENT, STYLE, TILES, TEXT, TITLES, TITLE_COLOR, MOTION, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
+    static final Choice[] CHOICES = {ANTENNA, ACCENT, STYLE, TILES, TEXT, TITLES, TITLE_COLOR, MOTION, BACKGROUND, CLOCK, LABELS, INPUTS, DIM, ROTATE,
         WEATHER, UNITS, W_DETAIL, FRAME, FRAME_FOR, APPS_LAYOUT, RECENT, SWITCH, NIGHT, CARE, FAVS, FRAME_CLOCK, FRAME_WEATHER};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */

@@ -60,7 +60,14 @@ The technical reference for the home screen in this folder. To set it up, read t
   switch (`com.amazon.tv.inputpreference.service`, permission `TUNE_INPUT`) for its own apps. So
   the input is drawn full screen with `TvView`, the public Android TV API, which needs no
   permission. A note says "No signal" when the device is off. Back, Home or any app closes it.
-- **Antenna:** the TV's own tuner is an input too. Live TV's channel scan stores the channels in
+- **Antenna opens** (Options › Home screen): **Amazon Live TV** (default) or **Quick screen**.
+  Amazon's Live TV can't be started by other apps, except through the screen Fire TV shows at
+  power-on (`InputChooserActivity`, open to all apps): it reads the power-on choice
+  (`next_input_start`) and, for "tuner", opens Live TV on the last channel. `AmazonLiveTv` sets
+  that choice to "tuner" for a moment and puts the viewer's own back after 3 s, and again when
+  the home screen or the TV starts (WRITE_SECURE_SETTINGS, from `install.sh`). Without the grant,
+  or on a TV without that screen, the antenna opens the quick screen.
+- **Antenna, quick screen:** the TV's own tuner is an input too. Live TV's channel scan stores the channels in
   Android's TV listings; `InputScreen` reads them (READ_TV_LISTINGS, granted by `install.sh`),
   tunes the one watched last, and Channel up / down or ▲ ▼ change channel. OK lists the channels
   with what is on now (TV listings programs); ☰ has the channel list, captions on / off, the

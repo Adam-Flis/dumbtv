@@ -58,14 +58,18 @@ final class Help {
         Ui.hintLines(keys,
                 "▲ ▼ ◀ ▶", "Move around the screen",
                 "OK", "Open the app or button you are on",
-                "☰ Menu", "Move, rename or hide the app you are on",
-                "Back", "Go back one step, or close a menu",
+                "Hold OK or ☰", "On an app: move, rename, hide. Elsewhere ☰: Options",
+                "Back", "Go back one step; on this screen, back to the first app",
                 "Home", "Come back to this home screen",
+                "Hold Home", "Fire TV's quick menu: sleep, settings, apps",
+                "TV", "Amazon's channel guide for the antenna",
                 "⏯ Play", "Pause or play in most apps");
         panel.addView(keys);
         TextView note = Ui.text(a, 15, Ui.MUTED, Ui.MEDIUM);
         note.setLineSpacing(0, 1.3f);
-        note.setText("Amazon's home screen: Options \u203A More \u203A Amazon home screen.");
+        note.setText("Watching the antenna on the quick screen: \u25B2 \u25BC change channel, OK lists the"
+                + " channels, \u2630 has captions and audio. Amazon's home screen: Options \u203A More \u203A"
+                + " Amazon home screen.");
         note.setPadding(0, dp(a, 16), 0, 0);
         panel.addView(note, new LinearLayout.LayoutParams(dp(a, 600), WRAP));
         // Back or OK closes it; nothing inside needs focus

@@ -33,7 +33,7 @@ import java.util.List;
  * from Android's TV listings (READ_TV_LISTINGS, allowed by install.sh or asked for here), and
  * Channel up / down or the up / down arrows change channel; OK lists the channels with what is on
  * now, and ☰ has captions and the audio language. The last channel and the captions setting are
- * remembered. Amazon's own guide (the remote's guide key) still works on top of this screen.
+ * remembered. The remote's TV button opens Amazon's guide on top of this screen.
  * Amazon's Live TV app cannot be opened by other apps (TUNE_CHANNEL, SHOW_EPG are Amazon-only).
  *
  * Back, Home or opening anything else closes it, so the home screen is what comes back.
@@ -43,8 +43,6 @@ public final class InputScreen extends Activity {
     private static final String LISTINGS = "android.permission.READ_TV_LISTINGS";
     /** home.conf: the antenna channel watched last (a TV listings channel id). */
     private static final String LAST_CHANNEL = "antenna.channel", CAPTIONS = "antenna.captions";
-    /** Amazon's home screen, on its Live tab (guide, channels, recordings). */
-    private static final String AMAZON_LIVE = "amzn://com.amazon.tv.launcher/menuNavigation?locationID=l_live";
 
     /** One antenna channel: its listings id, and "5.1  WEWS" to show. */
     private static final class Channel {
@@ -113,7 +111,7 @@ public final class InputScreen extends Activity {
                 if (tuner && !channels.isEmpty()) {
                     String now = onNow(channels.get(at));
                     showNote(showing() + (now == null ? "" : "   ·   " + now)
-                            + (hinted ? "" : "\nOK: channels   ·   \u2630: options and Amazon's guide"), 4000);
+                            + (hinted ? "" : "\nOK: channels   ·   \u2630: options   \u00B7   TV button: Amazon's guide"), 4000);
                     hinted = true;
                 } else {
                     showNote(showing(), 2500);
@@ -222,18 +220,15 @@ public final class InputScreen extends Activity {
     }
 
     /**
-     * Amazon's own Live TV: its guide with logos and previews, its options, caption styles and
-     * recordings. Other apps may not open Live TV itself, but Amazon's home screen has an open way
-     * to its Live tab (MenuNavigationHelperActivity, location "l_live"). Home comes back here.
+     * Amazon's own Live TV on the channel last watched there: its guide with logos and previews,
+     * options, caption styles and recordings (AmazonLiveTv says how). The remote's TV button
+     * opens Amazon's guide from anywhere too.
      */
-    private void amazonGuide() {
-        Guard.pause(); // Amazon's home stays until another app opens (a channel, say)
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(AMAZON_LIVE))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    private void amazonLiveTv() {
+        if (AmazonLiveTv.available(this) && AmazonLiveTv.open(this)) {
             finish();
-        } catch (RuntimeException e) {
-            showNote("Amazon's guide did not open. Hold Home or use the remote's guide button.", 4000);
+        } else {
+            showNote("Press the TV button on the remote for Amazon's guide.", 4000);
         }
     }
 
@@ -243,7 +238,7 @@ public final class InputScreen extends Activity {
         new Thread(() -> {
             List<String> rows = new ArrayList<>();
             // the first row hands over to Amazon's full guide
-            rows.add("Amazon's full guide  \u203A");
+            rows.add("Amazon Live TV and guide  \u203A");
             for (Channel ch : list) {
                 String now = onNow(ch);
                 rows.add(now == null ? ch.title : ch.title + "   ·   " + now);
@@ -251,7 +246,7 @@ public final class InputScreen extends Activity {
             runOnUiThread(() -> {
                 if (!isFinishing()) {
                     Popup.choose(this, "Channels", rows, at + 1, i -> {
-                        if (i == 0) amazonGuide();
+                        if (i == 0) amazonLiveTv();
                         else tuneChannel(i - 1);
                     });
                 }
@@ -265,8 +260,8 @@ public final class InputScreen extends Activity {
         List<Runnable> picks = new ArrayList<>();
         rows.add("Channel list");
         picks.add(this::channelList);
-        rows.add("Amazon's full guide");
-        picks.add(this::amazonGuide);
+        rows.add("Amazon Live TV and guide");
+        picks.add(this::amazonLiveTv);
         rows.add(captions() ? "Captions: On" : "Captions: Off");
         picks.add(() -> {
             Config.get(this).set(CAPTIONS, captions() ? null : "on");

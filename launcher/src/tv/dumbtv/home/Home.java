@@ -358,6 +358,8 @@ public final class Home extends Activity {
         cfg.visited();
         // Fire TV's idle timers follow Options › Screen saver (after a change there, or a reset)
         SystemSaver.apply(this, cfg);
+        // the power-on choice the antenna borrowed for Amazon's Live TV, if it was not put back
+        AmazonLiveTv.putBack(this);
         if (cfg.textScale() != builtScale || !cfg.get(Config.STYLE).equals(builtStyle) || "grid".equals(cfg.get(Config.APPS_LAYOUT)) != builtGrid
                 || !cfg.rowOrder().equals(builtOrder)) {
             // text sizes and the All apps layout are set at build time; rebuilding is simplest
@@ -1538,8 +1540,15 @@ public final class Home extends Activity {
         else launch(new Intent(t.item.intent), t.item.id);
     }
 
-    /** An HDMI or other input, on our own full-screen input screen (InputScreen says why). */
+    /**
+     * An HDMI or other input, on our own full-screen input screen (InputScreen says why). The
+     * antenna opens in Amazon's Live TV when Options says so and this TV allows it.
+     */
     private void openInput(Item input) {
+        if (input.tuner && "amazon".equals(cfg.get(Config.ANTENNA)) && AmazonLiveTv.available(this)
+                && AmazonLiveTv.open(this)) {
+            return;
+        }
         InputScreen.open(this, input, Catalog.label(cfg, input));
     }
 

@@ -153,6 +153,7 @@ adb push home.conf /sdcard/Android/data/tv.dumbtv.home/files/home.conf
 | `style` | `modern`, `regency`, `deco`, `storybook` (typeface, flourish, tile frame) |
 | `titles.color` | row titles and their flourish: `white`, `gold`, `ivory`, `rose`, `blush`, `sage`, `lavender`, `powder`, `accent` |
 | `motion` | tile motion: `lively`, `bounce`, `glow`, `shine`, `simple` |
+| `antenna` | the Antenna input opens `amazon` (Amazon's Live TV) or `quick` (our screen) |
 | `background` | `app`, `sky` (time of day), `black`, `graphite`, `midnight`, `image` |
 | `accent` | `blue`, `white`, `cyan`, `green`, `amber`, `red`, `pink`, `violet`, `gold`, or `#RRGGBB` |
 | `weather` | `off`, `on`; also needs `weather.lat`, `weather.lon`, `weather.place` (display name), `weather.city` (the ZIP) |
@@ -228,6 +229,7 @@ MIN_SDK=25 ./launcher/build.sh                  # → launcher/build/dumbtv-home
 |---|---|
 | `Home.java` | the home screen activity: header, top bar, rows, tile menu, move mode, screen saver timer |
 | `WeatherHeader.java`, `InputCard.java` | the weather beside the clock; the "switch input?" card |
+| `AmazonLiveTv.java` | opens the antenna in Amazon's Live TV through its power-on screen (borrows `next_input_start` for 3 s) |
 | `InputScreen.java` | an HDMI input or the antenna (with channel up / down) full screen with TvView; Fire TV refuses other apps' input switching |
 | `Tile.java`, `Grid.java`, `Icons.java`, `Ui.java`, `Tween.java` | drawing: tiles (spring lift, light sweep), wrapping grid, vector icons, shared look and Style fonts, animations |
 | `Sky.java`, `Ornament.java` | Background › Sky by time of day; Style › Regency's gilt flourish |

@@ -20,6 +20,8 @@ public final class BootReceiver extends BroadcastReceiver {
         }
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) Config.get(context).set(Sleep.AT, null);
         else if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) Sleep.rearm(context);
+        // the power-on choice the antenna borrowed for Amazon's Live TV, if it was not put back
+        AmazonLiveTv.putBack(context);
         Keeper.start(context);
     }
 }
